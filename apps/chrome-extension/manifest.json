@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TheOrg — Supervisor Workspace",
-  "version": "0.2.0",
-  "description": "Local-first Supervisor workspace, agent task groups and audited delivery.",
+  "version": "0.3.0",
+  "description": "Local-first Windows Supervisor with reviewed optional Ollama agents and durable SQLite jobs (developer preview).",
   "permissions": [
     "storage",
     "tabs",
