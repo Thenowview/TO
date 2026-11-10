@@ -103,9 +103,9 @@ jobs:
           if (-not (Test-Path -LiteralPath $key)) { throw 'Chrome native host key missing' }
           $hostFile=(Get-Item -LiteralPath $key).GetValue('')
           if (-not (Test-Path -LiteralPath $hostFile -PathType Leaf)) { throw 'Native host JSON missing' }
-          $host=Get-Content -LiteralPath $hostFile -Raw | ConvertFrom-Json
-          if ($host.path -ne $bridge -or @($host.allowed_origins).Count -ne 1 -or
-            $host.allowed_origins[0] -cne "chrome-extension://$extensionId/") {
+          $hostData=Get-Content -LiteralPath $hostFile -Raw | ConvertFrom-Json
+          if ($hostData.path -ne $bridge -or @($hostData.allowed_origins).Count -ne 1 -or
+            $hostData.allowed_origins[0] -cne "chrome-extension://$extensionId/") {
             throw 'Chrome native host path or origin mismatch'
           }
           $local=Join-Path $root 'Local-Files'
