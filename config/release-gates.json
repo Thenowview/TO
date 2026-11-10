@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "product": "TheOrg",
+  "releaseChannel": "developer-preview",
+  "evidenceCommit": "c6970112e53d377f0c4bcea677ffa24673f56adb",
+  "lastAuditedUtc": "2026-11-10",
+  "productionReady": false,
+  "productionTarget": {
+    "configured": false,
+    "kind": null,
+    "address": null,
+    "verifiedDeploymentWorkflow": false
+  },
+  "gates": {
+    "ci_windows_native_controller": "passed",
+    "ci_supervisor_ui_and_unit": "passed",
+    "unsigned_installer_build": "passed",
+    "installer_silent_smoke": "passed",
+    "original_source_archives_imported": "blocked",
+    "legacy_sidebar_behavior_regression": "blocked",
+    "real_chrome_stable_native_host_e2e": "not_verified",
+    "real_ai_provider_authorized_integration": "not_connected",
+    "authenticated_independent_business_qa": "not_implemented",
+    "malware_scanning_and_safe_previews": "not_implemented",
+    "production_grade_security_and_tenant_auth": "not_verified",
+    "release_binary_code_signing": "not_configured",
+    "production_deployment_destination": "not_configured",
+    "production_readback_smoke": "not_run"
+  },
+  "decision": "NO_GO",
+  "notes": [
+    "This file is a conservative manually maintained audit summary, not a fabricated automated deployment result.",
+    "Owner authorization allows release work but does not substitute for required implementation, destination, or evidence.",
+    "Development branch may be merged as developer-preview source while production deployment remains blocked."
+  ]
+}
