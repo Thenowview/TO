@@ -133,7 +133,7 @@ internal static class ArtifactInspection
             if (entry.FullName=="[Content_Types].xml") contentTypes=true;
             if (entry.FullName==requiredPart) expectedPart=true;
         }
-        if (extension is ".docx" or ".xlsx" or ".pptx" &&
+        if ((extension is ".docx" or ".xlsx" or ".pptx") &&
             (!contentTypes || !expectedPart))
             return new(false,"office_container_missing_required_parts");
         return new(true,"archive_structure_only_not_malware_scanned");
