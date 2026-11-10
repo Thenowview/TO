@@ -59,9 +59,12 @@ function fakeChrome() {
           createdUtc:"2026-11-10T00:00:00Z",aiMode:"deterministic_demo_no_external_provider"
         }};
         case "import_artifact":{
-          const item={artifactId:"c".repeat(32),fileName:request.fileName,
-            agentId:request.agentId,intakeStatus:"received_unverified",
-            sha256:"B".repeat(64),integrityValid:false};
+          const item={artifactId:(imports.length+1).toString(16).padStart(32,"c").slice(-32),
+            version:imports.filter(x=>x.fileName===request.fileName &&
+              x.agentId===request.agentId).length+1,
+            fileName:request.fileName,agentId:request.agentId,
+            intakeStatus:"received_unverified",
+            sha256:"B".repeat(64),integrityValid:false,formatValid:false};
           imports.push(item);
           return {ok:true,artifact:item};
         }
@@ -335,4 +338,50 @@ test("dependency-aware queue dispatches next eligible specialist without inventi
   queue=await manager.executionQueue(created.taskId);
   assert.equal(queue.queue[1].state,"awaiting_qa_evidence");
   assert.ok(queue.queue.every(t=>!t.verifiedComplete));
+});
+
+
+test("new artifact invalidates QA and malformed files block dependent specialists", async()=>{
+  const mock=fakeChrome();
+  const supervisor=new context.TheOrgTaskManager(mock.api);
+  const order=await supervisor.createOrder("demo",
+    "Research competitors, then draft a presentation using validated findings.");
+  await supervisor.saveSupervisorPlan(order.taskId,JSON.stringify({
+    summary:"Source evidence before presentation",
+    tasks:[
+      {id:"researcher",role:"researcher",provider:"chatgpt",
+       objective:"Collect source evidence from market competitors",
+       acceptanceCriteria:["Every material claim has primary source evidence"],dependencies:[]},
+      {id:"documents",role:"documents",provider:"qwen",
+       objective:"Create presentation with accurate cited evidence",
+       acceptanceCriteria:["Presentation reproduces cited research accurately"],dependencies:["researcher"]}
+    ]
+  }));
+  await supervisor.approvePlan(order.taskId);
+  await supervisor.importArtifact(order.taskId,"researcher","research.md","YQ==","chatgpt","manual");
+  await supervisor.handoffAndClose(order.taskId,"researcher",
+    "Research report was prepared and submitted for independent checking.","submitted");
+  await supervisor.recordQaFinding(order.taskId,"researcher",0,"pass",
+    "I checked the primary references and recorded their dates manually.");
+  let queue=await supervisor.executionQueue(order.taskId);
+  assert.equal(queue.queue[0].state,"artifact_validation_pending");
+  assert.equal(queue.queue[1].state,"waiting_on_dependencies");
+  await assert.rejects(
+    ()=>supervisor.openAgentTab(order.taskId,"documents","qwen"),
+    /prerequisite handoffs/);
+
+  mock.imports[0].integrityValid=true;
+  mock.imports[0].formatValid=true;
+  mock.imports[0].intakeStatus="structure_verified_content_qa_pending";
+  queue=await supervisor.executionQueue(order.taskId);
+  assert.deepEqual(Array.from(queue.ready),["documents"]);
+
+  // Even an extra version of the same file must clear previous QA evidence.
+  await supervisor.importArtifact(order.taskId,"researcher","research.md","Yg==","chatgpt","revised");
+  const records=await supervisor.orders();
+  assert.equal(records[order.taskId].qaFindings.researcher,undefined);
+  queue=await supervisor.executionQueue(order.taskId);
+  assert.equal(queue.queue[0].state,"artifact_validation_pending");
+  assert.equal(queue.queue[1].state,"waiting_on_dependencies");
+  assert.equal(queue.queue[1].verifiedComplete,false);
 });
