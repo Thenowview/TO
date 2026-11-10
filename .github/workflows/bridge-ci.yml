@@ -40,6 +40,9 @@ jobs:
         run: dotnet run --project engine/bridge/TheOrg.Bridge.csproj --configuration Release --no-build -- --self-test
       - name: Publish self-contained Windows bridge candidate
         run: dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/bridge
+      - name: Test actual Native Messaging stdio framing and tenant isolation
+        shell: pwsh
+        run: python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
       - name: Install NSIS compiler
         shell: pwsh
         run: choco install nsis --yes --no-progress --limit-output
