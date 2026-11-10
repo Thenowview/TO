@@ -54,6 +54,24 @@ jobs:
           if (!(Test-Path out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe)) {
             throw "Installer output missing"
           }
+      - name: Smoke-test silent Windows installation and uninstall
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe).Path
+          $result = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer failed with code $($result.ExitCode)" }
+          $root = Join-Path $env:LOCALAPPDATA 'Programs\TheOrg'
+          $binary = Join-Path $root 'TheOrg.Bridge.exe'
+          $manifest = Join-Path $root 'chrome-extension\manifest.json'
+          if (!(Test-Path $binary) -or !(Test-Path $manifest)) {
+            throw 'Installed bridge or Chrome extension is missing'
+          }
+          & $binary --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Installed binary self-test failed' }
+          $uninstall = Join-Path $root 'Uninstall.exe'
+          $uninstalled = Start-Process -FilePath $uninstall -ArgumentList '/S' -Wait -PassThru
+          if ($uninstalled.ExitCode -ne 0) { throw 'Silent uninstall failed' }
+          if (Test-Path $binary) { throw 'Uninstall left the Windows controller installed' }
       - name: Upload unsigned Windows developer-preview installer
         uses: actions/upload-artifact@v4
         with:
