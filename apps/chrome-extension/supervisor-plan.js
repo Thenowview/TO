@@ -11,6 +11,10 @@ function supervisorPrompt(instruction) {
     "You are a planning adviser to TheOrg Supervisor; you cannot execute tools or claim completion.",
     "Interpret the owner's instruction, break it into at most eight bounded specialist tasks.",
     "Each task requires a concrete deliverable, acceptance criteria, and dependencies.",
+    "For each goal specify target/source, output format, exclusions, edge cases and evidence of success.",
+    "Use a dependency-aware plan; do not create parallel tasks when they modify the same resource.",
+    "Require observe-act-verify steps and checkpoints for website, file or application interactions.",
+    "For failures specify safe bounded recovery; never blindly repeat non-idempotent actions.",
     "Identify unknowns, consent requirements, assumptions and risks.",
     "Return only a JSON object with this schema:",
     '{"summary":"brief interpretation","tasks":[{"id":"research1","role":"researcher",',
@@ -82,6 +86,9 @@ function agentPrompt(orderTitle,plan,agentId) {
     "Objective: "+t.objective,
     "Acceptance criteria:",...t.acceptanceCriteria.map((c,i)=>(i+1)+". "+c),
     "Provide sources or attached artifacts when applicable.",
+    "Work in cycles: inspect real state, choose the smallest authorized step, act only through available tools, and read back the result.",
+    "Record evidence and statuses accurately. Proposed steps, opened tabs and self-reported success are not verified execution.",
+    "Retry only safe idempotent operations; stop and surface blocked actions, missing permissions or failures.",
     "Supervisor independently reviews your work before accepting any completion."].join("\n");
 }
 globalThis.TheOrgPlanner={supervisorPrompt,interpret,agentPrompt};
