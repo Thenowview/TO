@@ -104,11 +104,49 @@ async function refreshOrders(selectId = null) {
   await showSelected();
 }
 
+async function renderExecutionQueue(taskId) {
+  const target = $("executionQueue");
+  try {
+    const response = await rpc("execution_queue",{taskId});
+    const queue = response.queue || [];
+    const ready = queue.filter(t => t.state === "ready_for_manual_provider_consultation");
+    $("dispatchNext").disabled = !response.planApproved || ready.length===0;
+    const statuses = {
+      plan_review_required:"Needs plan approval",
+      agent_tab_open:"Chat tab open",
+      waiting_on_dependencies:"Waiting on earlier assignments",
+      needs_agent_followup:"Agent needs follow-up",
+      needs_revision:"Revision required",
+      manual_qa_pass_unverified:"Manual QA recorded (not certified)",
+      awaiting_qa_evidence:"Waiting for QA evidence",
+      ready_for_manual_provider_consultation:"Ready for specialist chat"
+    };
+    target.replaceChildren();
+    target.append(node("b",queue.length+" specialist(s) • "+ready.length+" ready for manual consultation"));
+    for (const item of queue) {
+      const line=node("div",undefined,"queue-entry");
+      const summary=node("div",undefined,"queue-title");
+      append(summary,node("b",item.agentId+" — "+item.role),
+        node("small",statuses[item.state]||item.state));
+      if(item.pendingDependencies?.length)
+        summary.append(node("small","Waiting for: "+item.pendingDependencies.join(", ")));
+      append(line,summary,node("small","Verified completion: No"));
+      target.append(line);
+    }
+    target.append(node("p",response.trustNotice,"form-note"));
+  }catch(error){
+    $("dispatchNext").disabled=true;
+    target.textContent="Task queue unavailable: "+(error.message||String(error));
+  }
+}
+
 async function showSelected() {
   const order = selectedOrder();
   $("noOrder").hidden = Boolean(order);
   $("activeOrder").hidden = !order;
   if (!order) {
+    $("dispatchNext").disabled = true;
+    $("executionQueue").textContent = "Choose a work order to view the execution queue.";
     $("artifactAgent").replaceChildren(new Option("Select a specialist",""));
     clear($("deliveries")).append(node("p","Choose a work order to view files.","muted"));
     return;
@@ -196,7 +234,12 @@ async function showSelected() {
   $("reviewResult").textContent = r
     ? (r.verdict||"pending").replaceAll("_"," ")+": "+(r.reason||"")
     : "No independent task verification recorded.";
-  await renderDeliveries(order.taskId);
+  await renderTaskQueueThenDeliveries(order.taskId);
+}
+
+async function renderTaskQueueThenDeliveries(taskId) {
+  await renderExecutionQueue(taskId);
+  await renderDeliveries(taskId);
 }
 
 async function renderDeliveries(taskId) {
@@ -372,6 +415,33 @@ async function uploadChunkedFile(order,file) {
 function registerEvents() {
   $("recheck").addEventListener("click",()=>action(checkEngine));
   $("refreshOrders").addEventListener("click",()=>action(()=>refreshOrders()));
+  $("refreshQueue").addEventListener("click",()=>action(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a work order first");
+    await renderExecutionQueue(o.taskId);
+  }));
+  $("dispatchNext").addEventListener("click",()=>action(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Choose a work order first");
+    const result=await rpc("dispatch_next",{taskId:o.taskId});
+    if(!result.dispatched){
+      toast(result.reason||"No eligible agent can start yet.",true);
+      await renderExecutionQueue(o.taskId);
+      return;
+    }
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(result.prompt);
+      copied = true;
+    } catch {
+      // User can always choose the existing Copy agent instructions control.
+    }
+    toast("Opened "+result.agentId+" in a TheOrg-owned provider tab. "+
+      (copied?"Instructions copied: paste into the chat manually.":
+      "Use Copy agent instructions before chatting."));
+    await refreshOrders(o.taskId);
+  }));
+
   $("pinHome").addEventListener("click",()=>action(async()=>{
     const tab=await chrome.tabs.getCurrent();
     if(!tab||!tab.id)throw new Error("Pin the full-tab Supervisor page, not its side panel.");
