@@ -133,6 +133,7 @@
         }
         order.plan = plan;
         order.agentReports = {};
+        order.qaFindings = {};
         order.providerTabs = {};
         order.phase = "plan_review_required";
         order.review = {
@@ -389,6 +390,8 @@
           verification: "unverified_agent_claim"
         };
         order.agentReports = reports;
+        // Any subsequent handoff invalidates prior manual QA findings for this agent.
+        if (order.qaFindings) delete order.qaFindings[agentId];
         const assigned = order.plan.tasks.find(t => t.id === agentId);
         assigned.status = outcome;
         order.phase = "awaiting_supervisor_review";
@@ -445,6 +448,83 @@
       return count;
     }
 
+    // QA findings are explicitly labelled manual and not independently authenticated.
+    // A selected AI provider's opinion or the agent's own claim cannot certify completion.
+    async recordQaFinding(taskId, agentId, criterionIndex, verdict, evidence) {
+      if (!TASK_ID.test(taskId) || !AGENT.test(agentId) ||
+          !Number.isInteger(criterionIndex) || criterionIndex < 0 ||
+          !["pass", "fail", "needs_information"].includes(verdict) ||
+          typeof evidence !== "string" || evidence.trim().length < 30 ||
+          evidence.length > 4000)
+        throw new Error("Invalid QA evidence: provide 30–4000 characters per criterion");
+      return this.serialize(async () => {
+        const all = await this.orders();
+        const order = all[taskId];
+        if (!order || !order.plan || !order.plan.reviewed)
+          throw new Error("Approve the Supervisor plan before checking criteria");
+        const task = order.plan.tasks.find(t => t.id === agentId);
+        if (!task || criterionIndex >= task.acceptanceCriteria.length)
+          throw new Error("Unknown assignment or criterion");
+        const report = (order.agentReports || {})[agentId];
+        if (!report || report.outcome !== "submitted")
+          throw new Error("Agent must submit a handoff before QA can review it");
+
+        order.qaFindings = order.qaFindings || {};
+        order.qaFindings[agentId] = order.qaFindings[agentId] || {};
+        order.qaFindings[agentId][criterionIndex] = {
+          criterion: task.acceptanceCriteria[criterionIndex],
+          verdict,
+          evidence: evidence.trim(),
+          reviewerRole: "qa_auditor",
+          identityVerified: false,
+          evidenceType: "manual_review_unverified_identity",
+          reviewedUtc: new Date().toISOString(),
+          handoffUtc: report.savedUtc
+        };
+        order.review = {
+          verdict: "pending",
+          reason: "QA finding recorded; independent identity and evidence verification remain outstanding"
+        };
+        await this.saveOrders(all);
+        return { taskId, agentId, criterionIndex, verdict,
+          verification: "manual_review_unverified_identity" };
+      });
+    }
+
+    async getQaPacket(taskId) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid task ID");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order || !order.plan) throw new Error("No plan found");
+      const artifacts = await this.listArtifacts(taskId);
+      return {
+        schemaVersion: 1,
+        taskId,
+        companyId: order.companyId,
+        instruction: order.instruction,
+        reviewedPlan: !!order.plan.reviewed,
+        tasks: order.plan.tasks.map(task => ({
+          agentId: task.id, role: task.role,
+          objective: task.objective,
+          acceptanceCriteria: task.acceptanceCriteria,
+          handoff: (order.agentReports || {})[task.id] || null,
+          findings: (order.qaFindings || {})[task.id] || {}
+        })),
+        artifacts: artifacts.map(a => ({
+          artifactId: a.artifactId, agentId: a.agentId,
+          filename: a.fileName, sha256: a.sha256,
+          version: a.version, intakeStatus: a.intakeStatus,
+          malwareScanStatus: a.malwareScanStatus || "not_scanned",
+          contentQaStatus: a.contentQaStatus || "pending_independent_review"
+        })),
+        trustLimitations: [
+          "QA findings are manually entered and reviewer identity is not authenticated.",
+          "Checksums and structural checks are not semantic QA or malware scanning.",
+          "AI chat messages and plugin outputs are untrusted advice, not completion evidence."
+        ]
+      };
+    }
+
     async supervisorReview(taskId) {
       if (!TASK_ID.test(taskId)) throw new Error("Invalid task ID");
       const all = await this.orders();
@@ -482,11 +562,29 @@
         planned.every(t => order.agentReports && order.agentReports[t.id]);
       const allSubmitted = everyAgentReported &&
         planned.every(t => order.agentReports[t.id].outcome === "submitted");
+      const reviews = order.qaFindings || {};
+      const allManualCriteriaPresent = planned.length > 0 &&
+        planned.every(task => task.acceptanceCriteria.every((_, index) =>
+          reviews[task.id] && reviews[task.id][index] &&
+          (order.agentReports || {})[task.id] &&
+          reviews[task.id][index].handoffUtc === order.agentReports[task.id].savedUtc));
+      const anyCriterionFailed = planned.some(task =>
+        Object.values(reviews[task.id] || {}).some(f =>
+          f.verdict === "fail" || f.verdict === "needs_information"));
+      const allManualCriteriaPassed = allManualCriteriaPresent &&
+        planned.every(task => task.acceptanceCriteria.every((_, index) =>
+          reviews[task.id][index].verdict === "pass"));
       const verdict = !everyAgentReported ? "awaiting_agent_handoff" :
         !allSubmitted ? "agent_blocked_or_needs_help" :
         !checksumsRecorded || importedPending ? "blocked" :
+        anyCriterionFailed ? "qa_revision_required" :
+        allManualCriteriaPassed ? "manual_qa_recorded_owner_confirmation_pending" :
         "pending_independent_verification";
-      const reason = verdict === "pending_independent_verification"
+      const reason = verdict === "manual_qa_recorded_owner_confirmation_pending"
+        ? "Every criterion has a manually recorded pass; reviewer identity and substantive evidence are not independently authenticated. Owner confirmation remains required."
+        : verdict === "qa_revision_required"
+          ? "At least one acceptance criterion failed or requires more information; return the assignment to the responsible agent."
+        : verdict === "pending_independent_verification"
         ? "Artifacts have recorded hashes, but no independent semantic or provider verification exists."
         : verdict === "awaiting_agent_handoff"
           ? "One or more specialist tasks have not yet submitted a report."
