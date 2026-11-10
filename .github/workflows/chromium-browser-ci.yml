@@ -54,14 +54,21 @@ jobs:
             'No auto-updater included. Apply trusted security rebuilds regularly.'
           ) | Set-Content out/browser/BROWSER_SOURCE.txt -Encoding utf8
           Remove-Item out/browser/chrome-win.zip
-      - name: Preserve upstream Chromium licenses
+      - name: Preserve Chromium license and distribution notices
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
-          foreach($file in @('LICENSE','LICENSES.chromium.html')) {
-            $raw=Invoke-RestMethod "https://chromium.googlesource.com/chromium/src/+/main/$file?format=TEXT"
-            [IO.File]::WriteAllBytes((Join-Path (Resolve-Path out/browser).Path $file),[Convert]::FromBase64String(([string]$raw).Trim()))
-          }
+          Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/chromium/chromium/main/LICENSE' -OutFile 'out/browser/LICENSE'
+          if (!(Test-Path 'out/browser/LICENSE') -or (Get-Item 'out/browser/LICENSE').Length -lt 500) { throw 'Missing Chromium source license' }
+          @'
+          TheOrg Browser developer preview — third-party notices
+          Chromium copyright (c) The Chromium Authors.
+          This software bundles an unmodified upstream Chromium snapshot.
+          Its many third-party components have independent notices and license obligations.
+          See: https://chromium.googlesource.com/chromium/src/+/main/
+          See: https://www.chromium.org/Home/chromium-credits/
+          Before public redistribution, produce and audit full notices for this exact Chromium revision.
+          '@ | Set-Content -LiteralPath 'out/browser/LICENSES.chromium.html' -Encoding UTF8
       - name: Generate branded desktop icon and compile NSIS
         shell: pwsh
         run: |
