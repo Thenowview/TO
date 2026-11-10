@@ -72,7 +72,7 @@
 
     <section id="providers" class="section-block" aria-labelledby="providersHeading">
       <div class="section-head"><div><span class="section-kicker">03 / INTELLIGENCE</span><h2 id="providersHeading">Select your AI adviser</h2></div><span class="hint-pill">Manual web handoff • no API keys required</span></div>
-      <p class="section-description">Choose an AI service for the Supervisor plan or a specialist. Access, quotas, terms and available features depend on your own account. Cloudflare is listed separately as a developer platform.</p>
+      <p class="section-description">The Supervisor prepares an initial plan locally. You can optionally consult an AI adviser to refine it. Chat access, quotas and terms depend on your account; no AI provider is connected automatically. Cloudflare is a developer platform, not a chat service.</p>
       <div id="providerGrid" class="provider-grid"><span class="muted">Loading provider directory…</span></div>
     </section>
 
@@ -88,9 +88,11 @@
           <div id="activeOrder" hidden>
             <div class="panel detail-panel">
               <div class="order-header"><div><span class="section-kicker">SUPERVISOR WORK ORDER</span><h3 id="activeOrderTitle"></h3><span id="activeOrderId" class="mono"></span></div><span id="orderPhase" class="phase">Pending</span></div>
-              <div class="step-line"><span class="step-index">1</span><b>Consult an AI planner</b><span class="step-helper">Open chat, paste the prepared prompt</span></div>
+              <div class="step-line"><span class="step-index">1</span><b>Supervisor proposes specialist orders</b><span class="step-helper">Locally drafted automatically • AI consultation optional</span></div>
+              <div id="planSummary" class="review-result">Submit one instruction to generate an SOP-based local plan. The plan needs review before the agents start.</div>
+              <p class="form-note">Agent playbooks define how specialists work: procedure, output format, evidence checks and escalation rules. No AI website is contacted automatically.</p>
               <div class="inline-controls"><label for="plannerProvider" class="sr-only">Planning provider</label><select id="plannerProvider"></select><button id="copyPlannerPrompt" type="button" class="secondary">Copy planning prompt</button><button id="openPlanner" type="button" class="secondary">Open planner chat ↗</button></div>
-              <label class="field-label" for="planResponse">Planning response (paste structured JSON from provider)</label>
+              <label class="field-label" for="planResponse">Optional: replace the local plan with structured JSON from an AI adviser</label>
               <textarea id="planResponse" rows="5" placeholder='{"summary":"…","tasks":[{"id":"research1","role":"researcher","objective":"…","provider":"chatgpt","acceptanceCriteria":["…"],"dependencies":[]}]}…'></textarea>
               <div class="action-row"><button id="interpretPlan" class="secondary" type="button">Interpret & save plan</button><button id="approvePlan" class="primary" type="button">Approve task breakdown</button></div>
               <p class="form-note">AI text is untrusted until the Supervisor has interpreted it and you approve the proposed assignments. Do not paste confidential data into an external AI chat without authorization.</p>
