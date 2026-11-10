@@ -78,6 +78,8 @@
       if (typeof instruction !== "string" || instruction.trim().length < 5 ||
           instruction.length > 5000) throw new Error("Instruction must be 5–5000 characters");
 
+      const localPlan = globalThis.TheOrgSkills.route(instruction.trim());
+
       const reply = await this.native({
         command: "submit_order",
         companyId,
@@ -97,14 +99,16 @@
           createdUtc: order.createdUtc || new Date().toISOString(),
           title: instruction.trim().slice(0, 90),
           instruction: instruction.trim(),
+          plan: localPlan,
           agentReports: {},
+          qaFindings: {},
           providerTabs: {},
           review: {
             verdict: "pending",
-            reason: "Live AI provider and semantic verification not connected"
+            reason: "A rules-based SOP plan was drafted locally; no AI chat was consulted and no execution has occurred. Review the assignments before dispatch."
           },
           backendMode: order.aiMode || "unknown",
-          phase: "awaiting_agent_work"
+          phase: "plan_review_required"
         };
         await this.saveOrders(all);
       });
@@ -180,7 +184,7 @@
       const all = await this.orders();
       const order = all[taskId];
       if (!order || !order.plan) throw new Error("Save a Supervisor plan first");
-      return globalThis.TheOrgPlanner.agentPrompt(order.title, order.plan, agentId);
+      return globalThis.TheOrgSkills.agentPrompt(order.instruction || order.title, order.plan, agentId);
     }
 
     async openAgentTab(taskId, agentId, providerId) {
