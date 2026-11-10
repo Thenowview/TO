@@ -102,6 +102,8 @@ async function refreshOrders(selectId = null) {
     list.append(btn);
   }
   await showSelected();
+  try { await refreshAgentJobs(); }
+  catch(error) { $("agentDetails").textContent="Local agent runtime unavailable: "+error.message; }
 }
 
 async function renderExecutionQueue(taskId) {
@@ -619,8 +621,123 @@ function registerEvents() {
   });
 }
 
+
+async function refreshAgentJobs(preferred=null) {
+  const o=selectedOrder(),select=$("agentJobs");
+  select.replaceChildren();
+  if(!o) {
+    app.agentJobId=null;
+    select.append(node("option","Create or select a work order first"));
+    $("agentDetails").textContent="Create a work order to plan local AI tasks.";
+    return;
+  }
+  const r=await rpc("agent_list",{taskId:o.taskId});
+  const jobs=r.jobs||[];
+  for(const job of jobs){
+    const option=node("option",job.jobId.slice(0,10)+" · "+job.status+" · "+job.mode);
+    option.value=job.jobId;select.append(option);
+  }
+  if(!jobs.length){
+    app.agentJobId=null;
+    select.append(node("option","No local agent jobs yet"));
+    $("agentDetails").textContent="No local AI or synthetic plan has been created for this order.";
+    return;
+  }
+  const candidate=preferred||app.agentJobId;
+  app.agentJobId=jobs.some(x=>x.jobId===candidate)?candidate:jobs[0].jobId;
+  select.value=app.agentJobId;
+  await showAgentJob();
+}
+
+async function showAgentJob() {
+  const o=selectedOrder(),jobId=app.agentJobId;
+  if(!o||!jobId)return;
+  const r=await rpc("agent_get",{taskId:o.taskId,jobId});
+  const details=[
+    "LOCAL AGENT PREVIEW — NOT PRODUCTION",
+    "Job: "+r.jobId+" | "+r.mode+" | "+r.status+" | next step "+(r.stepIndex+1),
+    "Model: "+r.model,
+    "Approved sites: "+(r.approvedHosts||[]).join(", "),
+    "OWNER INSTRUCTION:\n"+r.instruction,
+    "REVIEW ALL PLAN TOOLS BEFORE APPROVAL:\n"+JSON.stringify(r.plan,null,2),
+    "QA RESULT:\n"+(r.qaJson||"Not performed"),
+    "RECENT EXECUTION EVENTS:\n"+(r.events||[]).slice(-10)
+      .map(e=>e.createdUtc+" | "+e.eventType+" | "+e.evidence).join("\n")
+  ];
+  $("agentDetails").textContent=details.join("\n\n");
+  $("agentApprove").disabled=r.status!=="awaiting_approval";
+  $("agentRunNext").disabled=r.status!=="queued";
+  $("agentReview").disabled=r.status!=="completed_pending_review";
+  $("agentRecover").disabled=r.status!=="running";
+  $("agentCancel").disabled=["review_pending","cancelled","blocked"].includes(r.status);
+}
+
+function registerLocalAgentEvents() {
+  const run=(fn)=>()=>action(fn);
+  $("agentCreate").addEventListener("click",run(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Create and select a work order first");
+    const r=await rpc("agent_create",{
+      taskId:o.taskId,mode:$("agentMode").value,
+      model:$("agentModel").value.trim(),
+      approvedHosts:$("agentHosts").value.trim()
+    });
+    app.agentJobId=r.jobId;
+    await refreshAgentJobs(r.jobId);
+    toast(r.mode==="ollama"?"Local Ollama plan created. Review before approving.":
+      "Synthetic test plan created. No LLM used.");
+  }));
+  $("agentRefresh").addEventListener("click",run(()=>refreshAgentJobs()));
+  $("agentJobs").addEventListener("change",run(async()=>{
+    app.agentJobId=$("agentJobs").value;
+    await showAgentJob();
+  }));
+  $("agentMemorySave").addEventListener("click",run(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a company work order first");
+    const result=await rpc("agent_memory_put",{
+      taskId:o.taskId,key:$("agentMemoryKey").value.trim(),
+      value:$("agentMemoryValue").value.trim()
+    });
+    if(!result.stored)throw new Error("Memory was not confirmed stored");
+    toast("Company-scoped memory stored locally. It is not a trained model weight.");
+  }));
+  $("agentMemoryLoad").addEventListener("click",run(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a company work order first");
+    const result=await rpc("agent_memory_list",{taskId:o.taskId});
+    $("agentMemoryOutput").hidden=false;
+    $("agentMemoryOutput").textContent=JSON.stringify(result.memories||[],null,2);
+  }));
+  $("agentTools").addEventListener("click",run(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a company work order first");
+    const result=await rpc("agent_tools",{taskId:o.taskId});
+    $("agentMemoryOutput").hidden=false;
+    $("agentMemoryOutput").textContent=JSON.stringify(result,null,2);
+  }));
+  for(const [id,command,extras] of [
+    ["agentApprove","agent_approve",{approved:true}],
+    ["agentRunNext","agent_run_next",{}],
+    ["agentReview","agent_review",{}],
+    ["agentRecover","agent_recover",{}],
+    ["agentCancel","agent_cancel",{}]
+  ]){
+    $(id).addEventListener("click",run(async()=>{
+      const o=selectedOrder(),jobId=app.agentJobId;
+      if(!o||!jobId)throw new Error("Select an agent job first");
+      const response=await rpc(command,{taskId:o.taskId,jobId,...extras});
+      toast(command==="agent_run_next" ?
+        "Tool step requested. Examine evidence and output before continuing." :
+        "Local agent status: "+(response.status||response.qa?.verdict||"updated"));
+      await showAgentJob();
+    }));
+  }
+}
+
 (async function init(){
   registerEvents();
+  registerLocalAgentEvents();
   await checkEngine();
   try {
     const r=await rpc("providers");

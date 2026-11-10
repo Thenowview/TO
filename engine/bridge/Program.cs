@@ -94,6 +94,7 @@ internal sealed class Controller
     private readonly string _root;
     private readonly ArtifactStore _artifactStore;
     private readonly ArtifactTransfers _transfers;
+    private readonly LocalAgentEngine _agents;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -107,6 +108,7 @@ internal sealed class Controller
         Directory.CreateDirectory(_root);
         _artifactStore = new ArtifactStore(_root);
         _transfers = new ArtifactTransfers(_root, _artifactStore);
+        _agents = new LocalAgentEngine(_root);
     }
 
     internal object Execute(JsonElement request)
@@ -131,11 +133,19 @@ internal sealed class Controller
                     commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
                         "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact",
                         "begin_artifact_upload", "append_artifact_chunk", "upload_status",
-                        "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk" },
+                        "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk",
+                        "agent_create", "agent_get", "agent_list", "agent_approve", "agent_run_next",
+                        "agent_complete_browser", "agent_review", "agent_cancel", "agent_recover",
+                        "agent_memory_put", "agent_memory_list", "agent_tools" },
                     maxArtifactImportBytes = 256000,
                     importedArtifactsRequireContentQa = true,
                     liveAiProvider = false,
                     chromeDesktopAutomation = false,
+                    localAgentExecutionPreview = true,
+                    localOllamaOptional = true,
+                    sqliteAgentQueue = true,
+                    browserNavigationOnly = true,
+                    desktopOperation = "notepad-launch-only",
                     offlineFiles = true
                 },
                 "submit_order" => Submit(request),
@@ -152,6 +162,7 @@ internal sealed class Controller
                 "complete_artifact_upload" => CompleteArtifactUpload(request),
                 "cancel_artifact_upload" => CancelArtifactUpload(request),
                 "read_artifact_chunk" => ReadArtifactChunk(request),
+                _ when command.StartsWith("agent_", StringComparison.Ordinal) => _agents.Execute(request),
                 _ => Fail("unsupported_command")
             };
         }
@@ -710,6 +721,85 @@ internal static class SelfTest
                 uploadId = badId, accessToken = badToken
             });
             Check(cancelled.GetProperty("ok").GetBoolean(), "cancel and clean staged upload");
+
+            // Local agent runtime is real SQLite state and real restricted local tools.
+            // Synthetic mode is expressly not a language model.
+            var agentCreated=Call(c,new {
+                command="agent_create",companyId="demo",orderId=id,
+                instruction="Create a synthetic report demonstrating local agent execution.",
+                mode="demo",model="qwen3:4b",approvedHosts=""
+            });
+            Check(agentCreated.GetProperty("ok").GetBoolean(),"agent demo plan created");
+            string jobId=agentCreated.GetProperty("jobId").GetString()!;
+            Check(agentCreated.GetProperty("status").GetString()=="awaiting_approval",
+                "agent cannot auto approve");
+            var noApproval=Call(c,new {command="agent_approve",companyId="demo",jobId,approved=false});
+            Check(!noApproval.GetProperty("ok").GetBoolean(),"agent approval is explicit");
+            var approvedJob=Call(c,new {command="agent_approve",companyId="demo",jobId,approved=true});
+            Check(approvedJob.GetProperty("ok").GetBoolean(),"agent plan approval");
+            var step1=Call(c,new {command="agent_run_next",companyId="demo",jobId});
+            Check(step1.GetProperty("ok").GetBoolean(),"agent executes local file tool");
+            var outInfo=step1.GetProperty("result");
+            string name=outInfo.GetProperty("fileName").GetString()!;
+            string savedNote=Path.Combine(folder,"agent_outputs",name);
+            Check(File.Exists(savedNote) && File.ReadAllText(savedNote).Contains("Demo request"),
+                "agent actually produced expected local file");
+            var durable=Call(new Controller(root),new {command="agent_get",companyId="demo",jobId});
+            Check(durable.GetProperty("status").GetString()=="queued"&&
+                durable.GetProperty("stepIndex").GetInt32()==1,
+                "SQLite queue resumes across native host processes");
+            var step2=Call(new Controller(root),new {command="agent_run_next",companyId="demo",jobId});
+            Check(step2.GetProperty("ok").GetBoolean(),"agent runs second local tool");
+            var pending=Call(c,new {command="agent_get",companyId="demo",jobId});
+            Check(pending.GetProperty("status").GetString()=="completed_pending_review",
+                "completed task is not automatically certified");
+            var qa=Call(c,new {command="agent_review",companyId="demo",jobId});
+            Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
+                !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
+                "independent checksum QA does not certify content quality");
+            var foreignJob=Call(c,new {command="agent_get",companyId="other",jobId});
+            Check(!foreignJob.GetProperty("ok").GetBoolean(),"agent jobs isolated by company");
+            var put=Call(c,new {command="agent_memory_put",companyId="demo",key="project",
+                value="Synthetic memory for test only"});
+            Check(put.GetProperty("ok").GetBoolean(),"local persistent memory write");
+            var memory=Call(new Controller(root),new {command="agent_memory_list",companyId="demo"});
+            Check(memory.GetProperty("memories").GetArrayLength()==1,"memory survives process restart");
+            var foreignMemory=Call(c,new {command="agent_memory_list",companyId="other"});
+            Check(foreignMemory.GetProperty("memories").GetArrayLength()==0,"memory company isolation");
+
+            // Browser action is staged, reviewed, bound to an exact approved HTTPS hostname.
+            var browser=Call(c,new {
+                command="agent_create",companyId="demo",orderId=id,
+                instruction="Open the example.com test site in Chrome without reading any page content.",
+                mode="demo-browser",model="qwen3:4b",approvedHosts="example.com"
+            });
+            Check(browser.GetProperty("ok").GetBoolean(),"browser plan created");
+            string browserJob=browser.GetProperty("jobId").GetString()!;
+            Call(c,new {command="agent_approve",companyId="demo",jobId=browserJob,approved=true});
+            var nav=Call(c,new {command="agent_run_next",companyId="demo",jobId=browserJob});
+            Check(nav.GetProperty("status").GetString()=="awaiting_browser_navigation",
+                "browser work requires extension action");
+            string navToken=nav.GetProperty("token").GetString()!;
+            var invalidToken=Call(c,new {command="agent_complete_browser",companyId="demo",
+                jobId=browserJob,token="0",url="https://example.com/",tabId=123});
+            Check(!invalidToken.GetProperty("ok").GetBoolean(),"browser receipt token required");
+            var receipt=Call(c,new {command="agent_complete_browser",companyId="demo",
+                jobId=browserJob,token=navToken,url="https://example.com/",tabId=123});
+            Check(receipt.GetProperty("ok").GetBoolean()&&
+                !receipt.GetProperty("verifiedPageContents").GetBoolean(),
+                "navigation evidence never claims page contents verified");
+            var browserQa=Call(c,new {command="agent_review",companyId="demo",jobId=browserJob});
+            Check(browserQa.GetProperty("qa").GetProperty("browserOutcomeUnknown").GetBoolean(),
+                "browser navigation is not accepted as content QA");
+
+            // Interrupted execution must not auto-replay potentially non-idempotent tools.
+            var cancelledPlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
+                instruction="Create another short synthetic note.",mode="demo",model="qwen3:4b",approvedHosts=""});
+            string cancelledId=cancelledPlan.GetProperty("jobId").GetString()!;
+            var cancel=Call(c,new {command="agent_cancel",companyId="demo",jobId=cancelledId});
+            Check(cancel.GetProperty("status").GetString()=="cancelled","agent cancellation");
+            var neverRun=Call(c,new {command="agent_run_next",companyId="demo",jobId=cancelledId});
+            Check(!neverRun.GetProperty("ok").GetBoolean(),"cancelled jobs cannot run");
 
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;

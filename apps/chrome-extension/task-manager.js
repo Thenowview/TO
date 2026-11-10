@@ -287,6 +287,68 @@
       return this.openAgentTab(taskId, "supervisor", providerId);
     }
 
+    // Local AI runtime: every tool step is explicitly requested by the owner.
+    async agentCreate(taskId, mode, model, approvedHosts) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid work order");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order) throw new Error("Unknown work order");
+      return this.native({
+        command:"agent_create",companyId:order.companyId,orderId:taskId,
+        instruction:order.instruction,mode,model,approvedHosts
+      });
+    }
+    async agentMemory(taskId,command,key="",value="") {
+      if (!TASK_ID.test(taskId) ||
+          !new Set(["agent_memory_put","agent_memory_list","agent_tools"]).has(command))
+        throw new Error("Invalid memory or catalog action");
+      const orders=await this.orders();
+      const order=orders[taskId];
+      if(!order)throw new Error("Unknown work order");
+      return this.native({command,companyId:order.companyId,key,value});
+    }
+    async agentList(taskId) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid work order");
+      const all=await this.orders();
+      const order=all[taskId];
+      if(!order)throw new Error("Unknown work order");
+      const result=await this.native({command:"agent_list",companyId:order.companyId});
+      return {jobs:(result.jobs||[]).filter(item=>item.orderId===taskId)};
+    }
+    async agentCommand(taskId,jobId,command,extra={}) {
+      if (!TASK_ID.test(taskId)||!TASK_ID.test(jobId))
+        throw new Error("Invalid order or job ID");
+      const allowed=new Set([
+        "agent_get","agent_approve","agent_run_next",
+        "agent_review","agent_cancel","agent_recover"
+      ]);
+      if(!allowed.has(command))throw new Error("Unsupported local agent command");
+      const all=await this.orders();
+      const order=all[taskId];
+      if(!order)throw new Error("Unknown work order");
+      const request={command,companyId:order.companyId,jobId,...extra};
+      const reply=await this.native(request);
+      if(command!=="agent_run_next" || reply.status!=="awaiting_browser_navigation")
+        return reply;
+      // An approved browser plan may only request navigation, never DOM access.
+      const snapshot=await this.native({command:"agent_get",companyId:order.companyId,jobId});
+      const step=snapshot.plan?.steps?.[snapshot.stepIndex];
+      if(!step || step.tool!=="browser_open" || step.input!==reply.url)
+        throw new Error("Untrusted browser navigation did not match reviewed plan");
+      const url=new URL(reply.url);
+      if(url.protocol!=="https:" || !snapshot.approvedHosts.includes(url.hostname))
+        throw new Error("Browser destination is not in the approved host list");
+      const tab=await this.api.tabs.create({url:url.href,active:true});
+      if(!Number.isInteger(tab.id)||tab.id<=0)
+        throw new Error("Browser did not return a real tab ID");
+      const receipt=await this.native({
+        command:"agent_complete_browser",companyId:order.companyId,jobId,
+        token:reply.token,url:url.href,tabId:tab.id
+      });
+      return {...receipt,tabId:tab.id,note:
+        "TheOrg opened an approved tab. No page content or action outcome has been verified."};
+    }
+
     async getNativeOrder(taskId) {
       if (!TASK_ID.test(taskId)) throw new Error("Invalid order");
       const orders = await this.orders();

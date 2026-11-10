@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const context = {};
+const context = {URL};
 context.globalThis = context;
 const src = file => fs.readFileSync(path.join(__dirname,"..","apps","chrome-extension",file),"utf8");
 vm.runInNewContext(src("agent-playbooks.js"),context,{filename:"agent-playbooks.js"});
@@ -20,7 +20,7 @@ const rawPlan=JSON.stringify({
     provider:"chatgpt",acceptanceCriteria:["Include verified primary references"],dependencies:[]}]
 });
 function fakeChrome(options = {}) {
-  const local={}, session={},tabs=new Map(),imports=[];
+  const local={}, session={},tabs=new Map(),imports=[],nativeRequests=[];
   let nextId=100;
   const api={
     storage:{
@@ -52,6 +52,7 @@ function fakeChrome(options = {}) {
     },
     tabGroups:{update:async ()=>true},
     runtime:{sendNativeMessage:async (_host,request)=>{
+      nativeRequests.push(request);
       switch(request.command){
         case "ping":return {ok:true,engine:"TheOrg.Bridge"};
         case "submit_order":return {ok:true,order:{
@@ -72,6 +73,24 @@ function fakeChrome(options = {}) {
           fileName:"report.md",text:"This is untrusted text.",
           renderMode:"textContent_only",contentApproved:false,malwareScanStatus:"not_scanned"
         }};
+        case "agent_create":
+          return {ok:true,jobId:"f".repeat(32),mode:request.mode,status:"awaiting_approval",
+            plan:{summary:"Test",steps:[{title:"Open URL",tool:"browser_open",
+              input:"https://example.com/",expectedOutput:"Browser tab requested"}]}};
+        case "agent_list":
+          return {ok:true,jobs:[{jobId:"f".repeat(32),orderId:"a".repeat(32),
+            status:"awaiting_approval",mode:"demo-browser"}]};
+        case "agent_get":
+          return {ok:true,jobId:request.jobId,company:"demo",status:"running",
+            stepIndex:0,approvedHosts:["example.com"],
+            plan:{summary:"Test",steps:[{title:"Open URL",tool:"browser_open",
+              input:options.unsafeNavigation?"https://malicious.invalid/":"https://example.com/",
+              expectedOutput:"Browser tab requested"}]}};
+        case "agent_run_next":
+          return {ok:true,status:"awaiting_browser_navigation",jobId:request.jobId,
+            token:"b".repeat(32),url:"https://example.com/"};
+        case "agent_complete_browser":
+          return {ok:true,status:"navigation_recorded",verifiedPageContents:false};
         case "list_artifacts":return {ok:true,artifacts:imports};
         case "get_order":return {ok:true,order:{artifacts:options.noDemo ? [] :
           [{fileName:"plan.md",sha256:"C".repeat(64)}]}};
@@ -79,7 +98,7 @@ function fakeChrome(options = {}) {
       }
     }}
   };
-  return {api,local,session,tabs,imports};
+  return {api,local,session,tabs,imports,nativeRequests};
 }
 
 test("structured plan validates roles, providers and dependency graph",()=>{
@@ -497,4 +516,40 @@ test("Supervisor company-scoped preview forwards only validated task and artifac
   assert.equal(preview.renderMode,"textContent_only");
   await assert.rejects(()=>manager.previewTextArtifact(order.taskId,"../malicious"),
     /Invalid order or artifact ID/);
+});
+
+test("local agent preview uses scoped order data and does not silently approve plans",async()=>{
+  const fake=fakeChrome();
+  const man=new context.TheOrgTaskManager(fake.api);
+  const order=await man.createOrder("demo",validInstruction);
+  const planned=await man.agentCreate(order.taskId,"demo-browser","qwen3:4b","example.com");
+  assert.equal(planned.status,"awaiting_approval");
+  assert.ok(fake.nativeRequests.some(req=>
+    req.command==="agent_create"&&req.companyId==="demo"&&
+    req.orderId===order.taskId&&req.mode==="demo-browser"));
+  assert.ok(!fake.nativeRequests.some(req=>req.command==="agent_approve"));
+  const list=await man.agentList(order.taskId);
+  assert.equal(list.jobs.length,1);
+});
+
+test("reviewed browser tool opens a tab only for exact approved HTTPS site",async()=>{
+  const fake=fakeChrome();
+  const man=new context.TheOrgTaskManager(fake.api);
+  const order=await man.createOrder("demo",validInstruction);
+  const count=fake.tabs.size;
+  const receipt=await man.agentCommand(order.taskId,"f".repeat(32),"agent_run_next");
+  assert.equal(receipt.status,"navigation_recorded");
+  assert.equal(receipt.verifiedPageContents,false);
+  assert.equal(fake.tabs.size,count+1);
+  assert.ok(fake.nativeRequests.some(req=>req.command==="agent_complete_browser"&&
+    req.companyId==="demo"&&req.token==="b".repeat(32)&&req.url==="https://example.com/"));
+});
+
+test("untrusted browser plan mismatch does not open a Chrome tab",async()=>{
+  const fake=fakeChrome({unsafeNavigation:true});
+  const man=new context.TheOrgTaskManager(fake.api);
+  const order=await man.createOrder("demo",validInstruction);
+  await assert.rejects(()=>man.agentCommand(order.taskId,"f".repeat(32),"agent_run_next"),
+    /did not match reviewed plan/);
+  assert.equal(fake.tabs.size,0);
 });

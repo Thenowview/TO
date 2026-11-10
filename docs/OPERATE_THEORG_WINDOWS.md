@@ -115,3 +115,25 @@ Then remove the unpacked TheOrg Chrome extension from `chrome://extensions` if y
 Further details in repository documents:
 - https://github.com/faisalwrokksa-hub/TO/blob/main/docs/RELEASE_AUDIT_2026-11-10.md
 - https://github.com/faisalwrokksa-hub/TO/blob/main/docs/PRODUCTION_READINESS_HANDOFF_2026-11-10.md
+
+
+## 8. Optional Ollama planning and local tool execution — experimental preview
+
+This feature runs on the owner's own Windows PC through the existing extension and Native Messaging bridge. It is not production-ready or a hosted web agent.
+
+**Real AI planning (optional):**
+1. Install Ollama for Windows from its official website.
+2. In a Windows terminal run the command: ollama pull qwen3:4b. The model downloads separately; no model weights are bundled in TheOrg's installer.
+3. Make sure Ollama is listening on its standard loopback address 127.0.0.1:11434; run ollama serve if needed. TheOrg never sends data to a public inference endpoint.
+4. In the Chrome Supervisor submit a synthetic work order through the existing text box, e.g. "Create a short synthetic checklist and list the files you created."
+5. Under "Execute reviewed instructions on this PC", choose Ollama, model qwen3:4b, and an exact list of approved HTTPS hostnames. Click "Plan selected work order". If Ollama is unavailable, the request fails explicitly; it does not silently pretend to use AI.
+6. Read the entire proposed plan, including tool inputs, then approve it. Click "Execute next approved tool step" to run exactly one restricted step at a time.
+7. Run evidence and AI QA. This checks real file hashes and can request a skeptical separate model critique. The verdict remains human_review_required, not independent business certification.
+
+**No local AI model required for initial tests:** Select "Synthetic local file test" for real, scoped local note generation and file listing, but no AI. "Synthetic Chrome navigation test" opens one approved HTTPS host (default example.com) in Chrome after approval; it does not inspect web page contents or automate clicks. "Synthetic Notepad launch test" starts notepad.exe on Windows; it does not automate general desktop GUI interactions.
+
+**Persistence:** jobs, events, approval decisions, cancellation, queue state and scoped user memory are in %LOCALAPPDATA%\TheOrg\workspace\agent-jobs.sqlite. Generated notes reside in %LOCALAPPDATA%\TheOrg\workspace\companies\<company>\orders\<order-id>\agent_outputs. Active steps interrupted mid-execution are blocked for investigation rather than silently replayed. Queued steps are available after restarting the extension. There is no continuously running worker.
+
+**Restrictions:** no arbitrary shell, unrestricted Windows automation, arbitrary filesystem access, clipboard scraping, account access, browser DOM controls, form submission or automated deployment. Model plans are untrusted suggestions and require explicit approval. Browser hostnames must match the exact user-approved list. Never use sensitive customer data in this unsigned preview.
+
+**Roadmap status:** This adds a scoped P0 slice (Ollama planner, bounded action tools, durable job state, typed plans and evidence checks) and limited P1 browser/Windows demonstrations. It does not implement full Playwright/CDP automation, unrestricted desktop automation, parallel batch scheduling, general MCP protocol services or skill-evolution pipelines. No existing production release gate is closed without independent evidence.
