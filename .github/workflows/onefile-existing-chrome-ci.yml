@@ -45,6 +45,24 @@ jobs:
           node tools/prepare-onefile-extension.cjs apps/chrome-extension out/onefile/chrome-extension tools/onefile-extension-public-key.txt tools/onefile-extension-id.txt
           if ($LASTEXITCODE -ne 0) { throw 'Fixed ID packaging failed' }
 
+      - name: Directly validate Windows registration before packaging
+        shell: pwsh
+        run: |
+          $root=(Resolve-Path 'out/onefile').Path
+          Copy-Item -LiteralPath 'tools/Setup-OneFile.ps1' -Destination (Join-Path $root 'Setup-OneFile.ps1')
+          Copy-Item -LiteralPath 'tools/Cleanup-OneFile.ps1' -Destination (Join-Path $root 'Cleanup-OneFile.ps1')
+          Copy-Item -LiteralPath 'tools/TheOrg-OneFile-START.html' -Destination (Join-Path $root 'TheOrg-OneFile-START.html')
+          Copy-Item -LiteralPath 'portable/Open-TheOrg.ps1' -Destination (Join-Path $root 'Open-TheOrg.ps1')
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Setup-OneFile.ps1') -InstallRoot $root -ValidateOnly
+          if ($LASTEXITCODE -ne 0) { throw 'One-file setup validation failed before NSIS' }
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Setup-OneFile.ps1') -InstallRoot $root
+          if ($LASTEXITCODE -ne 0) { throw 'Native host registration failed before NSIS' }
+          $key='HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.theorg.bridge'
+          if (-not (Test-Path -LiteralPath $key)) { throw 'Setup did not create registry key' }
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Cleanup-OneFile.ps1') -InstallRoot $root
+          if ($LASTEXITCODE -ne 0) { throw 'Preflight cleanup failed' }
+          if (Test-Path -LiteralPath $key) { throw 'Preflight registry key not cleaned up' }
+
       - name: Install NSIS compiler
         shell: pwsh
         run: choco install nsis --yes --no-progress --limit-output
