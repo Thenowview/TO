@@ -149,6 +149,15 @@
           <button id="agentCancel" type="button" class="secondary">Cancel remaining steps</button>
         </div>
         <p class="form-note">Jobs, event logs and scoped memory persist in local SQLite. Interrupted running steps are blocked for inspection rather than automatically replayed. AI critique does not certify semantic correctness or a real-world outcome.</p>
+        <div class="step-line"><span class="step-index">M</span><b>Local workspace memory and tools</b><span class="step-helper">Company-scoped, user-controlled</span></div>
+        <div class="inline-controls">
+          <label for="agentMemoryKey">Memory key</label><input id="agentMemoryKey" maxlength="64" placeholder="project_notes">
+          <label for="agentMemoryValue">Memory value</label><input id="agentMemoryValue" maxlength="2000" placeholder="Non-secret project context">
+          <button id="agentMemorySave" type="button" class="secondary">Save memory</button>
+          <button id="agentMemoryLoad" type="button" class="secondary">Show memories</button>
+          <button id="agentTools" type="button" class="secondary">Show allowed tools</button>
+        </div>
+        <pre id="agentMemoryOutput" class="artifact-preview" hidden aria-live="polite"></pre>
       </div>
     </section>
 
