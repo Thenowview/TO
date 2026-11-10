@@ -41,3 +41,11 @@ test("all Supervisor commands are routed by the extension background",()=>{
  assert.ok(routes.has("dispatch_next"));
  assert.ok(routes.has("get_qa_packet"));
 });
+
+test("artifact previews cannot render untrusted HTML and are read-only text",()=>{
+ assert.ok(background.includes('case "preview_text_artifact"'));
+ assert.ok(ui.includes('rpc("preview_text_artifact"'));
+ assert.ok(ui.includes("previewPane.textContent="));
+ assert.ok(!ui.includes("previewPane.innerHTML="));
+ assert.ok(ui.includes("result.renderMode!==\"textContent_only\""));
+});
