@@ -265,3 +265,74 @@ test("failed QA findings generate review-only training proposals",()=>{
   packet.tasks[0].findings[0].verdict="pass";
   assert.equal(skills.improvementCandidates(packet).length,0);
 });
+
+
+test("dependency-aware queue dispatches next eligible specialist without inventing completed work",async()=>{
+  const fake=fakeChrome();
+  const manager=new context.TheOrgTaskManager(fake.api);
+  const created=await manager.createOrder("demo",
+    "Research a market and create a sourced executive presentation with documented limitations.");
+  const plan=JSON.stringify({
+    summary:"First obtain research evidence, then prepare presentation",
+    tasks:[
+      {id:"researcher",role:"researcher",provider:"chatgpt",
+       objective:"Collect verified market research references and source dates",
+       acceptanceCriteria:["Verify every material factual claim against primary sources"],
+       dependencies:[]},
+      {id:"documents",role:"documents",provider:"qwen",
+       objective:"Create the executive presentation from documented research",
+       acceptanceCriteria:["Presentation content agrees with cited market research"],
+       dependencies:["researcher"]}
+    ]
+  });
+  await manager.saveSupervisorPlan(created.taskId,plan);
+  let queue=await manager.executionQueue(created.taskId);
+  assert.equal(queue.planApproved,false);
+  assert.equal(queue.queue[0].state,"plan_review_required");
+  assert.deepEqual(Array.from(queue.ready),[]);
+
+  await manager.approvePlan(created.taskId);
+  queue=await manager.executionQueue(created.taskId);
+  assert.deepEqual(Array.from(queue.ready),["researcher"]);
+  assert.equal(queue.queue[1].state,"waiting_on_dependencies");
+
+  await assert.rejects(
+    ()=>manager.openAgentTab(created.taskId,"documents","qwen"),
+    /prerequisite handoffs/);
+
+  const first=await manager.dispatchNextTask(created.taskId);
+  assert.equal(first.dispatched,true);
+  assert.equal(first.agentId,"researcher");
+  assert.equal(first.manualProviderHandoff,true);
+  assert.match(first.prompt,/STANDARD OPERATING PROCEDURE/);
+  assert.equal(fake.tabs.size,1);
+  await assert.rejects(
+    ()=>manager.openAgentTab(created.taskId,"researcher","chatgpt"),
+    /already has an open/);
+
+  await manager.handoffAndClose(created.taskId,"researcher",
+    "Primary market research sources were collected and are ready for independent QA.","submitted");
+  queue=await manager.executionQueue(created.taskId);
+  assert.equal(queue.queue[0].state,"awaiting_qa_evidence");
+  assert.equal(queue.queue[1].state,"waiting_on_dependencies");
+  const noAdvance=await manager.dispatchNextTask(created.taskId);
+  assert.equal(noAdvance.dispatched,false);
+
+  await manager.recordQaFinding(created.taskId,"researcher",0,"pass",
+    "I manually checked the primary market source against the research handoff and verified its recorded date.");
+  queue=await manager.executionQueue(created.taskId);
+  assert.equal(queue.queue[0].state,"manual_qa_pass_unverified");
+  assert.equal(queue.queue[0].verifiedComplete,false);
+  assert.deepEqual(Array.from(queue.ready),["documents"]);
+
+  const second=await manager.dispatchNextTask(created.taskId);
+  assert.equal(second.agentId,"documents");
+  assert.match(second.prompt,/presentation/i);
+  assert.equal(fake.tabs.size,1);
+
+  await manager.handoffAndClose(created.taskId,"documents",
+    "Presentation draft was prepared for review; no claim of independently verified delivery.","submitted");
+  queue=await manager.executionQueue(created.taskId);
+  assert.equal(queue.queue[1].state,"awaiting_qa_evidence");
+  assert.ok(queue.queue.every(t=>!t.verifiedComplete));
+});
