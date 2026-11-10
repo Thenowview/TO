@@ -48,3 +48,17 @@ TheOrg currently builds a **local Windows app + Chrome extension**, not a hosted
 ### Audit limits
 
 The CI checks are genuine for their stated scope. No real end-user installation or Chrome provider session was executed in this audit. There is no available production destination in this repository, and the existing user-supplied ZIPs have not yet been extracted and matched against this branch. Therefore, a production deploy should not be reported or attempted as if it succeeded.
+
+
+## Follow-up verification — 2026-11-10 (SOP v2 and Chrome registration)
+
+This section supersedes the earlier snapshot only for the listed development-source checks. It **does not** change the production decision.
+
+- PR #3 merged into `main` at `08b7fda44651ed6f6122e81ab4a836c433816ccf`. CI run https://github.com/faisalwrokksa-hub/TO/actions/runs/42825659663 passed both JavaScript and Windows jobs. Its additional synthetic-extension-ID registration test checked the installed Native Messaging host manifest, registry path, executable, and single permitted Chrome origin.
+- PR #4 merged into `main` at `a8fb54a0eb4e2618608051e8fe77e2d970209883`. SOP v2 introduces goal contracts, dependency-aware planning, observe–act–verify cycles, checkpoints, bounded idempotent retries and evidence-based independent QA instructions to all twelve profiles. This is prompt-level training only, not model weight training, autonomous tool connectivity, or a substitute for independent evaluation.
+- Pre-merge CI https://github.com/faisalwrokksa-hub/TO/actions/runs/42827035293 passed both jobs. Post-merge main-branch CI https://github.com/faisalwrokksa-hub/TO/actions/runs/42827391960 also completed successfully for JavaScript tests, Windows controller, Native Messaging, unsigned installer build and smoke test, and artifact upload.
+- Developer-preview deliverables are stored as run artifacts, **not** distributed as a signed production application.
+
+**Production decision: NO_GO.** `config/release-gates.json` remains fail-closed. No configured production target, deployment workflow, authenticated Chrome/Windows end-user acceptance, live authorized AI-provider execution, completed legacy source reconciliation, independent semantic/security review, file scanning, code signing, or proven rollback/read-back are available. No production deployment occurred. Owner approval does not substitute for those requirements.
+
+**Next acceptance actions:** reconcile sanitized original archives; implement and verify allowed provider execution; complete independent QA and file-safety controls; test the owner Windows/Chrome installation; configure signed distribution, release destination and audited rollback; then independently verify all gates before revisiting GO/NO_GO.
