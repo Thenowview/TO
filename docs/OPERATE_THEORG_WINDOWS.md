@@ -2,14 +2,15 @@
 
 **Build:** GitHub Actions `TheOrg Chrome and Windows Bridge CI`. The ZIP's `SHA256SUMS.txt` records the exact source commit used for the downloaded installer.
 
-**This is an unsigned, experimental Windows developer preview, not a certified production release.** Do not use it for sensitive customer data, payments, production accounts, or unattended tasks. The built-in demo does not run autonomous AI providers. You do **not** need TinyFish or paid tools to try the local preview.
+**This is an unsigned, experimental Windows developer preview, not a certified production release.** Do not use it for sensitive customer data, payments, production accounts, or unattended tasks. Optional Ollama planning and bounded approved tool execution are available in this preview; they require a working local model and explicit tool approval. You do **not** need TinyFish or paid tools. A pinned upstream Chrome for Testing browser is bundled and does not auto-update.
 
 ## What is inside this ZIP?
 
 - `TheOrg-DevPreview-Windows-x64-unsigned.exe` — the actual Windows installer (64-bit).
 - `SHA256SUMS.txt` — SHA-256 hashes and source commit.
 - `START_HERE.md` — this guide.
-- `VERIFY.ps1` — read-only package and installed-file checks. It does not install or configure Chrome.
+- `VERIFY.ps1` — read-only package and installed-file checks.
+- `BROWSER_SOURCE.txt` — official pinned browser version, download provenance and SHA-256.
 
 This ZIP deliberately excludes the original historical source archives, real login sessions, API keys, build caches, and executable scripts downloaded from AI providers.
 
@@ -29,39 +30,34 @@ The installer SHA-256 must equal its line in `SHA256SUMS.txt`; `VERIFY.ps1` shou
 
 If any file is missing or a hash differs, **stop** and download a new artifact. Do not bypass Windows security warnings if you cannot verify and trust the unsigned build.
 
-## 2. Install the preview
+## 2. One-click installation — dedicated TheOrg browser
 
-Double-click `TheOrg-DevPreview-Windows-x64-unsigned.exe`, read the unsigned-app warning, and install to the default **current-user** folder:
+This preview EXE installs the Windows agent controller, extension and an **unmodified, official Chrome for Testing browser**. It creates **TheOrg Workspace** desktop and Start menu shortcuts and uses an isolated browser profile under `%LOCALAPPDATA%\TheOrg\BrowserProfile`. Your normal Chrome profiles and cookies are never copied or modified.
 
-```text
-%LOCALAPPDATA%\Programs\TheOrg
-```
+1. Verify the extracted ZIP by running `powershell -NoProfile -File '.\VERIFY.ps1'`.
+2. Install `TheOrg-DevPreview-Windows-x64-unsigned.exe` for the current Windows user.
+3. The interactive installer opens TheOrg automatically. You can also double-click **TheOrg Workspace** on your desktop.
+4. At first launch, the launcher loads the bundled extension into its dedicated browser, discovers the actual extension ID from the profile and registers the Windows native host for precisely that ID.
+5. The launcher opens the Supervisor. Choose **Check connection** and confirm the local controller responds.
+6. To test actual AI-generated planning, install Ollama and a model separately. Neither is silently installed or downloaded by this EXE.
 
-No admin privilege should be required. The application installs a local Native Messaging bridge and unpacked Chrome extension files. It does not silently install a Chrome extension.
+Normal testing does not require loading an unpacked extension by hand, copying an ID or editing the daily Chrome profile.
 
-## 3. Connect Chrome Stable
+**Important:** Chrome for Testing does not auto-update. This unsigned package is for short-lived synthetic developer testing, **not general browsing, financial accounts or sensitive credentials**. Install a newer verified preview when browser security fixes are available. Review browser distribution/licensing before a public commercial release.
 
-1. In Chrome, open `chrome://extensions`.
-2. Turn **Developer mode** on. Select **Load unpacked**.
-3. Select the **folder**, not the ZIP or a single file:
+## 3. Troubleshooting the isolated profile
 
-   ```text
-   %LOCALAPPDATA%\Programs\TheOrg\chrome-extension
-   ```
+If no TheOrg window appears, inspect these installed files:
 
-4. Find the **TheOrg — Supervisor Workspace** extension and copy its 32-letter Extension ID.
-5. In Windows **Start → TheOrg → Connect Chrome extension**, paste this ID into the registration script. This registers only that specific extension for the local Windows bridge under the current user.
-6. Fully close and reopen Chrome if the connection is not immediately detected.
-7. Click the TheOrg extension icon to open its Supervisor tab; select **Check connection**. The app should report the bridge connection.
+- `%LOCALAPPDATA%\Programs\TheOrg\TheOrg-Start.ps1`
+- `%LOCALAPPDATA%\Programs\TheOrg\browser\chrome.exe`
+- `%LOCALAPPDATA%\Programs\TheOrg\chrome-extension\manifest.json`
 
-Optional read-only verification after Chrome registration (substitute the real ID):
+Run the launcher visibly to obtain an explicit error: `powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\TheOrg\TheOrg-Start.ps1"`.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\VERIFY.ps1' -CheckInstalled -ExtensionId 'abcdefghijklmnopabcdefghijklmnop'
-```
+If the packaged browser, extension or bridge is absent, verify and reinstall from the official GitHub Actions artifact. The older Start menu **Connect Chrome extension** shortcut is retained for manual recovery using regular Chrome, not required for the dedicated browser.
 
-**Important:** The sample ID shown above is **not** your extension ID. Paste the real ID from `chrome://extensions`.
-
+The test browser has its own profile, no inherited Chrome logins, and no automatic privileged permissions. Agent tools remain approval-controlled.
 ## 4. First-use functional smoke test
 
 Use only synthetic content. These are expected developer-preview behaviors, not production acceptance:

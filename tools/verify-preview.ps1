@@ -20,7 +20,8 @@ $lines = @(Get-Content -LiteralPath $manifest)
 $expectedFiles = @(
   'TheOrg-DevPreview-Windows-x64-unsigned.exe',
   'START_HERE.md',
-  'VERIFY.ps1'
+  'VERIFY.ps1',
+  'BROWSER_SOURCE.txt'
 )
 foreach ($file in $expectedFiles) {
   $matchesFound = @($lines | Where-Object { $_ -match ('^[a-fA-F0-9]{64}  ' + [regex]::Escape($file) + '$') })
@@ -46,6 +47,10 @@ if ($CheckInstalled) {
   $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\TheOrg'
   $exe = Join-Path $installRoot 'TheOrg.Bridge.exe'
   $extensionManifest = Join-Path $installRoot 'chrome-extension\manifest.json'
+  $browser = Join-Path $installRoot 'browser\chrome.exe'
+  $launcher = Join-Path $installRoot 'TheOrg-Start.ps1'
+  if (-not (Test-Path -LiteralPath $browser -PathType Leaf) -or
+      -not (Test-Path -LiteralPath $launcher -PathType Leaf)) { throw 'Dedicated TheOrg browser or launcher not installed' }
   $hostManifest = Join-Path $env:LOCALAPPDATA 'TheOrg\NativeMessaging\com.theorg.bridge.json'
   $key = 'HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.theorg.bridge'
   if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'Installed Windows bridge binary not found' }
