@@ -48,7 +48,7 @@ function Find-InstalledExtensionId {
 
 try {
   Assert-Package
-  if ($ValidateOnly) { exit 0 }
+  if ($ValidateOnly) { return }
 
   # This is a new, private TheOrg profile, never the user's everyday Chrome profile.
   New-Item -ItemType Directory -Path $profile -Force | Out-Null
@@ -77,9 +77,6 @@ try {
 
   # Explicitly bind the local Windows host to only this extension identity.
   & $register -ExtensionId $id -ExecutablePath $bridge | Out-Null
-  if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-    throw 'TheOrg local host registration failed.'
-  }
   $home = 'chrome-extension://' + $id + '/home.html'
   Start-Process -FilePath $browser -ArgumentList @(
     '--user-data-dir="' + $profile + '"',
@@ -89,6 +86,7 @@ try {
   ) | Out-Null
   Write-Host 'PASS TheOrg Supervisor launched.'
 } catch {
+  if ($ValidateOnly) { throw }
   $message = 'TheOrg could not start automatically.' + [Environment]::NewLine +
              [Environment]::NewLine + $_.Exception.Message +
              [Environment]::NewLine + [Environment]::NewLine +
