@@ -127,3 +127,50 @@ test("cannot import for unapproved or cross-assignment specialists",async()=>{
     ()=>man.importArtifact(order.taskId,"developer1","a.txt","YQ==","chatgpt","manual"),
     /approved Supervisor plan/);
 });
+
+
+test("acceptance QA requires real handoff, records every criterion, and never automatically certifies completion", async()=>{
+  const fake=fakeChrome();
+  const man=new context.TheOrgTaskManager(fake.api);
+  const order=await man.createOrder("demo",validInstruction);
+  await man.saveSupervisorPlan(order.taskId,rawPlan);
+  await man.approvePlan(order.taskId);
+
+  await assert.rejects(
+    ()=>man.recordQaFinding(order.taskId,"research1",0,"pass",
+      "Primary sources were manually inspected and referenced in the draft."),
+    /handoff/);
+
+  await man.importArtifact(order.taskId,"research1","report.md","YWJj","chatgpt","synthetic");
+  await man.handoffAndClose(order.taskId,"research1",
+    "The reference report is ready for acceptance checking.","submitted");
+  await assert.rejects(
+    ()=>man.recordQaFinding(order.taskId,"research1",0,"pass","OK"),
+    /QA evidence/);
+
+  // The fake host models a completed *structural* check, not substantive QA.
+  fake.imports[0].intakeStatus="structure_verified_content_qa_pending";
+  fake.imports[0].integrityValid=true;
+  fake.imports[0].formatValid=true;
+
+  await man.recordQaFinding(order.taskId,"research1",0,"fail",
+    "The delivered report does not contain independently verifiable primary references.");
+  let reviewed=await man.supervisorReview(order.taskId);
+  assert.equal(reviewed.verdict,"qa_revision_required");
+
+  await man.recordQaFinding(order.taskId,"research1",0,"pass",
+    "I checked the cited sources and confirmed the specific acceptance criterion manually.");
+  reviewed=await man.supervisorReview(order.taskId);
+  assert.equal(reviewed.verdict,"manual_qa_recorded_owner_confirmation_pending");
+  const packet=await man.getQaPacket(order.taskId);
+  assert.equal(packet.tasks[0].findings[0].identityVerified,false);
+  assert.equal(packet.artifacts.length,1);
+  assert.ok(packet.trustLimitations.length>=2);
+
+  await man.handoffAndClose(order.taskId,"research1",
+    "A revised source report replaces the earlier agent handoff; rerun acceptance QA.","submitted");
+  const changed=await man.orders();
+  assert.equal(changed[order.taskId].qaFindings.research1,undefined);
+  reviewed=await man.supervisorReview(order.taskId);
+  assert.equal(reviewed.verdict,"pending_independent_verification");
+});
