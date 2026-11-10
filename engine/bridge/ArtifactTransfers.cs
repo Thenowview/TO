@@ -59,6 +59,7 @@ internal sealed class ArtifactTransfers
             throw new ArgumentException("Invalid provenance");
         var dir = DirectoryFor(companyId, orderId);
         Directory.CreateDirectory(dir);
+        SweepExpired(dir);
         if (Directory.EnumerateFiles(dir, "*.json").Take(11).Count() >= 10)
             throw new ArgumentException("Too many pending uploads");
         var state = new TransferState
@@ -180,6 +181,27 @@ internal sealed class ArtifactTransfers
         if (DateTimeOffset.Parse(state.ExpiresUtc) < DateTimeOffset.UtcNow)
             throw new ArgumentException("Upload expired");
         return (dir, state);
+    }
+
+    private static void SweepExpired(string directory)
+    {
+        foreach (var manifest in Directory.EnumerateFiles(directory,"*.json").Take(1000))
+        {
+            string id = Path.GetFileNameWithoutExtension(manifest);
+            if (!Id.IsMatch(id)) continue;
+            try
+            {
+                var state = JsonSerializer.Deserialize<TransferState>(
+                    File.ReadAllText(manifest),Options);
+                if (state is null || state.UploadId != id ||
+                    !DateTimeOffset.TryParse(state.ExpiresUtc,out var expires) ||
+                    expires >= DateTimeOffset.UtcNow) continue;
+                File.Delete(PartPath(directory,id));
+                File.Delete(manifest);
+            }
+            catch (IOException) { /* Locked files are kept until the next cleanup. */ }
+            catch (JsonException) { /* Malformed metadata is not trusted. */ }
+        }
     }
 
     private static void Persist(string folder, TransferState state)
