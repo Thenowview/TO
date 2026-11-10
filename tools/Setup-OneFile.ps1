@@ -42,14 +42,14 @@ try {
   $hostDir = Join-Path $env:LOCALAPPDATA 'TheOrg\NativeMessaging'
   New-Item -Path $hostDir -ItemType Directory -Force | Out-Null
   $hostPath = Join-Path $hostDir "$hostName.json"
-  $host = @{
+  $hostJson = @{
     name = $hostName
     description = 'TheOrg local Windows controller, existing Chrome edition'
     path = $bridge
     type = 'stdio'
     allowed_origins = @("chrome-extension://$extensionId/")
   } | ConvertTo-Json -Depth 5
-  [IO.File]::WriteAllText($hostPath, $host, (New-Object Text.UTF8Encoding($false)))
+  [IO.File]::WriteAllText($hostPath, $hostJson, (New-Object Text.UTF8Encoding($false)))
   $registry = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$hostName"
   New-Item -Path $registry -Force | Out-Null
   Set-Item -Path $registry -Value $hostPath
