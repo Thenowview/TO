@@ -1,0 +1,50 @@
+# TheOrg — Release and deployment audit (2026-11-10)
+
+## Decision
+
+- **Development source integration: GO for merging to `main` as a developer-preview baseline only.**
+- **Production deployment: NO-GO.** There is no verified production destination, no production deploy workflow, no code signing, no live provider automation, no original-archive migration, and no independent semantic/security acceptance.
+- **Product positioning:** An unsigned Windows developer preview with local Supervisor, company-scoped Native Messaging, manual AI-chat handoffs and a bounded artifact workflow. It is not a production-grade autonomous AI operating company.
+
+## Verified evidence
+
+- GitHub Actions: https://github.com/faisalwrokksa-hub/TO/actions/runs/42821732298
+- Commit: `a66d051b1776b5a58f3e74f5f248d04ef8f81942` (pre-release-audit documentation)
+- Both `js-syntax` and `windows-bridge` succeeded.
+- Windows job successfully compiled the .NET bridge, ran controller regression tests, exercised framed Native Messaging and tenant isolation, published the self-contained candidate, built an NSIS installer, installed it silently, ran the installed binary self-test, uninstalled it silently and uploaded both build artifacts.
+- JS job passed static UI contracts, simulated Chrome workflow regressions, schema parsing and the **fail-closed release checker**.
+- Static review of 14 release-critical source/configuration files detected no common private-key/API-token patterns; the MV3 manifest has `nativeMessaging` but no cross-site `host_permissions`. This is **not** a complete credential scan or independent security assessment.
+- Source remains private; no production URL is recorded or verified.
+
+## Verified shortcomings and gates
+
+| Gate | State | Production effect |
+| --- | --- | --- |
+| Original `TheOrg.zip` and sidebar source imported/reconciled | BLOCKED | Cannot assert previous code/functionality preserved |
+| Windows 11 + real Chrome Stable live extension ID and Native Messaging | UNVERIFIED | Browser-to-host user acceptance not complete |
+| Live authorized AI website chat automation | NOT CONNECTED | Manual copy/paste handoffs remain |
+| Authenticated independent QA and real-world semantic completion | NOT IMPLEMENTED | Model/agent or manual QA assertions cannot certify results |
+| Malware scanning and safe preview sandbox | NOT IMPLEMENTED | Imported files remain untrusted |
+| Credential storage, tenant authentication and security review | NOT VERIFIED | Production-grade multi-user data security unproven |
+| Installer code signing and publisher identity | NOT CONFIGURED | Installer remains unsigned |
+| Production runtime/hosting destination | NOT CONFIGURED | There is nowhere verified to deploy |
+| Production deployment workflow and health checks | NOT CONFIGURED | Cannot claim release or online availability |
+| Backup/rollback and disaster recovery in the target environment | NOT TESTED | Cannot establish safe rollback |
+
+## Deployment structure
+
+TheOrg currently builds a **local Windows app + Chrome extension**, not a hosted website. Publishing a GitHub installer artifact, merging to `main`, or registering a native host locally is **not equivalent to deploying a production cloud service**. A future release needs a signed Windows installer/distribution channel, an extension deployment strategy, a separately authorized plugin gateway, and real Windows/Chrome acceptance evidence.
+
+## Safe bulk release sequence
+
+1. Merge the passing development branch to `main` **as developer-preview source**, preserving the conservative `NO_GO` production gate.
+2. Check the resulting `main` commit and its CI; rerun tests if the merge introduces new state.
+3. Distribute **only** explicitly labeled unsigned preview artifacts to trusted testers; no automatic website deployment or external AI-account connections.
+4. Import and audit legacy owner archives; compare the old sidebar and document generators against the new modules.
+5. Complete remaining security, provider integration, code signing, sandbox, and real end-user QA gates.
+6. Set a concrete production destination, implement an audited deployment workflow with read-back checks and a rollback path.
+7. Only then change `config/release-gates.json` to `productionReady:true` after independent evidence; do not auto-approve such evidence from model outputs.
+
+### Audit limits
+
+The CI checks are genuine for their stated scope. No real end-user installation or Chrome provider session was executed in this audit. There is no available production destination in this repository, and the existing user-supplied ZIPs have not yet been extracted and matched against this branch. Therefore, a production deploy should not be reported or attempted as if it succeeded.
