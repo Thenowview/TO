@@ -266,7 +266,7 @@ function registerEvents() {
   $("copyPlannerPrompt").addEventListener("click",()=>action(async()=>{
     const o=selectedOrder();
     if(!o)throw new Error("Create a work order first");
-    const r=await rpc("get_plan_prompt",{instruction:o.title});
+    const r=await rpc("get_plan_prompt",{instruction:o.instruction || o.title});
     await copy(r.prompt,"Supervisor planning prompt");
   }));
   $("openPlanner").addEventListener("click",()=>action(async()=>{
