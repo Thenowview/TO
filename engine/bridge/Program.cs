@@ -216,9 +216,12 @@ internal sealed class Controller
         if (order is null || order.CompanyId != companyId || order.OrderId != orderId)
             return Fail("order_not_found");
         string previewPath = Path.Combine(folder, "work-product.md");
-        string preview = File.Exists(previewPath)
-            ? File.ReadAllText(previewPath)[..Math.Min(16000, (int)new FileInfo(previewPath).Length)]
-            : "";
+        string preview = "";
+        if (File.Exists(previewPath))
+        {
+            string draft = File.ReadAllText(previewPath);
+            preview = draft[..Math.Min(16000, draft.Length)];
+        }
         return new { ok = true, order, preview };
     }
 
@@ -337,7 +340,7 @@ internal static class SelfTest
 
             var isolation = Call(c, new { command = "get_order", companyId = "other", orderId = id });
             Check(!isolation.GetProperty("ok").GetBoolean(), "company isolation");
-            Console.WriteLine("PASS: 11 native-host controller checks");
+            Console.WriteLine("PASS: 13 native-host controller checks");
             return 0;
         }
         catch (Exception ex)
