@@ -23,6 +23,11 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "recover_agent": return {ok:true,...await manager.recoverAgentTask(message.taskId,message.agentId)};
       case "agent_create": return await manager.agentCreate(message.taskId,message.mode,message.model,message.approvedHosts);
       case "agent_list": return {ok:true,...await manager.agentList(message.taskId)};
+      case "agent_memory_put":
+      case "agent_memory_list":
+      case "agent_tools": return await manager.agentMemory(
+        message.taskId,message.command,message.key,message.value);
+
       case "agent_get":
       case "agent_approve":
       case "agent_run_next":
