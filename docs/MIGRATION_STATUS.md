@@ -1,3 +1,33 @@
+# TheOrg live development status — feature branch
+
+**Branch:** `feat/chrome-windows-native-bridge` — draft PR #2 into `chore/source-import-foundation`.
+
+This feature branch supersedes the earlier foundation-only state below. The original ZIP archives remain **unimported** and cannot yet be claimed as fully preserved or audited.
+
+## Verified development activities
+
+- Chrome MV3 Supervisor home, AI chat provider directory, task-scoped agent tabs and manual adviser handoffs committed.
+- 12 fixed agent profiles and plugin target registry committed as definitions, not live third-party connections.
+- Windows native host compiled, with local company-scoped order and artifact storage.
+- Agent file import, versions, SHA-256 verification and format-structure checks implemented.
+- Recoverable host-process chunk uploads and hash-verified downloads up to 32 MiB committed.
+- Repeatable Node simulated-Chrome tests and Windows .NET self-tests added.
+- Unsigned installer and per-user Chrome registration scripts committed.
+- GitHub CI runs verify compilation, self-tests and bundle/installer packaging when green; check each latest run before certification.
+
+## Unresolved acceptance gates
+
+- Import, secrets-audit, and map both owner ZIP archives and existing sidebar source.
+- Test the actual Chrome extension and Native Messaging registration on the owner's Windows device.
+- Verify live AI provider sessions through approved integrations.
+- Complete independent semantic QA, separate malware scanning and safe previews.
+- Prove full Chrome-restart transfer recovery and production-grade tenant permissions.
+- Publish signed, production-ready installer only after Windows acceptance and security review.
+
+**Auto-approval boundary:** local source changes and draft PR creation are authorized. External account connections, production deployments, DNS modifications, email sending, license changes and merging to main remain separately gated.
+
+---
+
 # Migration audit — current evidence
 
 **Repository:** `faisalwrokksa-hub/TO`  
