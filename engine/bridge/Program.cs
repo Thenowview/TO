@@ -92,6 +92,7 @@ internal sealed class Controller
     private static readonly Regex SafeCompany = new("^[a-z0-9_-]{1,40}$", RegexOptions.Compiled);
     private static readonly Regex SafeOrder = new("^[a-f0-9]{32}$", RegexOptions.Compiled);
     private readonly string _root;
+    private readonly ArtifactStore _artifactStore;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -103,6 +104,7 @@ internal sealed class Controller
     {
         _root = Path.GetFullPath(root);
         Directory.CreateDirectory(_root);
+        _artifactStore = new ArtifactStore(_root);
     }
 
     internal object Execute(JsonElement request)
@@ -124,7 +126,10 @@ internal sealed class Controller
                 "capabilities" => new
                 {
                     ok = true,
-                    commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders" },
+                    commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
+                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact" },
+                    maxArtifactImportBytes = 256000,
+                    importedArtifactsRequireContentQa = true,
                     liveAiProvider = false,
                     chromeDesktopAutomation = false,
                     offlineFiles = true
@@ -132,13 +137,51 @@ internal sealed class Controller
                 "submit_order" => Submit(request),
                 "get_order" => Get(request),
                 "list_orders" => List(request),
+                "import_artifact" => ImportArtifact(request),
+                "list_artifacts" => ListArtifacts(request),
+                "verify_artifact" => VerifyArtifact(request),
+                "read_artifact" => ReadArtifact(request),
                 _ => Fail("unsupported_command")
             };
         }
         catch (ArgumentException) { return Fail("invalid_input"); }
+        catch (FormatException) { return Fail("invalid_artifact_metadata"); }
         catch (IOException) { return Fail("storage_error"); }
         catch (UnauthorizedAccessException) { return Fail("access_denied"); }
         catch (JsonException) { return Fail("invalid_stored_record"); }
+    }
+
+    private object ImportArtifact(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        var record = _artifactStore.Import(companyId, orderId, Text(request, "agentId"),
+            Text(request, "fileName"), Text(request, "dataBase64"),
+            Text(request, "sourceProvider"), Text(request, "sourceReference"));
+        return new { ok = true, artifact = record };
+    }
+
+    private object ListArtifacts(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        return new { ok = true, artifacts = _artifactStore.List(companyId, orderId) };
+    }
+
+    private object VerifyArtifact(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        var record = _artifactStore.Verify(companyId, orderId, Text(request, "artifactId"));
+        return new { ok = true, artifact = record };
+    }
+
+    private object ReadArtifact(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        var content = _artifactStore.Read(companyId, orderId, Text(request, "artifactId"));
+        return new { ok = true, content };
     }
 
     private object Submit(JsonElement request)
