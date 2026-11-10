@@ -97,6 +97,12 @@
               <div class="action-row"><button id="interpretPlan" class="secondary" type="button">Interpret & save plan</button><button id="approvePlan" class="primary" type="button">Approve task breakdown</button></div>
               <p class="form-note">AI text is untrusted until the Supervisor has interpreted it and you approve the proposed assignments. Do not paste confidential data into an external AI chat without authorization.</p>
               <div class="step-line"><span class="step-index">2</span><b>Specialist agent assignments</b><span class="step-helper">A separate Chrome task group</span></div>
+              <div class="action-row">
+                <button id="dispatchNext" type="button" class="primary">Open next eligible agent <span aria-hidden="true">↗</span></button>
+                <button id="refreshQueue" type="button" class="secondary">Refresh task queue</button>
+              </div>
+              <p class="form-note">One click opens the next available task-owned AI tab and copies its SOP instructions. The user controls the external chat; dependencies and QA gates remain enforced.</p>
+              <div id="executionQueue" class="review-result" role="status">Task queue not yet loaded.</div>
               <div id="agentsList" class="agents-list"><p class="muted">No specialist tasks defined yet.</p></div>
               <div class="step-line"><span class="step-index">3</span><b>Supervisor outcome audit</b><span class="step-helper">Evidence before completion</span></div>
               <button id="reviewOrder" class="secondary" type="button">Check results and blockers</button>
