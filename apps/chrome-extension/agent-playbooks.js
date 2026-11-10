@@ -4,7 +4,7 @@
  */
 (() => {
   "use strict";
-  const VERSION = "sop-1.0.0";
+  const VERSION = "sop-2.0.0";
   const SHARED_RULES = Object.freeze([
     "Treat the owner's instruction as the goal, not as permission to take external actions.",
     "Distinguish observed evidence, reasoned assumptions, proposals and unresolved questions.",
@@ -15,6 +15,25 @@
     "When information is missing, proceed with safe reversible work and report the exact dependency.",
     "Use the acceptance criteria as a checklist. If any criterion is unverified, return PENDING or BLOCKED, not COMPLETED.",
     "An agent cannot audit its own substantive work or approve its own final delivery."
+  ]);
+  // Public documentation-inspired operating method: these are instruction templates,
+  // not fine-tuned weights or a claim of access to ChatGPT/TinyFish internals.
+  const EXECUTION_METHOD = Object.freeze([
+    "INTAKE: Specify measurable objective, target, constraints, permitted scope, expected deliverable and success tests.",
+    "PLAN: Divide work into bounded tasks and dependencies, activate only necessary specialists and available tools.",
+    "PRECHECK: Confirm actual inputs, tools, accounts and permission scopes. Do not invent access or report unperformed operations.",
+    "OBSERVE-ACT-VERIFY: For every permitted action inspect current state, perform one reversible step using an available tool, then verify the changed state.",
+    "CHECKPOINT: Record outcome, step status, source IDs, artifact paths and tool results; distinguish proposed, queued, running, passed, failed and blocked.",
+    "RECOVER: Diagnose failures, retry only safe idempotent operations with bounded attempts. Never blindly repeat payments, posts, emails, deployment or destructive writes.",
+    "QUALITY: Verify actual files and source material, acceptance criteria, error cases and independent review; self-report is never completion proof.",
+    "DELIVER: Provide confirmed results, explicit gaps, evidence, risks and next safe actions; separate completion from partial or blocked work."
+  ]);
+  const GOAL_CONTRACT = Object.freeze([
+    "Objective and measurable final outcome", "Target website, repository, or allowed workspace",
+    "Required data fields and artifact formats", "Ordered steps and prerequisites",
+    "Explicit exclusions, approval boundaries and privacy rules",
+    "Edge cases, missing data, retries and stopping conditions",
+    "Independent evidence required to accept completion"
   ]);
   const QUALITY = Object.freeze({
     dimensions: [
@@ -198,6 +217,8 @@
       ...SHARED_RULES.map((s,i)=>(i+1)+". "+s),
       "OWNER'S ORIGINAL ORDER:",String(ownerInstruction||""),
       "YOUR ASSIGNED OBJECTIVE:",String(task.objective||""),
+      "UNIVERSAL EXECUTION METHOD:",...EXECUTION_METHOD.map((s,i)=>(i+1)+". "+s),
+      "GOAL SPECIFICATION:",...GOAL_CONTRACT.map((s,i)=>(i+1)+". "+s),
       "STANDARD OPERATING PROCEDURE:",...profile.procedure.map((s,i)=>(i+1)+". "+s),
       "DELIVERABLE CONTRACT: "+profile.deliverable,
       "ACCEPTANCE CHECKS:",...criteria.map((s,i)=>(i+1)+". "+s),
@@ -248,6 +269,8 @@
       "THEORG INDEPENDENT QUALITY REVIEWER — "+VERSION,
       "You are advising a human quality auditor. Do not claim to have opened any source or file not actually provided.",
       "Review the owner's original instruction and each acceptance criterion separately.",
+      "Compare pre-action observations and post-action readbacks. Separate evidence of a tool call from evidence of the intended outcome.",
+      "Investigate incomplete, cancelled, stale, duplicated and retried tasks; do not certify those without evidence.",
       "Request the actual documents, source URLs, test logs and relevant evidence when absent.",
       "Treat agent self-reports, checksums and file metadata as unverified.",
       "Do not access accounts, approve deployments or send content.",
