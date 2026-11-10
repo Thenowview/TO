@@ -298,6 +298,15 @@
         instruction:order.instruction,mode,model,approvedHosts
       });
     }
+    async agentMemory(taskId,command,key="",value="") {
+      if (!TASK_ID.test(taskId) ||
+          !new Set(["agent_memory_put","agent_memory_list","agent_tools"]).has(command))
+        throw new Error("Invalid memory or catalog action");
+      const orders=await this.orders();
+      const order=orders[taskId];
+      if(!order)throw new Error("Unknown work order");
+      return this.native({command,companyId:order.companyId,key,value});
+    }
     async agentList(taskId) {
       if (!TASK_ID.test(taskId)) throw new Error("Invalid work order");
       const all=await this.orders();
