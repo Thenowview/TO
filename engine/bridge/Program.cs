@@ -572,7 +572,11 @@ internal static class SelfTest
             var artifacts = Call(c, new {
                 command = "list_artifacts", companyId = "demo", orderId = id
             });
-            Check(artifacts.GetProperty("artifacts").GetArrayLength() == 2, "list both versions");
+            var listed = artifacts.GetProperty("artifacts");
+            Check(listed.GetArrayLength() == 5, "list five QA and version fixtures");
+            Check(listed.EnumerateArray().Count(item =>
+                item.GetProperty("fileName").GetString() == "agent-report.md") == 2,
+                "both historical report versions still listed");
 
             var badFilename = Call(c, new {
                 command = "import_artifact", companyId = "demo", orderId = id,
