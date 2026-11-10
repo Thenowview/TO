@@ -1,0 +1,47 @@
+name: TheOrg Chrome and Windows Bridge CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  js-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate Chrome extension JavaScript
+        run: |
+          node --check apps/chrome-extension/task-manager.js
+          node --check apps/chrome-extension/supervisor-plan.js
+          node --check apps/chrome-extension/background.js
+          node --check apps/chrome-extension/home.js
+      - name: Validate extension and profile JSON
+        run: |
+          node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
+
+  windows-bridge:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Compile self-contained bridge source
+        run: dotnet build engine/bridge/TheOrg.Bridge.csproj --configuration Release --nologo
+      - name: Run offline controller and artifact regression checks
+        run: dotnet run --project engine/bridge/TheOrg.Bridge.csproj --configuration Release --no-build -- --self-test
+      - name: Publish self-contained Windows bridge candidate
+        run: dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/bridge
+      - name: Upload unsigned Windows bridge candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-Windows-bridge-unsigned-candidate
+          path: out/bridge/
+          if-no-files-found: error
+          retention-days: 7
