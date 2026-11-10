@@ -425,3 +425,41 @@ test("latest corrected artifact revision can supersede a malformed earlier versi
   const queue=await manager.executionQueue(order.taskId);
   assert.equal(queue.queue[0].state,"manual_qa_pass_unverified");
 });
+
+
+test("Chrome restart never closes untracked tabs and requires explicit recovery",async()=>{
+  const mock=fakeChrome();
+  const manager=new context.TheOrgTaskManager(mock.api);
+  const order=await manager.createOrder("demo",validInstruction);
+  await manager.saveSupervisorPlan(order.taskId,rawPlan);
+  await manager.approvePlan(order.taskId);
+  const opened=await manager.openAgentTab(order.taskId,"research1","chatgpt");
+  assert.equal(mock.tabs.size,1);
+  assert.equal((await manager.executionQueue(order.taskId)).queue[0].state,"agent_tab_open");
+
+  // Chrome storage.session is erased on browser restart; earlier tab IDs
+  // must never be reconstructed or force-closed from stale local metadata.
+  delete mock.session.theorgOwnedTabsV1;
+  const afterRestart=new context.TheOrgTaskManager(mock.api);
+  const queue=await afterRestart.executionQueue(order.taskId);
+  assert.equal(queue.queue[0].state,"browser_session_untracked");
+  assert.deepEqual(Array.from(queue.ready),[]);
+  assert.equal((await afterRestart.dispatchNextTask(order.taskId)).dispatched,false);
+  await assert.rejects(
+    ()=>afterRestart.openAgentTab(order.taskId,"research1","chatgpt"),
+    /Recover task/);
+
+  const resumed=await afterRestart.recoverAgentTask(order.taskId,"research1");
+  assert.equal(resumed.untrackedTabsWereClosed,false);
+  assert.equal(mock.tabs.size,2);
+  assert.ok(mock.tabs.has(opened.tabId));
+  assert.ok(mock.tabs.has(resumed.browserTab.tabId));
+
+  const handed=await afterRestart.handoffAndClose(order.taskId,"research1",
+    "The work was handed off from the new session with original browser tabs untouched.","submitted");
+  assert.equal(handed.closedTabs,1);
+  assert.equal(mock.tabs.size,1);
+  assert.ok(mock.tabs.has(opened.tabId));
+  const final=await afterRestart.executionQueue(order.taskId);
+  assert.equal(final.queue[0].state,"awaiting_qa_evidence");
+});
