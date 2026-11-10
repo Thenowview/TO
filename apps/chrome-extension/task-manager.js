@@ -475,8 +475,8 @@
       const checksumsRecorded = demonstrationArtifacts.length > 0 &&
         demonstrationArtifacts.every(item => /^[A-Fa-f0-9]{64}$/.test(item.sha256 || ""));
       const importedPending = importedArtifacts.some(item =>
-        item.intakeStatus !== "integrity_verified_content_qa_pending" ||
-        !item.integrityValid);
+        item.intakeStatus !== "structure_verified_content_qa_pending" ||
+        !item.integrityValid || !item.formatValid);
       const planned = order.plan ? order.plan.tasks : [];
       const everyAgentReported = planned.length > 0 &&
         planned.every(t => order.agentReports && order.agentReports[t.id]);
