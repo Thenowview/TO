@@ -23,6 +23,10 @@ The \`feat/chrome-windows-native-bridge\` branch contains a **development candid
 
 See [Artifact Manager implementation and acceptance audit](docs/ARTIFACT_MANAGER_IMPLEMENTATION.md).
 
+### Optional local agent execution preview (Ollama or synthetic)
+
+The extension now includes an experimental local agent console. A saved text instruction can be converted into a validated plan using optional Ollama on 127.0.0.1:11434; the owner must approve before executing any tools. An independent model critique is advisory only. A SQLite job journal persists across Native Messaging processes. Real permitted actions include scoped text-note generation, system information, approved HTTPS tab navigation and a limited Notepad launcher. See the Windows operator guide. Full autonomous browser and desktop control are not implemented.
+
 ### One-file Windows developer-preview installer
 
 The CI workflow also builds an **unsigned** NSIS installer containing the bridge and unpacked extension source. It is not code-signed or independently security certified.
