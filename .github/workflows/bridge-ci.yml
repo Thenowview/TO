@@ -81,6 +81,8 @@ jobs:
           }
           & $binary --self-test
           if ($LASTEXITCODE -ne 0) { throw 'Installed binary self-test failed' }
+          & .\tests\windows-install-registration.ps1 -InstallRoot $root
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Native Messaging registration regression failed' }
           $uninstall = Join-Path $root 'Uninstall.exe'
           $uninstalled = Start-Process -FilePath $uninstall -ArgumentList '/S' -Wait -PassThru
           if ($uninstalled.ExitCode -ne 0) { throw 'Silent uninstall failed' }
