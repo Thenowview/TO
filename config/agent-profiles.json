@@ -1,0 +1,471 @@
+{
+  "schemaVersion": 1,
+  "organization": "TheOrg",
+  "releaseStatus": "configuration-only:not-runtime-integrated",
+  "principles": [
+    "Permanent profiles do not imply continuously running LLM sessions.",
+    "A specialist may open only its own tracked Chrome task tabs.",
+    "Model responses never grant permissions or attest real-world completion.",
+    "Only explicit verified integration registrations make a plugin callable.",
+    "ChatGPT account plugin authorizations do not transfer to TheOrg.",
+    "External write operations need separate, revocable authorization.",
+    "QA cannot approve work it performed; security cannot override owner approvals."
+  ],
+  "defaultPermission": "deny",
+  "maxSpecialistsPerWorkOrder": 8,
+  "agentProfiles": [
+    {
+      "id": "supervisor",
+      "name": "Chief Supervisor",
+      "department": "Executive",
+      "reportsTo": "owner",
+      "mission": "Coordinates all work orders; may request approvals but cannot self-certify task completion.",
+      "capabilities": [
+        "task.plan",
+        "task.assign",
+        "task.status.read",
+        "agent.message",
+        "provider.consult",
+        "plugin.discover",
+        "file.read",
+        "audit.read"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "planner",
+      "name": "Planning Architect",
+      "department": "Strategy & Intelligence",
+      "reportsTo": "supervisor",
+      "mission": "Decomposes objectives, dependencies, risks and acceptance criteria.",
+      "capabilities": [
+        "task.plan",
+        "plugin.discover",
+        "research.read",
+        "file.read",
+        "file.draft",
+        "provider.consult"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "researcher",
+      "name": "Research Analyst",
+      "department": "Strategy & Intelligence",
+      "reportsTo": "supervisor",
+      "mission": "Produces sourced research and identifies unknowns.",
+      "capabilities": [
+        "research.read",
+        "provider.consult",
+        "file.read",
+        "file.draft",
+        "citation.record"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "browser",
+      "name": "Browser Operator",
+      "department": "Execution & Production",
+      "reportsTo": "supervisor",
+      "mission": "Uses tracked Chrome task tabs and permitted browsing; does not access unrelated tabs.",
+      "capabilities": [
+        "browser.navigate",
+        "browser.read",
+        "browser.capture",
+        "provider.consult",
+        "file.draft"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "desktop",
+      "name": "Desktop Operator",
+      "department": "Execution & Production",
+      "reportsTo": "supervisor",
+      "mission": "Uses narrowly approved Windows desktop actions with an auditable trace.",
+      "capabilities": [
+        "desktop.observe",
+        "desktop.propose_action",
+        "file.read",
+        "file.draft"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "developer",
+      "name": "Software Engineer",
+      "department": "Execution & Production",
+      "reportsTo": "supervisor",
+      "mission": "Prepares, tests and proposes code changes; does not merge or deploy without explicit authority.",
+      "capabilities": [
+        "code.read",
+        "code.draft",
+        "code.test_sandbox",
+        "github.read",
+        "github.propose_change",
+        "provider.consult"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "analyst",
+      "name": "Data Analyst",
+      "department": "Execution & Production",
+      "reportsTo": "supervisor",
+      "mission": "Validates and analyzes authorized data; documents formulas and source lineage.",
+      "capabilities": [
+        "data.read",
+        "data.compute",
+        "file.read",
+        "file.draft",
+        "chart.create",
+        "provider.consult"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "documents",
+      "name": "Document Specialist",
+      "department": "Execution & Production",
+      "reportsTo": "supervisor",
+      "mission": "Creates and checks document, spreadsheet, slide and PDF deliverables.",
+      "capabilities": [
+        "document.create",
+        "document.edit",
+        "file.read",
+        "file.draft",
+        "document.preview",
+        "provider.consult"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "communications",
+      "name": "Communications Coordinator",
+      "department": "Business Operations",
+      "reportsTo": "supervisor",
+      "mission": "Drafts messages, schedules and follow-ups; external sending requires owner approval.",
+      "capabilities": [
+        "email.read",
+        "email.draft",
+        "calendar.read",
+        "calendar.draft",
+        "task.plan",
+        "provider.consult"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "integrations",
+      "name": "Cloud & Integrations Engineer",
+      "department": "Business Operations",
+      "reportsTo": "supervisor",
+      "mission": "Inspects infrastructure and proposes changes; no default deploy, billing or secret-export rights.",
+      "capabilities": [
+        "integration.inspect",
+        "integration.propose",
+        "cloud.read",
+        "github.read",
+        "file.draft",
+        "provider.consult"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "qa_auditor",
+      "name": "Quality Auditor",
+      "department": "Independent Assurance",
+      "reportsTo": "supervisor",
+      "mission": "Checks acceptance criteria and evidence independently of the performing agent.",
+      "capabilities": [
+        "audit.read",
+        "artifact.verify",
+        "test.run",
+        "file.read",
+        "citation.verify",
+        "task.review"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    },
+    {
+      "id": "security_officer",
+      "name": "Security & Policy Officer",
+      "department": "Independent Assurance",
+      "reportsTo": "owner",
+      "mission": "Enforces least privilege, privacy boundaries and approval requirements; cannot override owner consent.",
+      "capabilities": [
+        "policy.inspect",
+        "permission.review",
+        "security.scan",
+        "audit.read",
+        "tool.revoke_recommendation"
+      ],
+      "providerPolicy": "authorized-provider-or-manual-handoff",
+      "workspaceScope": "current-company-only",
+      "approvalDefault": "required-for-external-writes",
+      "maySelfCertify": false,
+      "outputContract": {
+        "fields": [
+          "taskId",
+          "agentId",
+          "status",
+          "summary",
+          "artifacts",
+          "evidence",
+          "sources",
+          "unknowns",
+          "nextActions"
+        ],
+        "statuses": [
+          "submitted_for_review",
+          "blocked",
+          "needs_information"
+        ],
+        "requiredEvidence": true
+      }
+    }
+  ]
+}
