@@ -5,7 +5,7 @@ OutFile "..\out\installer\TheOrg-DevPreview-Windows-x64-unsigned.exe"
 InstallDir "$LOCALAPPDATA\Programs\TheOrg"
 RequestExecutionLevel user
 Unicode true
-SetCompressor /SOLID lzma
+SetCompressor zlib
 ShowInstDetails show
 ShowUninstDetails show
 
