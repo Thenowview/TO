@@ -1,0 +1,91 @@
+# Do not commit browser profiles, login sessions, secrets, runtime databases, or generated artifacts.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+*.kdbx
+*credentials*.json
+*service-account*.json
+*service_account*.json
+*secret*.json
+*token*.json
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.log
+*.har
+*.zip
+*.7z
+*.rar
+*.exe
+*.msi
+*.msix
+*.dll
+*.pyd
+*.whl
+*.pyc
+*.class
+*.o
+*.obj
+*.bin
+*.iso
+*.bak
+*.tmp
+*.swp
+
+# Python / Node / Rust / packaging
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+.pnpm-store/
+dist/
+build/
+out/
+release/
+target/
+coverage/
+.next/
+.cache/
+.vscode/
+.idea/
+
+# Browser and agent sessions: never commit
+User Data/
+Chrome User Data/
+Default/
+Profile */
+browser_profiles/
+browser_jobs/
+playwright-profile/
+playwright/.auth/
+sessions/
+cookies/
+chromium-profile/
+chromium_profiles/
+auth_state/
+storage-state.json
+state.json
+
+# Local runtime
+.theorg/
+workspace-data/
+local-data/
+artifacts/
+downloads/
+tmp/
+temp/
+
+# Keep placeholders if needed
+!**/.gitkeep

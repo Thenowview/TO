@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "TheOrg — Supervisor Workspace",
+  "version": "0.2.0",
+  "description": "Local-first Supervisor workspace, agent task groups and audited delivery.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "tabGroups",
+    "nativeMessaging",
+    "sidePanel"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open TheOrg Supervisor"
+  },
+  "side_panel": {
+    "default_path": "home.html"
+  }
+}

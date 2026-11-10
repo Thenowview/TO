@@ -1,0 +1,115 @@
+name: TheOrg Chrome and Windows Bridge CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  js-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate Chrome extension JavaScript
+        run: |
+          node --check apps/chrome-extension/agent-playbooks.js
+          node --check apps/chrome-extension/task-manager.js
+          node --check apps/chrome-extension/supervisor-plan.js
+          node --check apps/chrome-extension/background.js
+          node --check apps/chrome-extension/home.js
+      - name: Test Supervisor handoff and artifact gates with simulated Chrome
+        run: node --test tests/task-manager.test.cjs
+      - name: Audit Supervisor UI to background contracts
+        run: node --test tests/ui-contract.test.cjs
+      - name: Audit fail-closed production release gates
+        run: |
+          node --test tests/release-gates.test.cjs
+          node tools/check-release-readiness.cjs
+      - name: Validate extension and profile JSON
+        run: |
+          node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json','config/release-gates.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
+
+  windows-bridge:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Compile self-contained bridge source
+        run: dotnet build engine/bridge/TheOrg.Bridge.csproj --configuration Release --nologo
+      - name: Run offline controller and artifact regression checks
+        run: dotnet run --project engine/bridge/TheOrg.Bridge.csproj --configuration Release --no-build -- --self-test
+      - name: Publish self-contained Windows bridge candidate
+        run: dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/bridge
+      - name: Test actual Native Messaging stdio framing and tenant isolation
+        shell: pwsh
+        run: python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
+      - name: Install NSIS compiler
+        shell: pwsh
+        run: choco install nsis --yes --no-progress --limit-output
+      - name: Compile unsigned Windows developer-preview installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out/installer | Out-Null
+          $compiler = "${env:ProgramFiles(x86)}\\NSIS\\makensis.exe"
+          if (!(Test-Path $compiler)) { throw "NSIS compiler missing: $compiler" }
+          & $compiler /V2 tools/TheOrgPreview.nsi
+          if ($LASTEXITCODE -ne 0) { throw "NSIS installer build failed" }
+          if (!(Test-Path out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe)) {
+            throw "Installer output missing"
+          }
+      - name: Smoke-test silent Windows installation and uninstall
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe).Path
+          $result = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer failed with code $($result.ExitCode)" }
+          $root = Join-Path $env:LOCALAPPDATA 'Programs\TheOrg'
+          $binary = Join-Path $root 'TheOrg.Bridge.exe'
+          $manifest = Join-Path $root 'chrome-extension\manifest.json'
+          if (!(Test-Path $binary) -or !(Test-Path $manifest)) {
+            throw 'Installed bridge or Chrome extension is missing'
+          }
+          & $binary --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Installed binary self-test failed' }
+          $uninstall = Join-Path $root 'Uninstall.exe'
+          $uninstalled = Start-Process -FilePath $uninstall -ArgumentList '/S' -Wait -PassThru
+          if ($uninstalled.ExitCode -ne 0) { throw 'Silent uninstall failed' }
+          if (Test-Path $binary) { throw 'Uninstall left the Windows controller installed' }
+      - name: Record SHA-256 checksums for unsigned release candidates
+        shell: pwsh
+        run: |
+          $binary = "out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe"
+          $bridge = "out/bridge/TheOrg.Bridge.exe"
+          $rows = @(
+            "$( (Get-FileHash -Path $binary -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg-DevPreview-Windows-x64-unsigned.exe"
+            "$( (Get-FileHash -Path $bridge -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg.Bridge.exe"
+            "Source commit: $env:GITHUB_SHA"
+            "Release channel: developer-preview-unsigned; NOT production"
+          )
+          $rows | Set-Content -Path out/installer/SHA256SUMS.txt -Encoding utf8
+      - name: Upload unsigned Windows developer-preview installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-DevPreview-Windows-x64-unsigned-installer
+          path: |
+            out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe
+            out/installer/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload unsigned Windows bridge candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-Windows-bridge-unsigned-candidate
+          path: out/bridge/
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>TheOrg — Supervisor</title>
+  <link rel="stylesheet" href="home.css">
+  <script src="home.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail" aria-label="TheOrg navigation">
+    <a class="brand" href="home.html"><span class="brand-emblem">T<span class="spark">✦</span></span><span><strong>TheOrg</strong><small>AI operating workspace</small></span></a>
+    <div class="rail-label">WORKSPACE</div>
+    <nav class="navigation">
+      <a class="nav-link selected" href="#home"><span class="nav-icon">⌂</span> Supervisor Home</a>
+      <a class="nav-link" href="#services"><span class="nav-icon">▦</span> Local Services</a>
+      <a class="nav-link" href="#providers"><span class="nav-icon">✧</span> AI Providers</a>
+      <a class="nav-link" href="#work"><span class="nav-icon">⎇</span> Specialist Agents</a>
+      <a class="nav-link" href="#audit"><span class="nav-icon">✓</span> Audit & Deliveries</a>
+    </nav>
+    <div class="rail-footer">
+      <div class="security-note"><span class="status-dot"></span><span>Private by default<br><small>Local company workspace</small></span></div>
+      <div class="rail-caption">AI website chats are manual handoffs until permitted adapters are independently verified.</div>
+    </div>
+  </aside>
+  <main id="home" class="content">
+    <div class="topbar">
+      <div class="breadcrumbs">TheOrg <span>/</span> Workspace <span>/</span> <b>Supervisor</b></div>
+      <div class="toolbar">
+        <span id="engineStatus" class="connection pending">Controller not checked</span>
+        <button id="recheck" class="tiny-btn" type="button">Check connection</button>
+        <button id="pinHome" class="tiny-btn" type="button">Pin home</button>
+      </div>
+    </div>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="eyebrow-line"></span> YOUR AI OPERATIONS CENTER</span>
+        <h1>One instruction.<br><em>TheOrg coordinates the rest.</em></h1>
+        <p>Ask the Supervisor, consult an approved AI provider, delegate to specialist agents and collect evidence before work is marked complete.</p>
+      </div>
+      <div class="hero-icon" aria-hidden="true"><span>✦</span><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div></div>
+    </section>
+
+    <section class="composer-section" aria-labelledby="startHeading">
+      <div class="section-head">
+        <div><span class="section-kicker">01 / START HERE</span><h2 id="startHeading">Give the Supervisor an instruction</h2></div>
+        <span class="hint-pill">Supervisor-led</span>
+      </div>
+      <form id="newOrder" class="composer">
+        <div class="composer-top"><label for="companyId">Company workspace</label><input id="companyId" value="demo" pattern="[a-z0-9_-]{1,40}" maxlength="40" title="Lowercase letters, numbers, hyphen and underscore"></div>
+        <label class="sr-only" for="ownerInstruction">Work order instruction</label>
+        <textarea id="ownerInstruction" required minlength="5" maxlength="5000" rows="4" placeholder="Tell your Supervisor what you want to accomplish. Describe the intended outcome, constraints, and the files you need."></textarea>
+        <div class="composer-bottom"><span class="subtle">Your order stays in your local company workspace unless you choose to share it with an external AI service.</span><button class="primary" type="submit">Create work order <span aria-hidden="true">↗</span></button></div>
+      </form>
+    </section>
+
+    <section id="services" class="section-block" aria-labelledby="servicesHeading">
+      <div class="section-head"><div><span class="section-kicker">02 / CAPABILITIES</span><h2 id="servicesHeading">Explore local services</h2></div><p class="section-meta">Choose a service to start with a prepared instruction</p></div>
+      <div class="service-grid" id="serviceGrid">
+        <button class="service" data-service="Research and brief a topic with sources, uncertainty and an executive summary." type="button"><span class="service-icon violet">⌕</span><b>Research & Briefings</b><small>Gather, compare, explain</small></button>
+        <button class="service" data-service="Create a structured Word document with a clear outline and verification checklist." type="button"><span class="service-icon cyan">▤</span><b>Documents</b><small>Word, PDF, reports</small></button>
+        <button class="service" data-service="Prepare a data analysis plan, validate inputs and produce a clear spreadsheet report." type="button"><span class="service-icon blue">▥</span><b>Data & Analytics</b><small>Tables, charts, Excel</small></button>
+        <button class="service" data-service="Inspect a website using only authorized browsing, produce findings and citations." type="button"><span class="service-icon amber">◫</span><b>Browser Tasks</b><small>Approved sites & tools</small></button>
+        <button class="service" data-service="Design an implementation plan and test checklist for a software development request." type="button"><span class="service-icon green">⌘</span><b>Software Development</b><small>Plan, code, review</small></button>
+        <button class="service" data-service="Draft a business plan including risks, KPIs, stakeholders and execution milestones." type="button"><span class="service-icon rose">◇</span><b>Business Planning</b><small>Strategy and operations</small></button>
+        <button class="service" data-service="Prepare a cloud development plan, document proposed changes and request permission before any deployment." type="button"><span class="service-icon yellow">☁</span><b>Cloud & Infrastructure</b><small>Review-only by default</small></button>
+        <button class="service" data-service="Draft an email or calendar coordination plan. Do not send anything without explicit permission." type="button"><span class="service-icon mint">✉</span><b>Mail & Calendar</b><small>Connector required to send</small></button>
+      </div>
+    </section>
+
+    <section id="providers" class="section-block" aria-labelledby="providersHeading">
+      <div class="section-head"><div><span class="section-kicker">03 / INTELLIGENCE</span><h2 id="providersHeading">Select your AI adviser</h2></div><span class="hint-pill">Manual web handoff • no API keys required</span></div>
+      <p class="section-description">The Supervisor prepares an initial plan locally. You can optionally consult an AI adviser to refine it. Chat access, quotas and terms depend on your account; no AI provider is connected automatically. Cloudflare is a developer platform, not a chat service.</p>
+      <div id="providerGrid" class="provider-grid"><span class="muted">Loading provider directory…</span></div>
+    </section>
+
+    <section id="work" class="section-block" aria-labelledby="workHeading">
+      <div class="section-head"><div><span class="section-kicker">04 / DELEGATION</span><h2 id="workHeading">Supervisor & specialist agents</h2></div><button type="button" class="tiny-btn" id="refreshOrders">Refresh orders</button></div>
+      <div class="work-layout">
+        <div class="work-left panel">
+          <h3>Work orders <span id="orderCount" class="counter">0</span></h3>
+          <div id="ordersList" class="order-list"><p class="muted">Submit an instruction to start a work order.</p></div>
+        </div>
+        <div class="work-main">
+          <div id="noOrder" class="empty-state panel"><span class="empty-icon">✧</span><h3>No work order selected</h3><p>Create an order to begin planning and delegation.</p></div>
+          <div id="activeOrder" hidden>
+            <div class="panel detail-panel">
+              <div class="order-header"><div><span class="section-kicker">SUPERVISOR WORK ORDER</span><h3 id="activeOrderTitle"></h3><span id="activeOrderId" class="mono"></span></div><span id="orderPhase" class="phase">Pending</span></div>
+              <div class="step-line"><span class="step-index">1</span><b>Supervisor proposes specialist orders</b><span class="step-helper">Locally drafted automatically • AI consultation optional</span></div>
+              <div id="planSummary" class="review-result">Submit one instruction to generate an SOP-based local plan. The plan needs review before the agents start.</div>
+              <p class="form-note">Agent playbooks define how specialists work: procedure, output format, evidence checks and escalation rules. No AI website is contacted automatically.</p>
+              <div class="inline-controls"><label for="plannerProvider" class="sr-only">Planning provider</label><select id="plannerProvider"></select><button id="copyPlannerPrompt" type="button" class="secondary">Copy planning prompt</button><button id="openPlanner" type="button" class="secondary">Open planner chat ↗</button></div>
+              <label class="field-label" for="planResponse">Optional: replace the local plan with structured JSON from an AI adviser</label>
+              <textarea id="planResponse" rows="5" placeholder='{"summary":"…","tasks":[{"id":"research1","role":"researcher","objective":"…","provider":"chatgpt","acceptanceCriteria":["…"],"dependencies":[]}]}…'></textarea>
+              <div class="action-row"><button id="interpretPlan" class="secondary" type="button">Interpret & save plan</button><button id="approvePlan" class="primary" type="button">Approve task breakdown</button></div>
+              <p class="form-note">AI text is untrusted until the Supervisor has interpreted it and you approve the proposed assignments. Do not paste confidential data into an external AI chat without authorization.</p>
+              <div class="step-line"><span class="step-index">2</span><b>Specialist agent assignments</b><span class="step-helper">A separate Chrome task group</span></div>
+              <div class="action-row">
+                <button id="dispatchNext" type="button" class="primary">Open next eligible agent <span aria-hidden="true">↗</span></button>
+                <button id="refreshQueue" type="button" class="secondary">Refresh task queue</button>
+              </div>
+              <p class="form-note">One click opens the next available task-owned AI tab and copies its SOP instructions. The user controls the external chat; dependencies and QA gates remain enforced.</p>
+              <div id="executionQueue" class="review-result" role="status">Task queue not yet loaded.</div>
+              <div id="agentsList" class="agents-list"><p class="muted">No specialist tasks defined yet.</p></div>
+              <div class="step-line"><span class="step-index">3</span><b>Supervisor outcome audit</b><span class="step-helper">Evidence before completion</span></div>
+              <button id="reviewOrder" class="secondary" type="button">Check results and blockers</button>
+              <button id="copyAuditorPrompt" class="secondary" type="button">Copy independent QA instructions</button>
+              <button id="exportAuditPacket" class="secondary" type="button">Export audit evidence packet (JSON)</button>
+              <p class="form-note">QA findings are manually entered and the reviewer's identity is not independently authenticated. They cannot certify an AI agent's real-world performance.</p>
+              <div id="reviewResult" class="review-result">No Supervisor review has been performed.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="audit" class="section-block" aria-labelledby="auditHeading">
+      <div class="section-head"><div><span class="section-kicker">05 / GOVERNANCE</span><h2 id="auditHeading">Deliveries & audit trail</h2></div></div>
+      <div class="audit-grid">
+        <div class="audit-card"><span class="audit-glyph">✓</span><b>Evidence-based completion</b><p>Specialist claims and file hashes are not sufficient for semantic acceptance. Independent review stays visible.</p></div>
+        <div class="audit-card"><span class="audit-glyph">▣</span><b>Local file custody</b><p>Controller artifacts reside in the company-scoped Windows workspace. No automatic uploads.</p></div>
+        <div class="audit-card"><span class="audit-glyph">◴</span><b>Pending & blocked tasks</b><p>Unfinished assignments remain available for escalation, correction, and further AI consultation.</p></div>
+      </div>
+      <div class="delivery panel">
+        <h3>Current work order artifacts</h3>
+        <p class="muted">Import a file downloaded from an authorized AI chat. Files are stored locally in quarantine until validation; imports do not certify task completion.</p>
+        <form id="artifactUpload" class="artifact-upload">
+          <label for="artifactAgent">Agent responsible</label><select id="artifactAgent" required><option value="">Select a specialist</option></select>
+          <label for="artifactProvider">Source service</label>
+          <input id="artifactProvider" placeholder="e.g. ChatGPT or Qwen" maxlength="60" value="manual_import">
+          <label for="artifactReference">Source reference (optional)</label>
+          <input id="artifactReference" placeholder="Chat title or URL, no private tokens" maxlength="500">
+          <label for="artifactFile">Local file to import (up to 32 MiB with verified chunked transfer)</label>
+          <input id="artifactFile" type="file" required>
+          <button type="submit" class="primary">Import artifact for review</button>
+          <output id="uploadProgress" class="muted" role="status" aria-live="polite">No file transfer active.</output>
+        </form>
+        <div id="deliveries"><p class="muted">Choose a work order to inspect imported files and controller artifact metadata.</p></div>
+      </div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <footer class="footer">TheOrg • Private development build • Provider chats require authorized access • No production actions enabled</footer>
+  </main>
+</div>
+<dialog id="handoffDialog" class="dialog">
+  <form id="handoffForm" method="dialog">
+    <h3 id="handoffTitle">Return agent results</h3>
+    <p class="muted">Paste the agent’s answer, evidence, files or unresolved questions. Save before Chrome closes this agent’s tracked task tabs.</p>
+    <label for="handoffOutcome">Result</label><select id="handoffOutcome"><option value="submitted">Submitted for Supervisor review</option><option value="blocked">Blocked</option><option value="needs_help">Needs more information</option></select>
+    <label for="handoffSummary">Evidence and handoff</label><textarea id="handoffSummary" rows="7" minlength="20" maxlength="8000" required></textarea>
+    <div class="action-row"><button type="button" id="cancelHandoff" class="secondary">Cancel</button><button type="submit" class="primary">Save handoff & close agent tabs</button></div>
+  </form>
+</dialog>
+
+<dialog id="qaDialog" class="dialog">
+  <form id="qaForm">
+    <h3 id="qaHeading">QA acceptance-criterion review</h3>
+    <p id="qaCriterion" class="muted"></p>
+    <p class="form-note">Inspect actual content, source evidence, and applicable tests before recording a finding. A manually entered pass is not independent identity verification.</p>
+    <label for="qaVerdict">Criterion result</label>
+    <select id="qaVerdict">
+      <option value="pass">Pass — evidence checked manually</option>
+      <option value="fail">Fail — correction required</option>
+      <option value="needs_information">Needs information — return to specialist</option>
+    </select>
+    <label for="qaEvidence">What was checked? Include file IDs, test output or source references.</label>
+    <textarea id="qaEvidence" minlength="30" maxlength="4000" rows="5" required placeholder="Describe concrete evidence you opened or tested. Do not paste credentials."></textarea>
+    <div class="action-row">
+      <button id="qaCancel" type="button" class="secondary">Cancel</button>
+      <button type="submit" class="primary">Save QA finding</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>
