@@ -256,6 +256,65 @@
       });
     }
 
+    async importArtifact(taskId, agentId, fileName, dataBase64, provider, sourceReference) {
+      if (!TASK_ID.test(taskId) || !AGENT.test(agentId))
+        throw new Error("Invalid work order or agent identity");
+      if (typeof fileName !== "string" || fileName.length > 120 ||
+          typeof dataBase64 !== "string" || dataBase64.length > 350000)
+        throw new Error("File import is limited to 250 KiB per file in this prototype");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order || !order.plan || !order.plan.reviewed ||
+          !order.plan.tasks.some(t => t.id === agentId))
+        throw new Error("Use a specialist assigned by the approved Supervisor plan");
+      const result = await this.native({
+        command: "import_artifact",
+        companyId: order.companyId,
+        orderId: taskId, agentId, fileName,
+        dataBase64,
+        sourceProvider: String(provider || "manual_import").slice(0,60),
+        sourceReference: String(sourceReference || "").slice(0,500)
+      });
+      return result.artifact;
+    }
+
+    async listArtifacts(taskId) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid work order");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order) throw new Error("Unknown work order");
+      const result = await this.native({
+        command: "list_artifacts", companyId: order.companyId, orderId: taskId
+      });
+      return result.artifacts || [];
+    }
+
+    async verifyArtifact(taskId, artifactId) {
+      if (!TASK_ID.test(taskId) || !TASK_ID.test(artifactId))
+        throw new Error("Invalid order or artifact ID");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order) throw new Error("Unknown work order");
+      const result = await this.native({
+        command: "verify_artifact", companyId: order.companyId,
+        orderId: taskId, artifactId
+      });
+      return result.artifact;
+    }
+
+    async readArtifact(taskId, artifactId) {
+      if (!TASK_ID.test(taskId) || !TASK_ID.test(artifactId))
+        throw new Error("Invalid work order or artifact ID");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order) throw new Error("Unknown work order");
+      const result = await this.native({
+        command: "read_artifact", companyId: order.companyId,
+        orderId: taskId, artifactId
+      });
+      return result.content;
+    }
+
     async handoffAndClose(taskId, agentId, summary, outcome = "submitted") {
       if (!TASK_ID.test(taskId) || !AGENT.test(agentId)) throw new Error("Invalid task or agent ID");
       if (typeof summary !== "string" || summary.trim().length < 20 ||
@@ -355,9 +414,17 @@
           reason: "Unable to retrieve saved controller artifacts: " + error.message
         };
       }
-      const artifacts = (backend.order || {}).artifacts || [];
-      const checksumsRecorded = artifacts.length > 0 &&
-        artifacts.every(item => /^[A-Fa-f0-9]{64}$/.test(item.sha256 || ""));
+      const demonstrationArtifacts = (backend.order || {}).artifacts || [];
+      let importedArtifacts = [];
+      try { importedArtifacts = await this.listArtifacts(taskId); }
+      catch (error) {
+        return {taskId, verdict:"blocked", reason:"Artifact intake unavailable: " + error.message};
+      }
+      const checksumsRecorded = demonstrationArtifacts.length > 0 &&
+        demonstrationArtifacts.every(item => /^[A-Fa-f0-9]{64}$/.test(item.sha256 || ""));
+      const importedPending = importedArtifacts.some(item =>
+        item.intakeStatus !== "integrity_verified_content_qa_pending" ||
+        !item.integrityValid);
       const planned = order.plan ? order.plan.tasks : [];
       const everyAgentReported = planned.length > 0 &&
         planned.every(t => order.agentReports && order.agentReports[t.id]);
@@ -365,7 +432,8 @@
         planned.every(t => order.agentReports[t.id].outcome === "submitted");
       const verdict = !everyAgentReported ? "awaiting_agent_handoff" :
         !allSubmitted ? "agent_blocked_or_needs_help" :
-        checksumsRecorded ? "pending_independent_verification" : "blocked";
+        !checksumsRecorded || importedPending ? "blocked" :
+        "pending_independent_verification";
       const reason = verdict === "pending_independent_verification"
         ? "Artifacts have recorded hashes, but no independent semantic or provider verification exists."
         : verdict === "awaiting_agent_handoff"
@@ -381,7 +449,10 @@
         latest[taskId].phase = "awaiting_supervisor_review";
         await this.saveOrders(latest);
       });
-      return { taskId, verdict, reason, recordedArtifacts: artifacts.length };
+      return {taskId, verdict, reason,
+        demonstrationArtifacts: demonstrationArtifacts.length,
+        importedArtifacts: importedArtifacts.length,
+        pendingContentQa: importedArtifacts.length > 0};
     }
 
     async handleRemoved(tabId) {
