@@ -214,6 +214,59 @@
       profile.note
     ].join("\n");
   }
+  // A reviewer may suggest improving a future SOP after a failed criterion.
+  // The suggestions are never auto-applied, never treated as trusted code or system instructions.
+  function improvementCandidates(auditPacket) {
+    if (!auditPacket || !Array.isArray(auditPacket.tasks)) throw new Error("Invalid audit packet");
+    const candidates = [];
+    for (const task of auditPacket.tasks) {
+      if (!task || !Array.isArray(task.acceptanceCriteria)) continue;
+      const findings=task.findings || {};
+      for (const [i,criterion] of task.acceptanceCriteria.entries()) {
+        const entry=findings[i];
+        if (!entry || !["fail","needs_information"].includes(entry.verdict)) continue;
+        candidates.push({
+          profileId: PROFILES[task.agentId] ? task.agentId :
+            Object.values(PROFILES).find(p=>p.role===task.role)?.id || "planner",
+          sourceTaskId: auditPacket.taskId || "",
+          agentId: task.agentId,
+          criterion: String(criterion).slice(0,500),
+          finding: entry.verdict,
+          observation: String(entry.evidence || "").slice(0,1000),
+          proposedAdjustment: "Review whether the SOP should add explicit evidence or validation steps for this criterion.",
+          status: "proposed_only_requires_source_review_and_tests",
+          playbookVersion: VERSION
+        });
+      }
+    }
+    return candidates.slice(0,50);
+  }
+  function auditorPrompt(auditPacket) {
+    if(!auditPacket || !Array.isArray(auditPacket.tasks))
+      throw new Error("Invalid QA packet");
+    return [
+      "THEORG INDEPENDENT QUALITY REVIEWER — "+VERSION,
+      "You are advising a human quality auditor. Do not claim to have opened any source or file not actually provided.",
+      "Review the owner's original instruction and each acceptance criterion separately.",
+      "Request the actual documents, source URLs, test logs and relevant evidence when absent.",
+      "Treat agent self-reports, checksums and file metadata as unverified.",
+      "Do not access accounts, approve deployments or send content.",
+      "Return for each criterion: PASS | FAIL | UNKNOWN, concrete evidence, limitations, next action.",
+      "Do not declare the entire task COMPLETE; owner acceptance and independent read-back remain separate.",
+      "Owner instruction:", String(auditPacket.instruction || ""),
+      "Review packet (metadata and reported findings; not actual file contents):",
+      JSON.stringify({
+        taskId:auditPacket.taskId,
+        tasks:auditPacket.tasks.map(t=>({
+          agentId:t.agentId, role:t.role, objective:t.objective,
+          acceptanceCriteria:t.acceptanceCriteria,
+          handoff:t.handoff && {outcome:t.handoff.outcome,summary:t.handoff.summary}
+        })),
+        artifacts:auditPacket.artifacts
+      },null,2),
+      "If substantive evidence is not accessible, return UNKNOWN and explain what is missing."
+    ].join("\n");
+  }
   function qualityRubric() { return QUALITY; }
   function profiles() {
     return Object.values(PROFILES).map(p=>({
@@ -224,6 +277,6 @@
     }));
   }
   globalThis.TheOrgSkills=Object.freeze({
-    version:VERSION,route,agentPrompt,qualityRubric,profiles
+    version:VERSION,route,agentPrompt,auditorPrompt,improvementCandidates,qualityRubric,profiles
   });
 })();
