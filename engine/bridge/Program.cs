@@ -480,13 +480,15 @@ internal static class SelfTest
                 verified.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
                 "artifact checksum verification");
             Check(verified.GetProperty("artifact").GetProperty("intakeStatus").GetString() ==
-                "integrity_verified_content_qa_pending", "semantic QA remains pending");
+                "structure_verified_content_qa_pending", "semantic QA remains pending");
 
             var downloaded = Call(c, new {
                 command = "read_artifact", companyId = "demo", orderId = id, artifactId
             });
             string echoed = downloaded.GetProperty("content").GetProperty("dataBase64").GetString()!;
             Check(Convert.FromBase64String(echoed).SequenceEqual(sample), "file byte roundtrip");
+            Check(verified.GetProperty("artifact").GetProperty("formatValid").GetBoolean(),
+                "UTF-8 markdown structural check passes");
 
             var second = Call(c, new {
                 command = "import_artifact", companyId = "demo", orderId = id,
@@ -583,6 +585,10 @@ internal static class SelfTest
             });
             Check(bigVerify.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
                 "large-file SHA-256 check");
+            Check(!bigVerify.GetProperty("artifact").GetProperty("formatValid").GetBoolean(),
+                "mislabelled PDF is flagged as malformed");
+            Check(bigVerify.GetProperty("artifact").GetProperty("intakeStatus").GetString()
+                == "format_invalid", "invalid format cannot reach content review");
 
             using var recovered = new MemoryStream();
             long cursor = 0;
