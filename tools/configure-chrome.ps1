@@ -19,9 +19,6 @@ if ($id -notmatch '^[a-p]{32}$') {
   throw 'Invalid Chrome extension ID. No registration was changed.'
 }
 & (Join-Path $PSScriptRoot 'install-native-host.ps1') -ExtensionId $id -ExecutablePath $exe
-if ($LASTEXITCODE -ne 0) {
-  throw 'Native-host registration failed'
-}
 Write-Host ''
 Write-Host 'Chrome Native Messaging registration prepared.'
 Write-Host 'Open the TheOrg extension and choose Check connection.'
