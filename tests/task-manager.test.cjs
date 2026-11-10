@@ -9,6 +9,7 @@ const vm = require("node:vm");
 const context = {};
 context.globalThis = context;
 const src = file => fs.readFileSync(path.join(__dirname,"..","apps","chrome-extension",file),"utf8");
+vm.runInNewContext(src("agent-playbooks.js"),context,{filename:"agent-playbooks.js"});
 vm.runInNewContext(src("supervisor-plan.js"),context,{filename:"supervisor-plan.js"});
 vm.runInNewContext(src("task-manager.js"),context,{filename:"task-manager.js"});
 
@@ -173,4 +174,68 @@ test("acceptance QA requires real handoff, records every criterion, and never au
   assert.equal(changed[order.taskId].qaFindings.research1,undefined);
   reviewed=await man.supervisorReview(order.taskId);
   assert.equal(reviewed.verdict,"pending_independent_verification");
+});
+
+
+test("12 versioned SOPs produce specialist-specific standard work orders", () => {
+  const skills=context.TheOrgSkills;
+  assert.equal(skills.profiles().length,12);
+  assert.match(skills.version,/^sop-\d+\.\d+\.\d+$/);
+  const plan=skills.route("Compare five competitors, build an Excel analysis and executive presentation.");
+  assert.equal(plan.source,"local_deterministic_sop_not_ai");
+  assert.equal(plan.reviewed,false);
+  assert.equal(plan.providerConnected,false);
+  assert.deepEqual(Array.from(plan.tasks,x=>x.id),["analyst","documents","researcher"]);
+  const verified=context.TheOrgPlanner.interpret(JSON.stringify(plan));
+  assert.equal(verified.tasks.length,3);
+  for(const task of plan.tasks) {
+    assert.ok(task.playbookVersion===skills.version);
+    assert.ok(task.acceptanceCriteria.length>=2);
+    assert.match(skills.agentPrompt("Create a robust competitor presentation",plan,task.id),
+      /STANDARD OPERATING PROCEDURE/);
+  }
+  const prompt=skills.agentPrompt("Prepare an Excel competitor analysis",plan,"analyst");
+  assert.match(prompt,/Reconcile totals/i);
+  assert.match(prompt,/ACCEPTANCE CHECKS/);
+  assert.match(prompt,/Do not paste credentials/i);
+  assert.match(prompt,/EVIDENCE:/);
+  assert.throws(()=>skills.agentPrompt("example",plan,"unassigned"),/not assigned/);
+});
+
+test("one instruction locally drafts a plan without consulting a provider",async()=>{
+  const fake=fakeChrome();
+  const supervisor=new context.TheOrgTaskManager(fake.api);
+  const created=await supervisor.createOrder("demo",
+    "Fix backend software tests and prepare a reviewed code change.");
+  const order=(await supervisor.orders())[created.taskId];
+  assert.equal(order.phase,"plan_review_required");
+  assert.equal(order.plan.source,"local_deterministic_sop_not_ai");
+  assert.equal(order.plan.reviewed,false);
+  assert.ok(order.plan.tasks.some(t=>t.id==="developer"));
+  assert.equal(fake.tabs.size,0);
+  await assert.rejects(
+    ()=>supervisor.openAgentTab(created.taskId,"developer","chatgpt"),
+    /reviewed Supervisor plan/);
+  await supervisor.approvePlan(created.taskId);
+  const assigned=await supervisor.openAgentTab(created.taskId,"developer","chatgpt");
+  assert.equal(assigned.groupId,37);
+  const prompt=await supervisor.agentPrompt(created.taskId,"developer");
+  assert.match(prompt,/backend software tests/);
+  assert.match(prompt,/Tests and build results/i);
+  assert.match(prompt,/No secrets, production writes/i);
+});
+
+test("risk flag never authorizes external writing or fabricated AI access",()=>{
+  const plan=context.TheOrgSkills.route(
+    "Send email to customers and deploy the updated website to production.");
+  assert.equal(plan.riskTier,"owner_review_required");
+  assert.equal(plan.reviewed,false);
+  assert.equal(plan.providerConnected,false);
+  assert.equal(plan.approvalRequired,true);
+  assert.match(plan.notes.join(" "),/external|permission/i);
+  const defaultPlan=context.TheOrgSkills.route(
+    "Organize my weekly project priorities with clear milestone owners.");
+  assert.equal(defaultPlan.source,"local_deterministic_sop_not_ai");
+  assert.ok(defaultPlan.tasks.some(t=>t.id==="planner"));
+  assert.throws(()=>context.TheOrgSkills.route(""),/Instruction/);
 });
