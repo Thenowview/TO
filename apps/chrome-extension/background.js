@@ -22,6 +22,12 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "approve_plan": return {ok:true,...await manager.approvePlan(message.taskId)};
       case "create_order": return {ok:true,...await manager.createOrder(message.companyId,message.instruction)};
       case "open_agent_tab": return {ok:true,...await manager.openAgentTab(message.taskId,message.agentId,message.providerId)};
+      case "import_artifact": return {ok:true,artifact:await manager.importArtifact(
+        message.taskId,message.agentId,message.fileName,message.dataBase64,
+        message.provider,message.sourceReference)};
+      case "list_artifacts": return {ok:true,artifacts:await manager.listArtifacts(message.taskId)};
+      case "verify_artifact": return {ok:true,artifact:await manager.verifyArtifact(message.taskId,message.artifactId)};
+      case "read_artifact": return {ok:true,content:await manager.readArtifact(message.taskId,message.artifactId)};
       case "handoff": return {ok:true,...await manager.handoffAndClose(message.taskId,message.agentId,message.summary,message.outcome)};
       case "review": return {ok:true,...await manager.supervisorReview(message.taskId)};
       case "save_supervisor_plan": return {ok:true,...await manager.saveSupervisorPlan(message.taskId,message.response)};
