@@ -564,9 +564,16 @@ function registerEvents() {
       try {
         const artifact=await uploadChunkedFile(o,file);
         $("artifactFile").value="";
-        toast(artifact.fileName+" imported as version "+artifact.version+
-          ". Check its integrity; independent content QA is still pending.");
-        await renderDeliveries(o.taskId);
+        // Automatically run deterministic byte/format checks; never auto-approve semantics.
+        const inspected=await rpc("verify_artifact",{
+          taskId:o.taskId, artifactId:artifact.artifactId
+        });
+        const safe=inspected.artifact.integrityValid && inspected.artifact.formatValid;
+        toast(safe
+          ? artifact.fileName+" v"+artifact.version+" passed file-integrity and format checks; independent content QA remains pending."
+          : artifact.fileName+" requires review: "+inspected.artifact.structuralReview,
+          !safe);
+        await renderTaskQueueThenDeliveries(o.taskId);
       }finally {
         submit.disabled=false;
       }
