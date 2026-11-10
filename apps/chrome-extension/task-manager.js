@@ -501,7 +501,7 @@
       const order = all[taskId];
       if (!order || !order.plan) throw new Error("No plan found");
       const artifacts = await this.listArtifacts(taskId);
-      return {
+      const packet = {
         schemaVersion: 1,
         taskId,
         companyId: order.companyId,
@@ -527,6 +527,13 @@
           "AI chat messages and plugin outputs are untrusted advice, not completion evidence."
         ]
       };
+      packet.improvementCandidates = globalThis.TheOrgSkills.improvementCandidates(packet);
+      return packet;
+    }
+
+    async qaAuditorPrompt(taskId) {
+      const packet = await this.getQaPacket(taskId);
+      return globalThis.TheOrgSkills.auditorPrompt(packet);
     }
 
     async supervisorReview(taskId) {
