@@ -13,11 +13,22 @@
   const TASK_ID = /^[a-f0-9]{32}$/;
   const AGENT = /^[a-z][a-z0-9_-]{0,39}$/;
   const PROVIDERS = Object.freeze({
-    chatgpt: { title: "ChatGPT", url: "https://chatgpt.com/" },
-    claude: { title: "Claude", url: "https://claude.ai/" },
-    deepseek: { title: "DeepSeek", url: "https://chat.deepseek.com/" },
-    qwen: { title: "Qwen", url: "https://chat.qwen.ai/" },
-    cloudflare_ai: { title: "Cloudflare AI Playground", url: "https://playground.ai.cloudflare.com/" }
+    chatgpt: { title: "ChatGPT", url: "https://chatgpt.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    claude: { title: "Claude", url: "https://claude.ai/", kind: "ai-chat", access: "manual-web-handoff" },
+    gemini: { title: "Google Gemini", url: "https://gemini.google.com/app", kind: "ai-chat", access: "manual-web-handoff" },
+    copilot: { title: "Microsoft Copilot", url: "https://copilot.microsoft.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    perplexity: { title: "Perplexity", url: "https://www.perplexity.ai/", kind: "ai-chat", access: "manual-web-handoff" },
+    grok: { title: "Grok", url: "https://grok.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    deepseek: { title: "DeepSeek", url: "https://chat.deepseek.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    qwen: { title: "Qwen", url: "https://chat.qwen.ai/", kind: "ai-chat", access: "manual-web-handoff" },
+    kimi: { title: "Kimi", url: "https://www.kimi.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    zai: { title: "Z.ai", url: "https://chat.z.ai/", kind: "ai-chat", access: "manual-web-handoff" },
+    mistral: { title: "Le Chat", url: "https://chat.mistral.ai/", kind: "ai-chat", access: "manual-web-handoff" },
+    poe: { title: "Poe", url: "https://poe.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    huggingchat: { title: "HuggingChat", url: "https://huggingface.co/chat/", kind: "ai-chat", access: "manual-web-handoff" },
+    doubao: { title: "Doubao", url: "https://www.doubao.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    yuanbao: { title: "Tencent Yuanbao", url: "https://yuanbao.tencent.com/", kind: "ai-chat", access: "manual-web-handoff" },
+    cloudflare_ai: { title: "Cloudflare Workers AI", url: "https://dash.cloudflare.com/", kind: "developer-platform", access: "manual-dashboard" }
   });
 
   class TaskManager {
@@ -108,6 +119,38 @@
       })).sort((a, b) => b.createdUtc.localeCompare(a.createdUtc));
     }
 
+    async saveSupervisorPlan(taskId, response) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid work order ID");
+      const plan = globalThis.TheOrgPlanner.interpret(response);
+      return this.serialize(async () => {
+        const all = await this.orders();
+        const order = all[taskId];
+        if (!order) throw new Error("Unknown work order");
+        const live = (await this.owned())[taskId];
+        if (live && live.tabs && live.tabs.length) {
+          throw new Error("Close current agent tabs before changing the plan");
+        }
+        order.plan = plan;
+        order.agentReports = {};
+        order.providerTabs = {};
+        order.phase = "plan_review_required";
+        order.review = {
+          verdict: "pending",
+          reason: "Untrusted AI-suggested tasks need owner review before execution"
+        };
+        await this.saveOrders(all);
+        return {taskId, plan, status: order.phase};
+      });
+    }
+
+    async agentPrompt(taskId, agentId) {
+      if (!TASK_ID.test(taskId) || !AGENT.test(agentId)) throw new Error("Invalid task or agent ID");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order || !order.plan) throw new Error("Save a Supervisor plan first");
+      return globalThis.TheOrgPlanner.agentPrompt(order.title, order.plan, agentId);
+    }
+
     async openAgentTab(taskId, agentId, providerId) {
       if (!TASK_ID.test(taskId) || !AGENT.test(agentId)) throw new Error("Invalid task or agent ID");
       const provider = PROVIDERS[providerId];
@@ -116,6 +159,8 @@
         const all = await this.orders();
         const order = all[taskId];
         if (!order) throw new Error("Work order not found");
+        if (!order.plan || !order.plan.tasks.some(task => task.id === agentId))
+          throw new Error("Supervisor must assign a specialist task before opening a provider tab");
         if (order.phase === "archived") throw new Error("Archived task cannot open tabs");
 
         const session = await this.owned();
@@ -190,6 +235,8 @@
         const all = await this.orders();
         const order = all[taskId];
         if (!order) throw new Error("Work order not found");
+        if (!order.plan || !order.plan.tasks.some(t => t.id === agentId))
+          throw new Error("Agent has no approved assignment");
         const reports = order.agentReports || {};
         reports[agentId] = {
           outcome,
@@ -198,6 +245,8 @@
           verification: "unverified_agent_claim"
         };
         order.agentReports = reports;
+        const assigned = order.plan.tasks.find(t => t.id === agentId);
+        assigned.status = outcome;
         order.phase = "awaiting_supervisor_review";
         order.review = {
           verdict: "pending",
@@ -276,14 +325,21 @@
       const artifacts = (backend.order || {}).artifacts || [];
       const checksumsRecorded = artifacts.length > 0 &&
         artifacts.every(item => /^[A-Fa-f0-9]{64}$/.test(item.sha256 || ""));
-      const hasClaim = reports.some(item => item.outcome === "submitted");
-      const verdict = !hasClaim ? "awaiting_agent_handoff" :
+      const planned = order.plan ? order.plan.tasks : [];
+      const everyAgentReported = planned.length > 0 &&
+        planned.every(t => order.agentReports && order.agentReports[t.id]);
+      const allSubmitted = everyAgentReported &&
+        planned.every(t => order.agentReports[t.id].outcome === "submitted");
+      const verdict = !everyAgentReported ? "awaiting_agent_handoff" :
+        !allSubmitted ? "agent_blocked_or_needs_help" :
         checksumsRecorded ? "pending_independent_verification" : "blocked";
       const reason = verdict === "pending_independent_verification"
         ? "Artifacts have recorded hashes, but no independent semantic or provider verification exists."
         : verdict === "awaiting_agent_handoff"
-          ? "No agent has handed off a completed assignment."
-          : "Artifact manifest was missing or invalid.";
+          ? "One or more specialist tasks have not yet submitted a report."
+          : verdict === "agent_blocked_or_needs_help"
+            ? "At least one specialist reported a blocker or requested assistance."
+            : "Artifact manifest was missing or invalid.";
 
       await this.serialize(async () => {
         const latest = await this.orders();
