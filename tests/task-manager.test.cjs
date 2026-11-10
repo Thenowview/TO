@@ -239,3 +239,29 @@ test("risk flag never authorizes external writing or fabricated AI access",()=>{
   assert.ok(defaultPlan.tasks.some(t=>t.id==="planner"));
   assert.throws(()=>context.TheOrgSkills.route(""),/Instruction/);
 });
+
+
+test("failed QA findings generate review-only training proposals",()=>{
+  const skills=context.TheOrgSkills;
+  const packet={
+    taskId:"a".repeat(32), instruction:"Prepare a tested software change.",
+    tasks:[{agentId:"developer",role:"developer",objective:"Deliver tested code",
+      acceptanceCriteria:["Verified regression tests passed"],
+      findings:{0:{verdict:"fail",evidence:"The test evidence was not supplied in the handoff"}},
+      handoff:{outcome:"submitted",summary:"Code draft prepared; QA evidence incomplete."}}],
+    artifacts:[{artifactId:"c".repeat(32),filename:"patch.txt",sha256:"A".repeat(64)}]
+  };
+  const candidates=skills.improvementCandidates(packet);
+  assert.equal(candidates.length,1);
+  assert.equal(candidates[0].profileId,"developer");
+  assert.equal(candidates[0].status,"proposed_only_requires_source_review_and_tests");
+  assert.equal(candidates[0].playbookVersion,skills.version);
+  assert.match(candidates[0].proposedAdjustment,/Review whether/);
+  const reviewPrompt=skills.auditorPrompt(packet);
+  assert.match(reviewPrompt,/do not claim to have opened/i);
+  assert.match(reviewPrompt,/UNKNOWN/);
+  assert.match(reviewPrompt,/Verified regression tests passed/);
+  assert.match(reviewPrompt,/metadata and reported findings; not actual file contents/i);
+  packet.tasks[0].findings[0].verdict="pass";
+  assert.equal(skills.improvementCandidates(packet).length,0);
+});
