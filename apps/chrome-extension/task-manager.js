@@ -279,6 +279,57 @@
       return result.artifact;
     }
 
+    async beginArtifactUpload(taskId, agentId, fileName, totalBytes, sha256, provider, sourceReference) {
+      if (!TASK_ID.test(taskId) || !AGENT.test(agentId) ||
+          !Number.isSafeInteger(totalBytes) || totalBytes < 1 || totalBytes > 32*1024*1024 ||
+          !/^[a-fA-F0-9]{64}$/.test(sha256))
+        throw new Error("Invalid work order, file size or checksum");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order || !order.plan || !order.plan.reviewed ||
+          !order.plan.tasks.some(t => t.id === agentId))
+        throw new Error("File imports require an approved specialist assignment");
+      const result = await this.native({
+        command:"begin_artifact_upload",
+        companyId:order.companyId, orderId:taskId, agentId, fileName,
+        totalBytes, sha256, sourceProvider:String(provider||"manual_import").slice(0,60),
+        sourceReference:String(sourceReference||"").slice(0,500)
+      });
+      return result.transfer;
+    }
+
+    async artifactTransfer(taskId, command, uploadId, accessToken, extra = {}) {
+      if (!TASK_ID.test(taskId) || !TASK_ID.test(uploadId) ||
+          !/^[A-F0-9]{64}$/.test(accessToken))
+        throw new Error("Invalid artifact transfer state");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order) throw new Error("Unknown work order");
+      if (!["append_artifact_chunk","upload_status","complete_artifact_upload",
+            "cancel_artifact_upload"].includes(command))
+        throw new Error("Unsupported file transfer operation");
+      const result = await this.native({
+        command,companyId:order.companyId,orderId:taskId,
+        uploadId,accessToken,...extra
+      });
+      return result.result;
+    }
+
+    async readArtifactChunk(taskId, artifactId, offset, chunkBytes = 65536) {
+      if (!TASK_ID.test(taskId) || !TASK_ID.test(artifactId) ||
+          !Number.isSafeInteger(offset) || offset < 0 ||
+          !Number.isSafeInteger(chunkBytes) || chunkBytes < 1 || chunkBytes > 131072)
+        throw new Error("Invalid artifact read range");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order) throw new Error("Unknown work order");
+      const result = await this.native({
+        command:"read_artifact_chunk",companyId:order.companyId,
+        orderId:taskId,artifactId,offset,chunkBytes
+      });
+      return result.result;
+    }
+
     async listArtifacts(taskId) {
       if (!TASK_ID.test(taskId)) throw new Error("Invalid work order");
       const all = await this.orders();
