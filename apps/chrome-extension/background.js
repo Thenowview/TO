@@ -25,6 +25,26 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "import_artifact": return {ok:true,artifact:await manager.importArtifact(
         message.taskId,message.agentId,message.fileName,message.dataBase64,
         message.provider,message.sourceReference)};
+      case "begin_artifact_upload":
+        return {ok:true,transfer:await manager.beginArtifactUpload(
+          message.taskId,message.agentId,message.fileName,message.totalBytes,
+          message.sha256,message.provider,message.sourceReference)};
+      case "append_artifact_chunk":
+        return {ok:true,result:await manager.artifactTransfer(
+          message.taskId,"append_artifact_chunk",message.uploadId,message.accessToken,
+          {index:message.index,dataBase64:message.dataBase64})};
+      case "upload_status":
+        return {ok:true,result:await manager.artifactTransfer(
+          message.taskId,"upload_status",message.uploadId,message.accessToken)};
+      case "complete_artifact_upload":
+        return {ok:true,result:await manager.artifactTransfer(
+          message.taskId,"complete_artifact_upload",message.uploadId,message.accessToken)};
+      case "cancel_artifact_upload":
+        return {ok:true,result:await manager.artifactTransfer(
+          message.taskId,"cancel_artifact_upload",message.uploadId,message.accessToken)};
+      case "read_artifact_chunk":
+        return {ok:true,result:await manager.readArtifactChunk(
+          message.taskId,message.artifactId,message.offset,message.chunkBytes)};
       case "list_artifacts": return {ok:true,artifacts:await manager.listArtifacts(message.taskId)};
       case "verify_artifact": return {ok:true,artifact:await manager.verifyArtifact(message.taskId,message.artifactId)};
       case "read_artifact": return {ok:true,content:await manager.readArtifact(message.taskId,message.artifactId)};
