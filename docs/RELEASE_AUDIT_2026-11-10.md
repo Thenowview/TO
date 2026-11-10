@@ -71,3 +71,12 @@ This section supersedes the earlier snapshot only for the listed development-sou
 - See [production acceptance and deployment handoff](PRODUCTION_READINESS_HANDOFF_2026-11-10.md) for the target-specific steps and unresolved acceptance evidence.
 
 **Decision unchanged: NO-GO for production deployment.** There is still no verified production destination, signed distributor, real Windows/Chrome acceptance, provider integration or complete independent security acceptance. No production deployment is represented as complete.
+
+
+## Artifact review improvement — untrusted text preview (2026-11-10)
+
+The current branch adds a read-only, integrity-checked preview for **small (up to 32 KiB) TXT, Markdown, CSV and JSON files**, displayed through DOM `textContent`, **not** HTML or rendered Markdown. The preview refuses unsupported formats such as HTML, malformed or modified bytes, and cross-company requests. It caps the visible text to 8,000 characters and labels it untrusted. Automated bridge and UI tests cover the preview security contract.
+
+**This does not close the production malware scanning/safe-preview gate.** No antivirus classification, independent source safety analysis, PDF/Office active content sandboxing, or user-PC/browser acceptance has been completed. Keep `malware_scanning_and_safe_previews` marked `not_implemented` until the full gate is independently verified. No production deployment is authorized by these tests.
+
+Production destination, code signing, live authorized AI-provider operation, source archive reconciliation, business QA and end-user acceptance remain blocked or not verified. **Production decision: NO_GO**.
