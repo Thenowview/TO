@@ -93,6 +93,7 @@ internal sealed class Controller
     private static readonly Regex SafeOrder = new("^[a-f0-9]{32}$", RegexOptions.Compiled);
     private readonly string _root;
     private readonly ArtifactStore _artifactStore;
+    private readonly ArtifactTransfers _transfers;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -105,6 +106,7 @@ internal sealed class Controller
         _root = Path.GetFullPath(root);
         Directory.CreateDirectory(_root);
         _artifactStore = new ArtifactStore(_root);
+        _transfers = new ArtifactTransfers(_root, _artifactStore);
     }
 
     internal object Execute(JsonElement request)
@@ -127,7 +129,9 @@ internal sealed class Controller
                 {
                     ok = true,
                     commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
-                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact" },
+                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact",
+                        "begin_artifact_upload", "append_artifact_chunk", "upload_status",
+                        "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk" },
                     maxArtifactImportBytes = 256000,
                     importedArtifactsRequireContentQa = true,
                     liveAiProvider = false,
@@ -141,6 +145,12 @@ internal sealed class Controller
                 "list_artifacts" => ListArtifacts(request),
                 "verify_artifact" => VerifyArtifact(request),
                 "read_artifact" => ReadArtifact(request),
+                "begin_artifact_upload" => BeginArtifactUpload(request),
+                "append_artifact_chunk" => AppendArtifactChunk(request),
+                "upload_status" => UploadStatus(request),
+                "complete_artifact_upload" => CompleteArtifactUpload(request),
+                "cancel_artifact_upload" => CancelArtifactUpload(request),
+                "read_artifact_chunk" => ReadArtifactChunk(request),
                 _ => Fail("unsupported_command")
             };
         }
@@ -183,6 +193,71 @@ internal sealed class Controller
         var content = _artifactStore.Read(companyId, orderId, Text(request, "artifactId"));
         return new { ok = true, content };
     }
+
+    private object BeginArtifactUpload(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        long declared = Number(request, "totalBytes");
+        var transfer = _transfers.Begin(companyId, orderId,
+            Text(request, "agentId"), Text(request, "fileName"), declared,
+            Text(request, "sha256"), Text(request, "sourceProvider"),
+            Text(request, "sourceReference"));
+        return new { ok = true, transfer };
+    }
+
+    private object AppendArtifactChunk(JsonElement request)
+    {
+        var result = _transfers.Append(
+            RequireCompany(Text(request, "companyId")),
+            RequireOrder(Text(request, "orderId")),
+            Text(request, "uploadId"), Text(request, "accessToken"),
+            checked((int)Number(request, "index")), Text(request, "dataBase64"));
+        return new { ok = true, result };
+    }
+
+    private object UploadStatus(JsonElement request)
+    {
+        var result = _transfers.Status(
+            RequireCompany(Text(request, "companyId")),
+            RequireOrder(Text(request, "orderId")),
+            Text(request, "uploadId"), Text(request, "accessToken"));
+        return new { ok = true, result };
+    }
+
+    private object CompleteArtifactUpload(JsonElement request)
+    {
+        var result = _transfers.Complete(
+            RequireCompany(Text(request, "companyId")),
+            RequireOrder(Text(request, "orderId")),
+            Text(request, "uploadId"), Text(request, "accessToken"));
+        return new { ok = true, result };
+    }
+
+    private object CancelArtifactUpload(JsonElement request)
+    {
+        var result = _transfers.Cancel(
+            RequireCompany(Text(request, "companyId")),
+            RequireOrder(Text(request, "orderId")),
+            Text(request, "uploadId"), Text(request, "accessToken"));
+        return new { ok = true, result };
+    }
+
+    private object ReadArtifactChunk(JsonElement request)
+    {
+        var result = _artifactStore.ReadChunk(
+            RequireCompany(Text(request, "companyId")),
+            RequireOrder(Text(request, "orderId")),
+            Text(request, "artifactId"), Number(request, "offset"),
+            checked((int)Number(request, "chunkBytes")));
+        return new { ok = true, result };
+    }
+
+    private static long Number(JsonElement request, string name) =>
+        request.TryGetProperty(name, out var value) &&
+        value.ValueKind == JsonValueKind.Number &&
+        value.TryGetInt64(out long result) ? result :
+        throw new ArgumentException("Invalid numeric argument");
 
     private object Submit(JsonElement request)
     {
