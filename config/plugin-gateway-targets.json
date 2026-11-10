@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "status": "design-only:not-connected-or-invocable",
+  "note": "This is a capability registry, not a list of plugins installed in ChatGPT or connections active in TheOrg. ChatGPT plugin tokens and sessions are never reused.",
+  "connectorStatuses": [
+    "not_installed",
+    "installed_not_connected",
+    "connected",
+    "permission_limited",
+    "unavailable",
+    "disabled"
+  ],
+  "adapterTypes": [
+    "first_party_api",
+    "oauth_rest",
+    "mcp",
+    "local_tool",
+    "browser_handoff"
+  ],
+  "defaultAuthorization": "deny",
+  "minimumConnectorMetadata": [
+    "id",
+    "provider",
+    "adapterType",
+    "status",
+    "capabilities",
+    "requiredScopes",
+    "riskByAction",
+    "accountConnectionId",
+    "lastPermissionCheckUtc"
+  ],
+  "registeredTargets": [
+    {
+      "id": "github",
+      "provider": "GitHub",
+      "adapterType": "oauth_rest",
+      "status": "not_installed",
+      "capabilities": [
+        "github.read",
+        "github.propose_change"
+      ],
+      "requiredScopes": [
+        "metadata:read",
+        "contents:read"
+      ],
+      "riskByAction": {
+        "read": "low",
+        "create_branch": "medium",
+        "create_commit": "high",
+        "merge": "high"
+      }
+    },
+    {
+      "id": "google_drive",
+      "provider": "Google Drive",
+      "adapterType": "oauth_rest",
+      "status": "not_installed",
+      "capabilities": [
+        "file.read",
+        "file.draft"
+      ],
+      "requiredScopes": [
+        "drive.file"
+      ],
+      "riskByAction": {
+        "read": "low",
+        "upload": "medium",
+        "share": "high",
+        "delete": "high"
+      }
+    },
+    {
+      "id": "gmail",
+      "provider": "Gmail",
+      "adapterType": "oauth_rest",
+      "status": "not_installed",
+      "capabilities": [
+        "email.read",
+        "email.draft"
+      ],
+      "requiredScopes": [
+        "gmail.readonly"
+      ],
+      "riskByAction": {
+        "read": "low",
+        "draft": "medium",
+        "send": "high",
+        "delete": "high"
+      }
+    },
+    {
+      "id": "google_calendar",
+      "provider": "Google Calendar",
+      "adapterType": "oauth_rest",
+      "status": "not_installed",
+      "capabilities": [
+        "calendar.read",
+        "calendar.draft"
+      ],
+      "requiredScopes": [
+        "calendar.events.readonly"
+      ],
+      "riskByAction": {
+        "read": "low",
+        "create_event": "high",
+        "invite": "high"
+      }
+    },
+    {
+      "id": "microsoft_graph",
+      "provider": "Microsoft Graph",
+      "adapterType": "oauth_rest",
+      "status": "not_installed",
+      "capabilities": [
+        "email.read",
+        "email.draft",
+        "calendar.read",
+        "file.read"
+      ],
+      "requiredScopes": [],
+      "riskByAction": {
+        "read": "low",
+        "modify": "high",
+        "send": "high"
+      }
+    },
+    {
+      "id": "cloudflare",
+      "provider": "Cloudflare",
+      "adapterType": "first_party_api",
+      "status": "not_installed",
+      "capabilities": [
+        "cloud.read",
+        "integration.inspect"
+      ],
+      "requiredScopes": [],
+      "riskByAction": {
+        "read": "low",
+        "dns_change": "high",
+        "deploy": "high",
+        "billing": "high"
+      }
+    },
+    {
+      "id": "mcp_external",
+      "provider": "Approved MCP tool server",
+      "adapterType": "mcp",
+      "status": "not_installed",
+      "capabilities": [
+        "plugin.discover"
+      ],
+      "requiredScopes": [],
+      "riskByAction": {
+        "list_tools": "low",
+        "tool_execute": "tool_specific"
+      }
+    },
+    {
+      "id": "local_files",
+      "provider": "TheOrg local workspace",
+      "adapterType": "local_tool",
+      "status": "not_installed",
+      "capabilities": [
+        "file.read",
+        "file.draft",
+        "artifact.verify"
+      ],
+      "requiredScopes": [],
+      "riskByAction": {
+        "read": "low",
+        "write_workspace": "medium",
+        "overwrite": "high"
+      }
+    },
+    {
+      "id": "chatgpt_handoff",
+      "provider": "ChatGPT Website",
+      "adapterType": "browser_handoff",
+      "status": "not_installed",
+      "capabilities": [
+        "provider.consult"
+      ],
+      "requiredScopes": [],
+      "riskByAction": {
+        "open_site": "low",
+        "paste_private_data": "high",
+        "third_party_action": "approval_required"
+      }
+    }
+  ]
+}
