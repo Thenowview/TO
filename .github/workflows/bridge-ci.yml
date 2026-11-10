@@ -33,6 +33,19 @@ jobs:
         run: |
           node --test tests/release-gates.test.cjs
           node tools/check-release-readiness.cjs
+      - name: Generate auditable release preflight without changing release gates
+        run: |
+          node --test tests/release-audit.test.cjs
+          node tools/generate-release-audit.cjs
+      - name: Upload production preflight evidence (not a deployment)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-Release-Preflight-NO-GO
+          path: |
+            out/release-audit/release-preflight.json
+            out/release-audit/release-preflight.md
+          if-no-files-found: error
+          retention-days: 30
       - name: Validate extension and profile JSON
         run: |
           node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json','config/release-gates.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
