@@ -96,6 +96,7 @@
           companyId,
           createdUtc: order.createdUtc || new Date().toISOString(),
           title: instruction.trim().slice(0, 90),
+          instruction: instruction.trim(),
           agentReports: {},
           providerTabs: {},
           review: {
