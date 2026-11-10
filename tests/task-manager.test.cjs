@@ -86,6 +86,8 @@ function fakeChrome(options = {}) {
             plan:{summary:"Test",steps:[{title:"Open URL",tool:"browser_open",
               input:options.unsafeNavigation?"https://malicious.invalid/":"https://example.com/",
               expectedOutput:"Browser tab requested"}]}};
+        case "agent_run_safe_batch":
+          return {ok:true,status:"completed_pending_review",executedSteps:2,requiresSeparateAction:false};
         case "agent_run_next":
           return {ok:true,status:"awaiting_browser_navigation",jobId:request.jobId,
             token:"b".repeat(32),url:"https://example.com/"};
@@ -530,6 +532,17 @@ test("local agent preview uses scoped order data and does not silently approve p
   assert.ok(!fake.nativeRequests.some(req=>req.command==="agent_approve"));
   const list=await man.agentList(order.taskId);
   assert.equal(list.jobs.length,1);
+});
+
+test("approved local batch command is scoped and never opens a browser tab",async()=>{
+  const fake=fakeChrome();
+  const man=new context.TheOrgTaskManager(fake.api);
+  const order=await man.createOrder("demo",validInstruction);
+  const result=await man.agentCommand(order.taskId,"f".repeat(32),"agent_run_safe_batch");
+  assert.equal(result.executedSteps,2);
+  assert.equal(result.status,"completed_pending_review");
+  assert.equal(fake.tabs.size,0);
+  assert.ok(fake.nativeRequests.some(req=>req.command==="agent_run_safe_batch"&&req.companyId==="demo"));
 });
 
 test("reviewed browser tool opens a tab only for exact approved HTTPS site",async()=>{
