@@ -16,7 +16,7 @@ internal sealed class LocalAgentEngine
     private static readonly Regex Company = new("^[a-z0-9_-]{1,40}$",RegexOptions.Compiled);
     private static readonly Regex Id = new("^[a-f0-9]{32}$",RegexOptions.Compiled);
     private static readonly Regex ModelName = new("^[a-zA-Z0-9][a-zA-Z0-9_./:-]{0,79}$",RegexOptions.Compiled);
-    private static readonly Regex FileName = new("^[a-zA-Z0-9_-]{1,70}\.md$",RegexOptions.Compiled);
+    private static readonly Regex FileName = new(@"^[a-zA-Z0-9_-]{1,70}\.md$",RegexOptions.Compiled);
     private readonly string _root;
     private readonly string _dbPath;
     private static readonly JsonSerializerOptions Options = new()
