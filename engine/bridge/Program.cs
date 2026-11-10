@@ -491,6 +491,40 @@ internal static class SelfTest
             Check(verified.GetProperty("artifact").GetProperty("intakeStatus").GetString() ==
                 "structure_verified_content_qa_pending", "semantic QA remains pending");
 
+            // Actual safe preview must be plain text, bounded, unapproved and company-scoped.
+            var preview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id, artifactId
+            });
+            Check(preview.GetProperty("ok").GetBoolean(), "text preview response");
+            var previewData = preview.GetProperty("preview");
+            Check(previewData.GetProperty("text").GetString() ==
+                Encoding.UTF8.GetString(sample), "preview content is plain text");
+            Check(previewData.GetProperty("renderMode").GetString() == "textContent_only" &&
+                !previewData.GetProperty("contentApproved").GetBoolean(),
+                "preview does not confer content approval");
+            var foreignPreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "another", orderId = id, artifactId
+            });
+            Check(!foreignPreview.GetProperty("ok").GetBoolean(),
+                "cross-company preview rejected");
+
+            var disallowed = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "untrusted.html",
+                dataBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+                    "<script>alert(1)</script>")),
+                sourceProvider = "manual_import", sourceReference = "test"
+            });
+            Check(disallowed.GetProperty("ok").GetBoolean(), "HTML intake for QA");
+            string htmlId = disallowed.GetProperty("artifact")
+                .GetProperty("artifactId").GetString()!;
+            var refusedHtml = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id,
+                artifactId = htmlId
+            });
+            Check(!refusedHtml.GetProperty("ok").GetBoolean(),
+                "browser-executable HTML never previewed");
+
             var downloaded = Call(c, new {
                 command = "read_artifact", companyId = "demo", orderId = id, artifactId
             });
@@ -533,6 +567,12 @@ internal static class SelfTest
             Check(compromised.GetProperty("ok").GetBoolean() &&
                 !compromised.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
                 "tampered content detected");
+            var tamperedPreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id, artifactId
+            });
+            Check(!tamperedPreview.GetProperty("ok").GetBoolean(),
+                "tampered content rejected from text preview");
+
 
 
             // Multi-message transfer: explicitly test a file above the legacy 250 KiB cap.
