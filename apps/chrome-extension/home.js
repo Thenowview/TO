@@ -429,6 +429,12 @@ function registerEvents() {
     toast(r.verdict.replaceAll("_"," ")+": "+r.reason);
     await refreshOrders(o.taskId);
   }));
+  $("copyAuditorPrompt").addEventListener("click",()=>action(async()=>{
+    const order=selectedOrder();
+    if(!order)throw new Error("Select a work order to prepare independent QA instructions");
+    const result=await rpc("get_qa_prompt",{taskId:order.taskId});
+    await copy(result.prompt,"Quality Auditor SOP");
+  }));
   $("exportAuditPacket").addEventListener("click",()=>action(async()=>{
     const o=selectedOrder();
     if(!o)throw new Error("Select a work order before exporting");
