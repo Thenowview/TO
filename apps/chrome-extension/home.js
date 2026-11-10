@@ -118,6 +118,15 @@ async function showSelected() {
   $("orderPhase").textContent = (order.phase || "pending").replaceAll("_"," ");
   $("planResponse").value = "";
   const approved = Boolean(order.plan && order.plan.reviewed);
+  const plan = order.plan;
+  $("planSummary").textContent = plan
+    ? (plan.source === "local_deterministic_sop_not_ai"
+      ? "Local SOP plan • "+(plan.skillVersion || "version not recorded")+" • "+
+        plan.tasks.length+" specialist(s) • Risk: "+(plan.riskTier || "review required")+
+        ". No AI provider has been consulted or task performed. Review and approve the assignment list."
+      : "AI-advised planning proposal • "+plan.tasks.length+
+        " assignment(s). Verify every objective before approval.")
+    : "No task plan is available.";
   $("approvePlan").disabled = !order.plan || approved;
   $("interpretPlan").disabled = approved;
   $("agentsList").replaceChildren();
@@ -128,7 +137,8 @@ async function showSelected() {
     const section = node("article", undefined, "agent-card");
     const head = node("div", undefined, "agent-head");
     append(head, node("b", agent.role + " · " + agent.id),
-      node("small", agent.status || "planned"));
+      node("small", (agent.status || "planned") +
+        (agent.playbookVersion ? " · SOP "+agent.playbookVersion : "")));
     const about = node("p", agent.objective);
     const actions = node("div", undefined, "action-row");
     const open = node("button", "Open " + (app.providers[agent.provider]?.title || agent.provider) + " chat ↗", "secondary");
@@ -373,7 +383,7 @@ function registerEvents() {
     action(async()=>{
       const r=await rpc("create_order",{companyId:$("companyId").value.trim(),
         instruction:$("ownerInstruction").value.trim()});
-      toast("Order created. Open an AI adviser to prepare the task plan.");
+      toast("Order created. The Supervisor prepared a local specialist plan automatically. Review it and approve dispatch.");
       $("ownerInstruction").value="";
       await refreshOrders(r.taskId);
       $("work").scrollIntoView({behavior:"smooth"});
