@@ -193,20 +193,39 @@ async function renderDeliveries(taskId) {
         await renderDeliveries(taskId);
       }));
       download.addEventListener("click",()=>action(async()=>{
-        const r=await rpc("read_artifact",{taskId,artifactId:artifact.artifactId});
-        const content=r.content;
-        const binary=atob(content.dataBase64);
-        const bytes=new Uint8Array(binary.length);
-        for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-        const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+        const parts=[];
+        let offset=0;
+        let expectedSha="";
+        let expectedTotal=null;
+        while(expectedTotal===null || offset<expectedTotal){
+          const response=await rpc("read_artifact_chunk",{
+            taskId,artifactId:artifact.artifactId,offset,chunkBytes:128*1024});
+          const data=response.result;
+          if(data.offset!==offset ||
+             (expectedTotal!==null && data.totalBytes!==expectedTotal))
+            throw new Error("File transfer returned an inconsistent offset or size");
+          expectedTotal=data.totalBytes;
+          expectedSha=data.sha256;
+          if(expectedTotal>32*1024*1024)throw new Error("File exceeds safe download limit");
+          const bytes=base64ToBytes(data.dataBase64);
+          if(bytes.length===0 && !data.done)throw new Error("Empty file chunk");
+          parts.push(bytes);
+          offset+=bytes.length;
+          if(offset>expectedTotal)throw new Error("File transfer exceeded expected bytes");
+        }
+        const blob=new Blob(parts,{type:"application/octet-stream"});
+        const hash=await sha256Hex(await blob.arrayBuffer());
+        if(hash.toUpperCase()!==String(expectedSha).toUpperCase())
+          throw new Error("File SHA-256 mismatch. Download stopped.");
+        const url=URL.createObjectURL(blob);
         const link=document.createElement("a");
-        link.href=url;link.download=content.artifact.fileName;
+        link.href=url;link.download=artifact.fileName;
         document.body.append(link);link.click();link.remove();
         setTimeout(()=>URL.revokeObjectURL(url),5000);
-        toast("Downloaded local file. Content QA remains pending.");
+        toast("Downloaded locally with SHA-256 checked. Independent content QA remains pending.");
         await renderDeliveries(taskId);
       }));
-      append(actions,verify,download);
+            append(actions,verify,download);
       append(item,details,actions);
       target.append(item);
     }
@@ -234,6 +253,85 @@ function fileToBase64(file) {
     reader.onerror=()=>reject(new Error("Unable to read selected file"));
     reader.readAsDataURL(file);
   });
+}
+
+// Uint8Array chunks are converted without exceeding JavaScript function argument limits.
+function bytesToBase64(bytes) {
+  const fragments=[];
+  for(let i=0;i<bytes.length;i+=8192)
+    fragments.push(String.fromCharCode(...bytes.subarray(i,i+8192)));
+  return btoa(fragments.join(""));
+}
+function base64ToBytes(input) {
+  const binary=atob(input), bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+async function sha256Hex(buffer) {
+  const hash=await crypto.subtle.digest("SHA-256",buffer);
+  return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+}
+
+async function uploadChunkedFile(order,file) {
+  const taskId=order.taskId;
+  const agentId=$("artifactAgent").value;
+  if(!agentId)throw new Error("Select the responsible specialist");
+  const companyId=order.companyId;
+  const sha256=await sha256Hex(await file.arrayBuffer());
+  const key="theorgTransfer:"+companyId+":"+taskId+":"+agentId;
+  let saved=(await chrome.storage.session.get(key))[key];
+  if(saved&&(saved.sha256!==sha256||saved.fileName!==file.name||
+      saved.size!==file.size)){
+    saved=null;
+    await chrome.storage.session.remove(key);
+  }
+  let upload;
+  if(saved){
+    try {
+      const status=await rpc("upload_status",{taskId,
+        uploadId:saved.uploadId,accessToken:saved.accessToken});
+      upload={...saved,nextIndex:status.result.nextIndex,
+        bytesReceived:status.result.bytesReceived};
+    } catch {
+      await chrome.storage.session.remove(key);
+      saved=null;
+    }
+  }
+  if(!upload){
+    const result=await rpc("begin_artifact_upload",{
+      taskId,agentId,fileName:file.name,totalBytes:file.size,sha256,
+      provider:$("artifactProvider").value,
+      sourceReference:$("artifactReference").value
+    });
+    upload={...result.transfer,sha256,fileName:file.name,size:file.size,
+      bytesReceived:0,nextIndex:0};
+    await chrome.storage.session.set({[key]:upload});
+  }
+  try {
+    while(upload.bytesReceived<file.size){
+      const bytes=new Uint8Array(await file.slice(
+        upload.bytesReceived,upload.bytesReceived+128*1024).arrayBuffer());
+      const result=await rpc("append_artifact_chunk",{
+        taskId,uploadId:upload.uploadId,accessToken:upload.accessToken,
+        index:upload.nextIndex,dataBase64:bytesToBase64(bytes)
+      });
+      upload.bytesReceived=result.result.bytesReceived;
+      upload.nextIndex=result.result.nextIndex;
+      await chrome.storage.session.set({[key]:upload});
+      $("uploadProgress").textContent="Uploading "+file.name+": "+
+        Math.floor(100*upload.bytesReceived/file.size)+"% ("+
+        upload.bytesReceived+" / "+file.size+" bytes)";
+    }
+    const done=await rpc("complete_artifact_upload",{
+      taskId,uploadId:upload.uploadId,accessToken:upload.accessToken
+    });
+    await chrome.storage.session.remove(key);
+    $("uploadProgress").textContent="File received and stored; content QA pending.";
+    return done.result.artifact;
+  }catch(error){
+    $("uploadProgress").textContent="Transfer interrupted. Choose the same file to resume within this Chrome session.";
+    throw error;
+  }
 }
 
 function registerEvents() {
@@ -314,17 +412,24 @@ function registerEvents() {
     action(async()=>{
       const o=selectedOrder();
       const file=$("artifactFile").files[0];
-      if(!o || !file)throw new Error("Choose a work order and file");
+      if(!o||!file)throw new Error("Choose a work order and file");
       if(!o.plan?.reviewed)throw new Error("Approve the agent plan before importing files");
-      if(file.size<1 || file.size>250*1024)throw new Error("This prototype supports files up to 250 KiB");
+      if(file.size<1||file.size>32*1024*1024)
+        throw new Error("TheOrg currently supports files up to 32 MiB");
       if(!allowedFileTypes.has((file.name.split(".").pop()||"").toLowerCase()))
         throw new Error("Unsupported file extension");
-      const r=await rpc("import_artifact",{taskId:o.taskId,agentId:$("artifactAgent").value,
-        fileName:file.name,dataBase64:await fileToBase64(file),
-        provider:$("artifactProvider").value,sourceReference:$("artifactReference").value});
-      $("artifactFile").value="";
-      toast(r.artifact.fileName+" imported as version "+r.artifact.version+". SHA-256 and content QA pending.");
-      await renderDeliveries(o.taskId);
+      const form=$("artifactUpload");
+      const submit=form.querySelector('button[type="submit"]');
+      submit.disabled=true;
+      try {
+        const artifact=await uploadChunkedFile(o,file);
+        $("artifactFile").value="";
+        toast(artifact.fileName+" imported as version "+artifact.version+
+          ". Check its integrity; independent content QA is still pending.");
+        await renderDeliveries(o.taskId);
+      }finally {
+        submit.disabled=false;
+      }
     });
   });
 }
