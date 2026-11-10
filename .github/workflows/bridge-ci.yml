@@ -99,6 +99,18 @@ jobs:
             "Release channel: developer-preview-unsigned; NOT production"
           )
           $rows | Set-Content -Path out/installer/SHA256SUMS.txt -Encoding utf8
+      - name: Bundle operator instructions and verify SHA256 integrity
+        shell: pwsh
+        run: |
+          Copy-Item -LiteralPath docs/OPERATE_THEORG_WINDOWS.md -Destination out/installer/START_HERE.md
+          Copy-Item -LiteralPath tools/verify-preview.ps1 -Destination out/installer/VERIFY.ps1
+          $checksums = 'out/installer/SHA256SUMS.txt'
+          @(
+            "$( (Get-FileHash -Path out/installer/START_HERE.md -Algorithm SHA256).Hash.ToLowerInvariant() )  START_HERE.md"
+            "$( (Get-FileHash -Path out/installer/VERIFY.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() )  VERIFY.ps1"
+          ) | Add-Content -LiteralPath $checksums -Encoding utf8
+          & ./out/installer/VERIFY.ps1 -PackageDirectory out/installer
+          if ($LASTEXITCODE -ne 0) { throw 'Operator ZIP integrity verification failed' }
       - name: Upload unsigned Windows developer-preview installer
         uses: actions/upload-artifact@v4
         with:
@@ -106,6 +118,8 @@ jobs:
           path: |
             out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe
             out/installer/SHA256SUMS.txt
+            out/installer/START_HERE.md
+            out/installer/VERIFY.ps1
           if-no-files-found: error
           retention-days: 30
       - name: Upload unsigned Windows bridge candidate
