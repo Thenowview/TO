@@ -104,6 +104,84 @@ internal sealed class ArtifactStore
         return record;
     }
 
+
+    // Persist a completed, verified staged upload without buffering the full file in Native Messaging.
+    internal ArtifactRecord ImportStaged(string companyId, string orderId, string agentId,
+        string fileName, string stagingPath, string provider, string sourceReference,
+        string expectedSha256)
+    {
+        if (!SafeAgent.IsMatch(agentId) ||
+            !SafeFile.IsMatch(fileName) || fileName.Contains("..", StringComparison.Ordinal) ||
+            !AllowedTypes.Contains(Path.GetExtension(fileName)))
+            throw new ArgumentException("Invalid agent or file name");
+        if (provider.Length > 60 || sourceReference.Length > 500 ||
+            provider.Contains('\0') || sourceReference.Contains('\0'))
+            throw new ArgumentException("Invalid source metadata");
+        if (!Regex.IsMatch(expectedSha256, "^[0-9a-fA-F]{64}$"))
+            throw new ArgumentException("Invalid expected SHA-256");
+
+        string folder = Folder(companyId, orderId);
+        var staging = new FileInfo(stagingPath);
+        if (!staging.Exists || staging.Length is < 1 or > 33554432)
+            throw new ArgumentException("Incomplete or oversized staged artifact");
+        string sha;
+        using (var input = File.OpenRead(stagingPath))
+            sha = Convert.ToHexString(SHA256.HashData(input));
+        if (!sha.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Staged file SHA-256 mismatch");
+
+        Directory.CreateDirectory(folder);
+        int version = ReadAll(folder).Where(a => a.AgentId == agentId &&
+                a.FileName.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+            .Select(a => a.Version).DefaultIfEmpty(0).Max() + 1;
+        string id = Guid.NewGuid().ToString("N");
+        string blob = Path.Combine(folder, id + ".blob");
+        File.Move(stagingPath, blob);
+        var record = new ArtifactRecord
+        {
+            ArtifactId = id, CompanyId = companyId, OrderId = orderId, AgentId = agentId,
+            FileName = fileName, Version = version, Bytes = checked((int)staging.Length),
+            Sha256 = sha, CreatedUtc = DateTimeOffset.UtcNow.ToString("O"),
+            SourceProvider = provider, SourceReference = sourceReference,
+            IntakeStatus = "received_unverified", IntegrityValid = false
+        };
+        try
+        {
+            File.WriteAllText(MetadataPath(folder, id),
+                JsonSerializer.Serialize(record, JsonOptions), Encoding.UTF8);
+        }
+        catch
+        {
+            File.Delete(blob);
+            throw;
+        }
+        return record;
+    }
+
+    internal object ReadChunk(string companyId, string orderId, string artifactId,
+        long offset, int chunkSize)
+    {
+        if (chunkSize is < 1 or > 131072 || offset < 0)
+            throw new ArgumentException("Invalid read range");
+        string folder = Folder(companyId, orderId);
+        var record = Load(folder, artifactId, companyId, orderId);
+        string path = Path.Combine(folder, artifactId + ".blob");
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (stream.Length != record.Bytes || offset > stream.Length)
+            throw new ArgumentException("Artifact size does not match metadata");
+        if (offset == 0 && !Verify(companyId, orderId, artifactId).IntegrityValid)
+            throw new ArgumentException("Artifact hash verification failed");
+        stream.Position = offset;
+        byte[] bytes = new byte[Math.Min(chunkSize, checked((int)(stream.Length - offset)))];
+        stream.ReadExactly(bytes);
+        return new {
+            artifactId, fileName = record.FileName, record.Sha256,
+            offset, totalBytes = record.Bytes, dataBase64 = Convert.ToBase64String(bytes),
+            done = (offset + bytes.Length == stream.Length),
+            contentApproved = false
+        };
+    }
+
     internal ArtifactRecord[] List(string companyId, string orderId)
     {
         string folder = Folder(companyId, orderId);
