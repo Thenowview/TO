@@ -714,9 +714,18 @@
       catch (error) {
         return {taskId, verdict:"blocked", reason:"Artifact intake unavailable: " + error.message};
       }
-      const checksumsRecorded = demonstrationArtifacts.length > 0 &&
-        demonstrationArtifacts.every(item => /^[A-Fa-f0-9]{64}$/.test(item.sha256 || ""));
-      const importedPending = importedArtifacts.some(item =>
+      // Demo files are not proof of real work and must not be required for a real order.
+      // Historic versions remain in the library; assess only the latest version per name/agent.
+      const demoMetadataConsistent = demonstrationArtifacts.every(item =>
+        /^[A-Fa-f0-9]{64}$/.test(item.sha256 || ""));
+      const latest = new Map();
+      for (const item of importedArtifacts) {
+        const key = item.agentId + "\\0" + item.fileName;
+        const old = latest.get(key);
+        if (!old || (item.version || 0) > (old.version || 0)) latest.set(key,item);
+      }
+      const activeFiles = [...latest.values()];
+      const importedPending = activeFiles.some(item =>
         item.intakeStatus !== "structure_verified_content_qa_pending" ||
         !item.integrityValid || !item.formatValid);
       const planned = order.plan ? order.plan.tasks : [];
@@ -738,7 +747,7 @@
           reviews[task.id][index].verdict === "pass"));
       const verdict = !everyAgentReported ? "awaiting_agent_handoff" :
         !allSubmitted ? "agent_blocked_or_needs_help" :
-        !checksumsRecorded || importedPending ? "blocked" :
+        !demoMetadataConsistent || importedPending ? "blocked" :
         anyCriterionFailed ? "qa_revision_required" :
         allManualCriteriaPassed ? "manual_qa_recorded_owner_confirmation_pending" :
         "pending_independent_verification";
