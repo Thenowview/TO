@@ -692,6 +692,30 @@ function registerLocalAgentEvents() {
     app.agentJobId=$("agentJobs").value;
     await showAgentJob();
   }));
+  $("agentMemorySave").addEventListener("click",run(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a company work order first");
+    const result=await rpc("agent_memory_put",{
+      taskId:o.taskId,key:$("agentMemoryKey").value.trim(),
+      value:$("agentMemoryValue").value.trim()
+    });
+    if(!result.stored)throw new Error("Memory was not confirmed stored");
+    toast("Company-scoped memory stored locally. It is not a trained model weight.");
+  }));
+  $("agentMemoryLoad").addEventListener("click",run(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a company work order first");
+    const result=await rpc("agent_memory_list",{taskId:o.taskId});
+    $("agentMemoryOutput").hidden=false;
+    $("agentMemoryOutput").textContent=JSON.stringify(result.memories||[],null,2);
+  }));
+  $("agentTools").addEventListener("click",run(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a company work order first");
+    const result=await rpc("agent_tools",{taskId:o.taskId});
+    $("agentMemoryOutput").hidden=false;
+    $("agentMemoryOutput").textContent=JSON.stringify(result,null,2);
+  }));
   for(const [id,command,extras] of [
     ["agentApprove","agent_approve",{approved:true}],
     ["agentRunNext","agent_run_next",{}],
