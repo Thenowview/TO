@@ -128,8 +128,8 @@
         const order = all[taskId];
         if (!order) throw new Error("Unknown work order");
         const live = (await this.owned())[taskId];
-        if (live && live.tabs && live.tabs.length) {
-          throw new Error("Close current agent tabs before changing the plan");
+        if (live && live.tabs && live.tabs.some(tab => tab.agentId !== "supervisor")) {
+          throw new Error("Specialist tabs must be closed before replacing the plan");
         }
         order.plan = plan;
         order.agentReports = {};
