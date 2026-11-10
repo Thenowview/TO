@@ -4,7 +4,7 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const app = { orders: [], activeId: null, providers: {}, handoffAgent: null };
+const app = { orders: [], activeId: null, providers: {}, handoffAgent: null, qaTarget: null };
 const allowedFileTypes = new Set([
   "txt","md","json","csv","py","js","ts","css","html","xml",
   "pdf","docx","xlsx","pptx","png","jpg","jpeg","webp","zip"
@@ -150,7 +150,32 @@ async function showSelected() {
       $("handoffDialog").showModal();
     });
     append(actions,open,prompt,report);
-    append(section,head,about,actions);
+    const criteria = node("div",undefined,"qa-criteria");
+    for (const [index, criterion] of agent.acceptanceCriteria.entries()) {
+      const finding = (order.qaFindings?.[agent.id] || {})[index];
+      const row = node("div",undefined,"qa-criterion-row");
+      const detail = node("div",undefined,"qa-criterion-detail");
+      append(detail,node("b",(index+1)+". "+criterion),
+        node("small",finding
+          ? finding.verdict.replaceAll("_"," ")+
+            " • manual, identity unverified • "+
+            (finding.evidence||"").slice(0,160)
+          : "No QA finding recorded"));
+      const review = node("button",finding?"Update QA":"Record QA","secondary");
+      review.type="button";
+      review.disabled=!approved || !(order.agentReports?.[agent.id]?.outcome==="submitted");
+      review.addEventListener("click",()=>{
+        app.qaTarget={taskId:order.taskId,agentId:agent.id,index};
+        $("qaHeading").textContent="QA finding — "+agent.id;
+        $("qaCriterion").textContent=criterion;
+        $("qaVerdict").value=finding?.verdict||"pass";
+        $("qaEvidence").value=finding?.evidence||"";
+        $("qaDialog").showModal();
+      });
+      append(row,detail,review);
+      criteria.append(row);
+    }
+    append(section,head,about,actions,criteria);
     $("agentsList").append(section);
   }
   const agentSelect = $("artifactAgent");
@@ -394,6 +419,35 @@ function registerEvents() {
     toast(r.verdict.replaceAll("_"," ")+": "+r.reason);
     await refreshOrders(o.taskId);
   }));
+  $("exportAuditPacket").addEventListener("click",()=>action(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a work order before exporting");
+    const result=await rpc("get_qa_packet",{taskId:o.taskId});
+    const packet=result.packet;
+    const blob=new Blob([JSON.stringify(packet,null,2)+"\n"],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="theorg-audit-"+o.taskId.slice(0,8)+".json";
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast("Local QA packet exported. Findings are not externally authenticated.");
+  }));
+  $("qaCancel").addEventListener("click",()=>$("qaDialog").close());
+  $("qaForm").addEventListener("submit",event=>{
+    event.preventDefault();
+    action(async()=>{
+      const target=app.qaTarget;
+      if(!target)throw new Error("Select a criterion");
+      const data=await rpc("record_qa_finding",{
+        taskId:target.taskId,agentId:target.agentId,
+        criterionIndex:target.index,verdict:$("qaVerdict").value,
+        evidence:$("qaEvidence").value
+      });
+      $("qaDialog").close();app.qaTarget=null;
+      toast("QA finding recorded. Independent authentication and owner acceptance remain pending.");
+      await refreshOrders(target.taskId);
+    });
+  });
   $("cancelHandoff").addEventListener("click",()=>{$("handoffDialog").close();});
   $("handoffForm").addEventListener("submit",event=>{
     event.preventDefault();
