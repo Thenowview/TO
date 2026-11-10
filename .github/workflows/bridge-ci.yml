@@ -17,6 +17,7 @@ jobs:
           node-version: "22"
       - name: Validate Chrome extension JavaScript
         run: |
+          node --check apps/chrome-extension/agent-playbooks.js
           node --check apps/chrome-extension/task-manager.js
           node --check apps/chrome-extension/supervisor-plan.js
           node --check apps/chrome-extension/background.js
