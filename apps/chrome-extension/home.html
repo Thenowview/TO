@@ -116,6 +116,42 @@
       </div>
     </section>
 
+    <section id="localAgentRuntime" class="section-block" aria-labelledby="localAgentHeading">
+      <div class="section-head"><div><span class="section-kicker">05 / LOCAL AGENTS PREVIEW</span><h2 id="localAgentHeading">Execute reviewed instructions on this PC</h2></div></div>
+      <div class="panel detail-panel">
+        <p class="form-note"><strong>Real local actions, limited scope.</strong> AI planning uses an optional Ollama model installed on this PC. No cloud AI connection is required. A synthetic demo mode works without an LLM but is not AI reasoning. Every plan needs approval. Website control is navigation-only; Windows control is Notepad-launch-only. No arbitrary shell commands or website form submissions.</p>
+        <div class="inline-controls">
+          <label for="agentMode">Planning mode</label>
+          <select id="agentMode">
+            <option value="ollama">Ollama — actual local AI planning</option>
+            <option value="demo">Synthetic local file test (no AI)</option>
+            <option value="demo-browser">Synthetic Chrome navigation test (no AI)</option>
+            <option value="demo-notepad">Synthetic Notepad launch test (no AI)</option>
+          </select>
+          <label for="agentModel">Local model</label>
+          <input id="agentModel" value="qwen3:4b" maxlength="80" spellcheck="false" aria-label="Ollama model ID">
+        </div>
+        <label class="field-label" for="agentHosts">Explicitly approved HTTPS hostnames for browser navigation (comma-separated, exact hosts only)</label>
+        <input id="agentHosts" value="example.com" maxlength="700" spellcheck="false" placeholder="example.com,github.com">
+        <div class="action-row">
+          <button id="agentCreate" type="button" class="primary">Plan selected work order</button>
+          <button id="agentRefresh" type="button" class="secondary">Reload jobs</button>
+          <label for="agentJobs" class="sr-only">Select persisted local agent job</label>
+          <select id="agentJobs" aria-label="Persisted agent jobs"><option value="">No agent jobs yet</option></select>
+        </div>
+        <p class="form-note">The selected work order's saved instruction is used; edit or create a new work order to change the instruction. The local model may generate untrusted text. Review tool names, inputs and allowed hosts before approving.</p>
+        <pre id="agentDetails" class="artifact-preview" role="status" aria-live="polite">Choose a work order, then request a local plan.</pre>
+        <div class="action-row">
+          <button id="agentApprove" type="button" class="secondary">Approve reviewed plan</button>
+          <button id="agentRunNext" type="button" class="primary">Execute next approved tool step</button>
+          <button id="agentReview" type="button" class="secondary">Run evidence and AI QA</button>
+          <button id="agentRecover" type="button" class="secondary">Check restart recovery</button>
+          <button id="agentCancel" type="button" class="secondary">Cancel remaining steps</button>
+        </div>
+        <p class="form-note">Jobs, event logs and scoped memory persist in local SQLite. Interrupted running steps are blocked for inspection rather than automatically replayed. AI critique does not certify semantic correctness or a real-world outcome.</p>
+      </div>
+    </section>
+
     <section id="audit" class="section-block" aria-labelledby="auditHeading">
       <div class="section-head"><div><span class="section-kicker">05 / GOVERNANCE</span><h2 id="auditHeading">Deliveries & audit trail</h2></div></div>
       <div class="audit-grid">
