@@ -21,6 +21,8 @@ jobs:
           node --check apps/chrome-extension/supervisor-plan.js
           node --check apps/chrome-extension/background.js
           node --check apps/chrome-extension/home.js
+      - name: Test Supervisor handoff and artifact gates with simulated Chrome
+        run: node --test tests/task-manager.test.cjs
       - name: Validate extension and profile JSON
         run: |
           node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
