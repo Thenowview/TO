@@ -19,7 +19,7 @@ const rawPlan=JSON.stringify({
   tasks:[{id:"research1",role:"researcher",objective:"Prepare a sourced research report",
     provider:"chatgpt",acceptanceCriteria:["Include verified primary references"],dependencies:[]}]
 });
-function fakeChrome() {
+function fakeChrome(options = {}) {
   const local={}, session={},tabs=new Map(),imports=[];
   let nextId=100;
   const api={
@@ -69,7 +69,8 @@ function fakeChrome() {
           return {ok:true,artifact:item};
         }
         case "list_artifacts":return {ok:true,artifacts:imports};
-        case "get_order":return {ok:true,order:{artifacts:[{fileName:"plan.md",sha256:"C".repeat(64)}]}};
+        case "get_order":return {ok:true,order:{artifacts:options.noDemo ? [] :
+          [{fileName:"plan.md",sha256:"C".repeat(64)}]}};
         default:return {ok:false,error:"unsupported_command"};
       }
     }}
@@ -384,4 +385,43 @@ test("new artifact invalidates QA and malformed files block dependent specialist
   assert.equal(queue.queue[0].state,"artifact_validation_pending");
   assert.equal(queue.queue[1].state,"waiting_on_dependencies");
   assert.equal(queue.queue[1].verifiedComplete,false);
+});
+
+
+test("Supervisor review of real work does not require demonstration artifacts",async()=>{
+  const fake=fakeChrome({noDemo:true});
+  const manager=new context.TheOrgTaskManager(fake.api);
+  const order=await manager.createOrder("demo",validInstruction);
+  await manager.saveSupervisorPlan(order.taskId,rawPlan);
+  await manager.approvePlan(order.taskId);
+  await manager.handoffAndClose(order.taskId,"research1",
+    "The sourced research brief is submitted with real references for manual QA.","submitted");
+  await manager.recordQaFinding(order.taskId,"research1",0,"pass",
+    "Manual review checked the brief and each cited source against the original acceptance criterion.");
+  const result=await manager.supervisorReview(order.taskId);
+  assert.equal(result.verdict,"manual_qa_recorded_owner_confirmation_pending");
+  assert.equal(result.demonstrationArtifacts,0);
+});
+
+test("latest corrected artifact revision can supersede a malformed earlier version",async()=>{
+  const mock=fakeChrome({noDemo:true});
+  const manager=new context.TheOrgTaskManager(mock.api);
+  const order=await manager.createOrder("demo",validInstruction);
+  await manager.saveSupervisorPlan(order.taskId,rawPlan);
+  await manager.approvePlan(order.taskId);
+  await manager.importArtifact(order.taskId,"research1","report.md","YQ==","chatgpt","old");
+  mock.imports[0].intakeStatus="format_invalid";
+  await manager.importArtifact(order.taskId,"research1","report.md","Yg==","chatgpt","fixed");
+  mock.imports[1].integrityValid=true;
+  mock.imports[1].formatValid=true;
+  mock.imports[1].intakeStatus="structure_verified_content_qa_pending";
+  await manager.handoffAndClose(order.taskId,"research1",
+    "The revised file replaces the malformed old artifact and is now ready for manual acceptance checks.","submitted");
+  await manager.recordQaFinding(order.taskId,"research1",0,"pass",
+    "I checked the current revised file and cross-referenced the primary source evidence manually.");
+  const result=await manager.supervisorReview(order.taskId);
+  assert.equal(result.importedArtifacts,2);
+  assert.equal(result.verdict,"manual_qa_recorded_owner_confirmation_pending");
+  const queue=await manager.executionQueue(order.taskId);
+  assert.equal(queue.queue[0].state,"manual_qa_pass_unverified");
 });
