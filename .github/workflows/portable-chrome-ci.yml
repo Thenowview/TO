@@ -1,0 +1,68 @@
+name: TheOrg Portable Existing Chrome CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Compile Windows self-contained local controller (no Chrome bundled)
+        shell: pwsh
+        run: |
+          dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/portable-bridge
+          if ($LASTEXITCODE -ne 0) { throw 'Windows bridge compilation failed' }
+      - name: Check bridge self tests and Native Messaging protocol
+        shell: pwsh
+        run: |
+          & out/portable-bridge/TheOrg.Bridge.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'TheOrg bridge self tests failed' }
+          python tests/native-messaging-smoke.py out/portable-bridge/TheOrg.Bridge.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Native Messaging smoke test failed' }
+      - name: Assemble portable no-new-browser package and integrity report
+        shell: pwsh
+        run: |
+          $root='out/TheOrg-Portable-Chrome'
+          New-Item -ItemType Directory -Path $root -Force | Out-Null
+          Copy-Item -Path 'portable/*' -Destination $root -Recurse -Force
+          Copy-Item -LiteralPath 'apps/chrome-extension' -Destination (Join-Path $root 'chrome-extension') -Recurse -Force
+          New-Item -ItemType Directory -Path (Join-Path $root 'bridge') -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $root 'Local-Files') -Force | Out-Null
+          Copy-Item -LiteralPath 'out/portable-bridge/TheOrg.Bridge.exe' -Destination (Join-Path $root 'bridge/TheOrg.Bridge.exe')
+          & (Join-Path $root 'Setup-TheOrg.ps1') -ValidateOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Portable setup layout test failed' }
+          & (Join-Path $root 'Open-TheOrg.ps1') -ValidateOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Portable launcher layout test failed' }
+          $fileList = @(Get-ChildItem -LiteralPath $root -File -Recurse | Where-Object { $_.Name -ne 'PACKAGE-SHA256.txt' } | Sort-Object FullName)
+          $lines=@()
+          foreach ($file in $fileList) {
+            $rel=$file.FullName.Substring((Resolve-Path $root).Path.Length).TrimStart([char[]]@('\','/'))
+            $sha=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lines+= "$sha  $rel"
+          }
+          $lines | Set-Content -LiteralPath (Join-Path $root 'PACKAGE-SHA256.txt') -Encoding utf8
+          & (Join-Path $root 'Verify-Portable.ps1')
+          if ($LASTEXITCODE -ne 0) { throw 'Portable SHA256 verification failed' }
+          Compress-Archive -Path "$root\*" -DestinationPath 'out/TheOrg-Portable-Chrome-Win-x64.zip' -CompressionLevel Optimal -Force
+          New-Item -ItemType Directory -Path 'out/recheck' -Force | Out-Null
+          Expand-Archive -LiteralPath 'out/TheOrg-Portable-Chrome-Win-x64.zip' -DestinationPath 'out/recheck' -Force
+          & 'out/recheck/Verify-Portable.ps1'
+          if ($LASTEXITCODE -ne 0) { throw 'Extracted archive failed SHA256 verification' }
+      - name: Upload portable Chrome distribution (developer preview only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-Portable-Chrome-Win-x64
+          path: out/TheOrg-Portable-Chrome-Win-x64.zip
+          if-no-files-found: error
+          retention-days: 30
