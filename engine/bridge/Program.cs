@@ -129,7 +129,7 @@ internal sealed class Controller
                 {
                     ok = true,
                     commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
-                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact",
+                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact",
                         "begin_artifact_upload", "append_artifact_chunk", "upload_status",
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk" },
                     maxArtifactImportBytes = 256000,
@@ -145,6 +145,7 @@ internal sealed class Controller
                 "list_artifacts" => ListArtifacts(request),
                 "verify_artifact" => VerifyArtifact(request),
                 "read_artifact" => ReadArtifact(request),
+                "preview_text_artifact" => PreviewTextArtifact(request),
                 "begin_artifact_upload" => BeginArtifactUpload(request),
                 "append_artifact_chunk" => AppendArtifactChunk(request),
                 "upload_status" => UploadStatus(request),
@@ -184,6 +185,14 @@ internal sealed class Controller
         string orderId = RequireOrder(Text(request, "orderId"));
         var record = _artifactStore.Verify(companyId, orderId, Text(request, "artifactId"));
         return new { ok = true, artifact = record };
+    }
+
+    private object PreviewTextArtifact(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        var preview = _artifactStore.PreviewText(companyId, orderId, Text(request, "artifactId"));
+        return new { ok = true, preview };
     }
 
     private object ReadArtifact(JsonElement request)
