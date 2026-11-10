@@ -40,6 +40,27 @@ jobs:
         run: dotnet run --project engine/bridge/TheOrg.Bridge.csproj --configuration Release --no-build -- --self-test
       - name: Publish self-contained Windows bridge candidate
         run: dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/bridge
+      - name: Install NSIS compiler
+        shell: pwsh
+        run: choco install nsis --yes --no-progress --limit-output
+      - name: Compile unsigned Windows developer-preview installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out/installer | Out-Null
+          $compiler = "${env:ProgramFiles(x86)}\\NSIS\\makensis.exe"
+          if (!(Test-Path $compiler)) { throw "NSIS compiler missing: $compiler" }
+          & $compiler /V2 tools/TheOrgPreview.nsi
+          if ($LASTEXITCODE -ne 0) { throw "NSIS installer build failed" }
+          if (!(Test-Path out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe)) {
+            throw "Installer output missing"
+          }
+      - name: Upload unsigned Windows developer-preview installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-DevPreview-Windows-x64-unsigned-installer
+          path: out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload unsigned Windows bridge candidate
         uses: actions/upload-artifact@v4
         with:
