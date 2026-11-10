@@ -319,7 +319,7 @@
       if (!TASK_ID.test(taskId)||!TASK_ID.test(jobId))
         throw new Error("Invalid order or job ID");
       const allowed=new Set([
-        "agent_get","agent_approve","agent_run_next",
+        "agent_get","agent_approve","agent_run_next","agent_run_safe_batch",
         "agent_review","agent_cancel","agent_recover"
       ]);
       if(!allowed.has(command))throw new Error("Unsupported local agent command");
