@@ -56,6 +56,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
           message.evidence)};
       case "get_qa_packet":
         return {ok:true,packet:await manager.getQaPacket(message.taskId)};
+      case "get_qa_prompt":
+        return {ok:true,prompt:await manager.qaAuditorPrompt(message.taskId)};
       case "review": return {ok:true,...await manager.supervisorReview(message.taskId)};
       case "save_supervisor_plan": return {ok:true,...await manager.saveSupervisorPlan(message.taskId,message.response)};
       case "get_plan_prompt": return {ok:true,prompt:planner.supervisorPrompt(message.instruction)};
