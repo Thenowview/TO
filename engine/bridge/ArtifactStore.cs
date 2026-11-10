@@ -16,7 +16,7 @@ internal sealed class ArtifactStore
     private static readonly Regex SafeId = new("^[a-f0-9]{32}$", RegexOptions.Compiled);
     private static readonly Regex SafeCompany = new("^[a-z0-9_-]{1,40}$", RegexOptions.Compiled);
     private static readonly Regex SafeAgent = new("^[a-z][a-z0-9_-]{0,39}$", RegexOptions.Compiled);
-    private static readonly Regex SafeFile = new("^[a-zA-Z0-9][a-zA-Z0-9._-]{0,119}$", RegexOptions.Compiled);
+    private static readonly Regex SafeFile = new("^[\\p{L}\\p{N}][\\p{L}\\p{N} ._()-]{0,119}$", RegexOptions.Compiled);
     private static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         ".txt", ".md", ".json", ".csv", ".py", ".js", ".ts", ".css",
