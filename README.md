@@ -1,6 +1,6 @@
 # TheOrg — Chrome-native AI operating workspace
 
-**Status:** Source migration in progress. This repository is a private development workspace; it is not yet a verified Windows release.
+**Status:** Developer-preview source merged to `main`; Windows installer and bridge have passed automated CI checks. This is **not** a production release or a verified owner-PC installation. Legacy source migration and live provider automation remain incomplete.
 
 ## Product objective
 
@@ -79,6 +79,12 @@ Recommended directories after migration:
 - `docs/` — architecture, inventory and release evidence
 
 This tree is a target, **not** a statement that its modules already exist.
+
+## Release evidence and boundaries
+
+The [release audit](docs/RELEASE_AUDIT_2026-11-10.md) distinguishes automated Windows build/installation checks from real end-user Chrome acceptance. The installer CI additionally checks that user-scoped Native Messaging registration creates a valid manifest pointing to the installed executable and restricts `allowed_origins` to one explicit Chrome extension ID. This test uses a synthetic ID and does not prove browser connectivity on the owner's machine.
+
+To audit a build, open [GitHub Actions](https://github.com/faisalwrokksa-hub/TO/actions), verify both jobs are green for the **same commit**, and download only the unsigned developer-preview artifact from that run. Never interpret a green build as production readiness. For actual Windows acceptance, load the unpacked extension in Chrome Stable, register its real extension ID, use **Check connection**, and independently verify a complete test order and safe file import. Record the environment and results before signing off.
 
 ## First action
 
