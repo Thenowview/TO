@@ -176,6 +176,20 @@
       const order = all[taskId];
       if (!order || !order.plan) throw new Error("Work order has no task plan");
       const owned = await this.owned();
+      const artifactList = await this.listArtifacts(taskId);
+      const latest = new Map();
+      for (const item of artifactList) {
+        const key = item.agentId + "\\0" + item.fileName;
+        const prior = latest.get(key);
+        if (!prior || (item.version || 0) > (prior.version || 0))
+          latest.set(key, item);
+      }
+      const currentArtifacts = [...latest.values()];
+      function artifactsValidFor(agentId) {
+        return currentArtifacts.filter(a => a.agentId === agentId).every(a =>
+          a.integrityValid === true && a.formatValid === true &&
+          a.intakeStatus === "structure_verified_content_qa_pending");
+      }
       const activeTabs = ((owned[taskId] || {}).tabs || [])
         .map(item => item.agentId);
       const reviews = order.qaFindings || {};
@@ -184,7 +198,8 @@
       function qaPass(id) {
         const task = tasks.find(t => t.id === id);
         const report = reports[id];
-        if (!task || !report || report.outcome !== "submitted") return false;
+        if (!task || !report || report.outcome !== "submitted" ||
+            !artifactsValidFor(id)) return false;
         return task.acceptanceCriteria.every((_, index) => {
           const finding = (reviews[id] || {})[index];
           return finding &&
@@ -203,6 +218,7 @@
         if (!order.plan.reviewed) state = "plan_review_required";
         else if (active) state = "agent_tab_open";
         else if (pendingDependencies.length) state = "waiting_on_dependencies";
+        else if (!artifactsValidFor(task.id)) state = "artifact_validation_pending";
         else if (report && report.outcome !== "submitted") state = "needs_agent_followup";
         else if (anyFailed) state = "needs_revision";
         else if (allCriteriaPassed) state = "manual_qa_pass_unverified";
@@ -212,6 +228,7 @@
           agentId: task.id, role: task.role, providerId: task.provider,
           objective: task.objective,
           dependencies: task.dependencies || [], pendingDependencies,
+          artifactsIntegrityPass: artifactsValidFor(task.id),
           state, activeTabCount: activeTabs.filter(id => id === task.id).length,
           verifiedComplete: false,
           outstandingCriteria: task.acceptanceCriteria.filter((_,index) => {
@@ -229,6 +246,20 @@
           .map(t => t.agentId),
         trustNotice: "SOP queue only. A manual QA pass is not authenticated certification; no AI provider was automatically consulted."
       };
+    }
+
+    async invalidateAgentQA(taskId, agentId, reason) {
+      if (!TASK_ID.test(taskId) || !AGENT.test(agentId))
+        throw new Error("Invalid work order or assigned agent");
+      return this.serialize(async () => {
+        const all = await this.orders();
+        const order = all[taskId];
+        if (!order) throw new Error("Work order missing");
+        if (order.qaFindings) delete order.qaFindings[agentId];
+        order.review = { verdict: "pending", reason,
+          checkedUtc: new Date().toISOString() };
+        await this.saveOrders(all);
+      });
     }
 
     async dispatchNextTask(taskId) {
@@ -283,10 +314,23 @@
           const task = order.plan.tasks.find(t => t.id === agentId);
           const reports = order.agentReports || {};
           const checks = order.qaFindings || {};
+          const allArtifacts = await this.listArtifacts(taskId);
+          function agentArtifactsValid(depId) {
+            const current = new Map();
+            for (const item of allArtifacts.filter(a => a.agentId === depId)) {
+              const prev = current.get(item.fileName);
+              if (!prev || (item.version || 0) > (prev.version || 0))
+                current.set(item.fileName, item);
+            }
+            return [...current.values()].every(a => a.integrityValid === true &&
+              a.formatValid === true &&
+              a.intakeStatus === "structure_verified_content_qa_pending");
+          }
           const dependenciesReady = (task.dependencies || []).every(depId => {
             const dependency = order.plan.tasks.find(t => t.id === depId);
             const report = reports[depId];
-            if (!dependency || !report || report.outcome !== "submitted") return false;
+            if (!dependency || !report || report.outcome !== "submitted" ||
+                !agentArtifactsValid(depId)) return false;
             return dependency.acceptanceCriteria.every((_, index) => {
               const finding = (checks[depId] || {})[index];
               return finding && finding.verdict === "pass" &&
@@ -381,6 +425,8 @@
         sourceProvider: String(provider || "manual_import").slice(0,60),
         sourceReference: String(sourceReference || "").slice(0,500)
       });
+      await this.invalidateAgentQA(taskId, agentId,
+        "New agent artifact imported; previous acceptance findings must be repeated");
       return result.artifact;
     }
 
@@ -417,6 +463,11 @@
         command,companyId:order.companyId,orderId:taskId,
         uploadId,accessToken,...extra
       });
+      if (command === "complete_artifact_upload" &&
+          result.result && result.result.artifact && result.result.artifact.agentId) {
+        await this.invalidateAgentQA(taskId,result.result.artifact.agentId,
+          "New agent artifact transfer completed; previous acceptance findings must be repeated");
+      }
       return result.result;
     }
 
