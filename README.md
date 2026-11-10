@@ -19,8 +19,18 @@ The \`feat/chrome-windows-native-bridge\` branch contains a **development candid
 - A .NET 8 Native Messaging host with a bounded, company-scoped file import API
 - Actual imported artifact metadata, file versions, SHA-256 verification and local download support
 - Local deterministic demo files, separate from real AI-chat artifacts
+- Chunked manual import and verified download for files up to **32 MiB**; format-structure checks flag malformed PDFs, Office containers and potentially unsafe archives
 
 See [Artifact Manager implementation and acceptance audit](docs/ARTIFACT_MANAGER_IMPLEMENTATION.md).
+
+### One-file Windows developer-preview installer
+
+The CI workflow also builds an **unsigned** NSIS installer containing the bridge and unpacked extension source. It is not code-signed or independently security certified.
+
+1. Open [TheOrg GitHub Actions](https://github.com/faisalwrokksa-hub/TO/actions), select a successful **Chrome and Windows Bridge CI** run, and download the `TheOrg-DevPreview-Windows-x64-unsigned-installer` artifact.
+2. Extract the artifact ZIP and run `TheOrg-DevPreview-Windows-x64-unsigned.exe` only if you trust the source and build provenance.
+3. Use the installed Start Menu shortcut **TheOrg → Connect Chrome extension** to see the required manual Chrome configuration. Keep the extension identity private to your profile.
+4. The installer never connects an AI service or authorizes external actions on your behalf.
 
 ### Windows installation and local testing
 
@@ -49,7 +59,7 @@ See [Artifact Manager implementation and acceptance audit](docs/ARTIFACT_MANAGER
    powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\uninstall-native-host.ps1
    \`\`\`
 
-**Important limitations:** The setup has not been manually verified on the owner's Windows/Chrome installation. The bridge candidate is unsigned and is not a complete TheOrg desktop installer. File imports are limited to 250 KiB per file; files are treated as untrusted until independent content QA. Never load or execute unknown AI-generated code. Do not import confidential files into AI providers without authorization.
+**Important limitations:** The setup has not been manually verified on the owner's Windows/Chrome installation. The bridge and developer-preview installer candidates are unsigned. The installer packages the controller and Chrome extension, but the extension still requires Chrome's authorized **Load unpacked** and the user-scoped Native Messaging registration. File imports support up to 32 MiB via 128 KiB chunks; files remain untrusted until independent content QA. Never load or execute unknown AI-generated code. Do not import confidential files into AI providers without authorization.
 
 
 ## Source preservation
