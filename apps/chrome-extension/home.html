@@ -121,9 +121,10 @@
           <input id="artifactProvider" placeholder="e.g. ChatGPT or Qwen" maxlength="60" value="manual_import">
           <label for="artifactReference">Source reference (optional)</label>
           <input id="artifactReference" placeholder="Chat title or URL, no private tokens" maxlength="500">
-          <label for="artifactFile">Local file to import (250 KiB maximum in this prototype)</label>
+          <label for="artifactFile">Local file to import (up to 32 MiB with verified chunked transfer)</label>
           <input id="artifactFile" type="file" required>
           <button type="submit" class="primary">Import artifact for review</button>
+          <output id="uploadProgress" class="muted" role="status" aria-live="polite">No file transfer active.</output>
         </form>
         <div id="deliveries"><p class="muted">Choose a work order to inspect imported files and controller artifact metadata.</p></div>
       </div>
