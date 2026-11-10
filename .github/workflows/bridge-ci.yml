@@ -76,9 +76,8 @@ jobs:
           Expand-Archive -LiteralPath out/browser/chrome-win64.zip -DestinationPath out/browser -Force
           $browser = 'out/browser/chrome-win64/chrome.exe'
           if (!(Test-Path -LiteralPath $browser)) { throw 'Official browser binary missing from archive' }
-          $versionText = & $browser --version
-          if ($LASTEXITCODE -ne 0) { throw 'Browser version check failed' }
-          if ("$versionText" -notmatch [regex]::Escape($version)) { throw "Unexpected browser version: $versionText" }
+          $versionText = (Get-Item -LiteralPath $browser).VersionInfo.ProductVersion
+          if ("$versionText" -notmatch [regex]::Escape($version)) { throw "Unexpected browser binary version: $versionText" }
           $archiveHash = (Get-FileHash -Path out/browser/chrome-win64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
           $binaryHash = (Get-FileHash -Path $browser -Algorithm SHA256).Hash.ToLowerInvariant()
           @(
