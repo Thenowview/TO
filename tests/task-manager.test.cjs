@@ -81,7 +81,7 @@ test("structured plan validates roles, providers and dependency graph",()=>{
     {id:"a",role:"researcher",objective:"Prepare a full report",provider:"chatgpt",
       acceptanceCriteria:["Has source references"],dependencies:["a"]}
   ]})),/dependency/i);
-  assert.throws(()=>context.TheOrgPlanner.interpret("{not json}"),/JSON/);
+  assert.throws(()=>context.TheOrgPlanner.interpret("This is not valid JSON for a specialist task plan"),/JSON/);
 });
 
 test("Supervisor and agent task tabs hand off without closing unrelated tabs",async()=>{
