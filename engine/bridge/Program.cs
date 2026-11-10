@@ -94,6 +94,7 @@ internal sealed class Controller
     private readonly string _root;
     private readonly ArtifactStore _artifactStore;
     private readonly ArtifactTransfers _transfers;
+    private readonly LocalAgentEngine _agents;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -107,6 +108,7 @@ internal sealed class Controller
         Directory.CreateDirectory(_root);
         _artifactStore = new ArtifactStore(_root);
         _transfers = new ArtifactTransfers(_root, _artifactStore);
+        _agents = new LocalAgentEngine(_root);
     }
 
     internal object Execute(JsonElement request)
@@ -136,6 +138,11 @@ internal sealed class Controller
                     importedArtifactsRequireContentQa = true,
                     liveAiProvider = false,
                     chromeDesktopAutomation = false,
+                    localAgentExecutionPreview = true,
+                    localOllamaOptional = true,
+                    sqliteAgentQueue = true,
+                    browserNavigationOnly = true,
+                    desktopOperation = "notepad-launch-only",
                     offlineFiles = true
                 },
                 "submit_order" => Submit(request),
@@ -152,6 +159,7 @@ internal sealed class Controller
                 "complete_artifact_upload" => CompleteArtifactUpload(request),
                 "cancel_artifact_upload" => CancelArtifactUpload(request),
                 "read_artifact_chunk" => ReadArtifactChunk(request),
+                _ when command.StartsWith("agent_", StringComparison.Ordinal) => _agents.Execute(request),
                 _ => Fail("unsupported_command")
             };
         }
