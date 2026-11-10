@@ -219,6 +219,41 @@ internal sealed class ArtifactStore
         return record;
     }
 
+    // Strictly plain-text, bounded, read-only preview for independent artifact QA.
+    // Never render as HTML, Markdown or execute content. Does not certify safety.
+    internal object PreviewText(string companyId, string orderId, string artifactId)
+    {
+        string folder = Folder(companyId, orderId);
+        var record = Load(folder, artifactId, companyId, orderId);
+        string extension = Path.GetExtension(record.FileName).ToLowerInvariant();
+        if (extension is not (".txt" or ".md" or ".json" or ".csv"))
+            throw new ArgumentException("Preview is limited to plain-text file types");
+        if (record.Bytes is < 1 or > 32768)
+            throw new ArgumentException("Preview text file exceeds 32 KiB limit");
+
+        record = Verify(companyId, orderId, artifactId);
+        if (!record.IntegrityValid || !record.FormatValid)
+            throw new ArgumentException("File failed integrity or structural verification");
+
+        string source = Path.Combine(folder, artifactId + ".blob");
+        byte[] bytes = File.ReadAllBytes(source);
+        if (bytes.Length != record.Bytes ||
+            !CryptographicOperations.FixedTimeEquals(
+                SHA256.HashData(bytes), Convert.FromHexString(record.Sha256)))
+            throw new ArgumentException("Preview content changed after verification");
+        string content = new UTF8Encoding(false, true).GetString(bytes);
+        if (content.Contains('\0')) throw new ArgumentException("Unsafe text preview");
+        bool truncated = content.Length > 8000;
+        return new
+        {
+            artifactId = record.ArtifactId, fileName = record.FileName,
+            text = truncated ? content[..8000] : content, truncated,
+            renderMode = "textContent_only", contentApproved = false,
+            malwareScanStatus = record.MalwareScanStatus,
+            note = "Safe plain-text display only; untrusted content. No independent QA or malware scan completed."
+        };
+    }
+
     internal object Read(string companyId, string orderId, string artifactId)
     {
         string folder = Folder(companyId, orderId);
