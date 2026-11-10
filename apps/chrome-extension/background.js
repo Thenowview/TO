@@ -49,6 +49,12 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "verify_artifact": return {ok:true,artifact:await manager.verifyArtifact(message.taskId,message.artifactId)};
       case "read_artifact": return {ok:true,content:await manager.readArtifact(message.taskId,message.artifactId)};
       case "handoff": return {ok:true,...await manager.handoffAndClose(message.taskId,message.agentId,message.summary,message.outcome)};
+      case "record_qa_finding":
+        return {ok:true,...await manager.recordQaFinding(
+          message.taskId,message.agentId,message.criterionIndex,message.verdict,
+          message.evidence)};
+      case "get_qa_packet":
+        return {ok:true,packet:await manager.getQaPacket(message.taskId)};
       case "review": return {ok:true,...await manager.supervisorReview(message.taskId)};
       case "save_supervisor_plan": return {ok:true,...await manager.saveSupervisorPlan(message.taskId,message.response)};
       case "get_plan_prompt": return {ok:true,prompt:planner.supervisorPrompt(message.instruction)};
