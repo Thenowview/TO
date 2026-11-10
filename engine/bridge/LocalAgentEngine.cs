@@ -88,12 +88,27 @@ internal sealed class LocalAgentEngine
         string instruction=Text(request,"instruction").Trim();
         if(instruction.Length is < 5 or > 3000) throw new ArgumentException("Instruction must be 5 to 3000 characters");
         string mode=Text(request,"mode");
-        if(mode is not ("ollama" or "demo")) throw new ArgumentException("Choose ollama or clearly labeled demo");
+        if(mode is not ("ollama" or "demo" or "demo-browser" or "demo-notepad")) throw new ArgumentException("Choose ollama or clearly labeled demo");
         string model=Text(request,"model");
         if(!ModelName.IsMatch(model)) throw new ArgumentException("Invalid local Ollama model name");
         string hosts=Text(request,"approvedHosts");
         var approved=ParseHosts(hosts);
-        AgentPlan plan=mode=="demo" ? new AgentPlan
+        AgentPlan plan=mode=="demo-browser" ? new AgentPlan
+        {
+            Summary="Synthetic browser navigation test; no site content extraction",
+            Steps=new List<AgentStep>{
+                new(){Title="Navigate one approved HTTPS site",Tool="browser_open",
+                    Input=approved.Length>0?"https://"+approved[0]+"/":"https://example.com/",
+                    ExpectedOutput="Browser tab navigation request; page contents not independently verified"}
+            }
+        } : mode=="demo-notepad" ? new AgentPlan
+        {
+            Summary="Synthetic Windows Notepad launch test only",
+            Steps=new List<AgentStep>{
+                new(){Title="Start Windows Notepad",Tool="windows_open_notepad",Input="",
+                    ExpectedOutput="Notepad process starts; GUI interaction remains unverified"}
+            }
+        } : mode=="demo" ? new AgentPlan
         {
             Summary="Synthetic local action test, not model reasoning",
             Steps=new List<AgentStep> {
