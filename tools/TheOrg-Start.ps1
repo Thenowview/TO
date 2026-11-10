@@ -20,7 +20,7 @@ function Assert-Package {
       throw "TheOrg installation incomplete: $path. Reinstall the latest full Windows preview."
     }
   }
-  $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+  $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
   if ($manifest.manifest_version -ne 3 -or
       -not (@($manifest.permissions) -contains 'nativeMessaging')) {
     throw 'TheOrg extension package is invalid.'
@@ -29,19 +29,25 @@ function Assert-Package {
 }
 
 function Find-InstalledExtensionId {
-  if (-not (Test-Path -LiteralPath $preferences -PathType Leaf)) { return $null }
-  $data = Get-Content -LiteralPath $preferences -Raw | ConvertFrom-Json
-  if (-not $data.extensions -or -not $data.extensions.settings) { return $null }
+  $expectedName = (Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).name
   $expectedPath = [IO.Path]::GetFullPath($extensionFolder).TrimEnd('\')
-  foreach ($entry in $data.extensions.settings.PSObject.Properties) {
-    $candidate = $entry.Value
-    if (-not $candidate -or -not $candidate.path -or -not $candidate.manifest) { continue }
-    if ($candidate.manifest.name -cne 'TheOrg — Supervisor Workspace') { continue }
-    try {
-      $foundPath = [IO.Path]::GetFullPath([string]$candidate.path).TrimEnd('\')
-    } catch { continue }
-    if ($foundPath -ine $expectedPath) { continue }
-    if ($entry.Name -cmatch '^[a-p]{32}$') { return $entry.Name }
+  foreach ($preferencesFile in @(
+    (Join-Path $profile 'Default\Preferences'),
+    (Join-Path $profile 'Default\Secure Preferences')
+  )) {
+    if (-not (Test-Path -LiteralPath $preferencesFile -PathType Leaf)) { continue }
+    $data = Get-Content -LiteralPath $preferencesFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not $data.extensions -or -not $data.extensions.settings) { continue }
+    foreach ($entry in $data.extensions.settings.PSObject.Properties) {
+      $candidate = $entry.Value
+      if (-not $candidate -or -not $candidate.path -or -not $candidate.manifest) { continue }
+      if ($candidate.manifest.name -cne $expectedName) { continue }
+      try {
+        $foundPath = [IO.Path]::GetFullPath([string]$candidate.path).TrimEnd('\')
+      } catch { continue }
+      if ($foundPath -ine $expectedPath) { continue }
+      if ($entry.Name -cmatch '^[a-p]{32}$') { return $entry.Name }
+    }
   }
   return $null
 }
