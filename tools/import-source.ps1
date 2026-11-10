@@ -71,7 +71,7 @@ function Import-ReviewedSource {
                 $flagged.Add("SKIPPED large file in ${Label}: ${relative}")
                 continue
             }
-            if ($totalCopied + $entry.Length -gt $maxTotalBytes) {
+            if ($script:totalCopied + $entry.Length -gt $maxTotalBytes) {
                 $flagged.Add("SKIPPED total size limit in ${Label}: ${relative}")
                 continue
             }
@@ -115,7 +115,7 @@ function Import-ReviewedSource {
                 SHA256 = $digest
                 ReviewStatus = "PENDING_MANUAL_REVIEW"
             })
-            $totalCopied += $entry.Length
+            $script:totalCopied += $entry.Length
         }
     } finally {
         $archive.Dispose()
