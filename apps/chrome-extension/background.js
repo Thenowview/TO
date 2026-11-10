@@ -31,6 +31,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "agent_get":
       case "agent_approve":
       case "agent_run_next":
+      case "agent_run_safe_batch":
       case "agent_review":
       case "agent_cancel":
       case "agent_recover": return await manager.agentCommand(

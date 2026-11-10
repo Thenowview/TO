@@ -34,12 +34,13 @@ If any file is missing or a hash differs, **stop** and download a new artifact. 
 
 This preview EXE installs the Windows agent controller, extension and an **unmodified, official Chrome for Testing browser**. It creates **TheOrg Workspace** desktop and Start menu shortcuts and uses an isolated browser profile under `%LOCALAPPDATA%\TheOrg\BrowserProfile`. Your normal Chrome profiles and cookies are never copied or modified.
 
-1. Verify the extracted ZIP by running `powershell -NoProfile -File '.\VERIFY.ps1'`.
+1. Verify the extracted ZIP by running `powershell -NoProfile -ExecutionPolicy Bypass -File '.\VERIFY.ps1'` from the extracted folder. This applies only to this process; it does not change your system-wide policy.
 2. Install `TheOrg-DevPreview-Windows-x64-unsigned.exe` for the current Windows user.
 3. The interactive installer opens TheOrg automatically. You can also double-click **TheOrg Workspace** on your desktop.
 4. At first launch, the launcher loads the bundled extension into its dedicated browser, discovers the actual extension ID from the profile and registers the Windows native host for precisely that ID.
 5. The launcher opens the Supervisor. Choose **Check connection** and confirm the local controller responds.
 6. To test actual AI-generated planning, install Ollama and a model separately. Neither is silently installed or downloaded by this EXE.
+7. For a synthetic file-only plan, use **Run approved local-only steps** after reviewing and approving the plan. This executes up to five eligible local note/read-only actions; browser navigation and Notepad launch require separate clicks.
 
 Normal testing does not require loading an unpacked extension by hand, copying an ID or editing the daily Chrome profile.
 
@@ -75,12 +76,12 @@ Use only synthetic content. These are expected developer-preview behaviors, not 
 
 | Problem | What to inspect |
 | --- | --- |
-| “Check connection” fails | Confirm extension is loaded unpacked in Chrome Stable, the 32-letter ID was entered correctly, and Chrome was restarted. Run the installed check below. |
+| “Check connection” fails | First rerun **TheOrg Workspace** to reconnect the isolated bundled browser. Open its `chrome://extensions` page and check for extension errors. If using regular Chrome instead, use **Connect Chrome extension** to register its actual 32-letter ID. |
 | Windows bridge missing | Look for `%LOCALAPPDATA%\Programs\TheOrg\TheOrg.Bridge.exe`. Reinstall from the verified CI artifact if missing. |
 | Native Messaging host absent | Rerun **Start → TheOrg → Connect Chrome extension** with the actual extension ID; this is a user-scoped registration. |
 | Extension ID changed | Re-register the host with the new exact ID. The old ID does not automatically retain access. |
 | Installer blocked by Windows | This preview is unsigned. Verify provenance and checksum; don't turn off system protection globally. A signed production release has not been created. |
-| AI task not automatically executed | Expected: live AI-provider execution is not connected. Only approved manual handoffs are supported. |
+| AI task not automatically executed | Ollama needs to be installed/running locally for model planning. Local tools are intentionally approval-controlled; provider chat tabs still require manual handoff. |
 | Imported file reports structure verified but QA pending | Expected: SHA-256 and file-format checks do not prove semantic safety, malware absence or correctness. |
 
 To inspect the native-host registration without editing it, run from PowerShell:
@@ -113,7 +114,7 @@ Further details in repository documents:
 - https://github.com/faisalwrokksa-hub/TO/blob/main/docs/PRODUCTION_READINESS_HANDOFF_2026-11-10.md
 
 
-## 8. Optional Ollama planning and local tool execution — experimental preview
+## 7. Optional Ollama planning and local tool execution — experimental preview
 
 This feature runs on the owner's own Windows PC through the existing extension and Native Messaging bridge. It is not production-ready or a hosted web agent.
 
@@ -123,7 +124,7 @@ This feature runs on the owner's own Windows PC through the existing extension a
 3. Make sure Ollama is listening on its standard loopback address 127.0.0.1:11434; run ollama serve if needed. TheOrg never sends data to a public inference endpoint.
 4. In the Chrome Supervisor submit a synthetic work order through the existing text box, e.g. "Create a short synthetic checklist and list the files you created."
 5. Under "Execute reviewed instructions on this PC", choose Ollama, model qwen3:4b, and an exact list of approved HTTPS hostnames. Click "Plan selected work order". If Ollama is unavailable, the request fails explicitly; it does not silently pretend to use AI.
-6. Read the entire proposed plan, including tool inputs, then approve it. Click "Execute next approved tool step" to run exactly one restricted step at a time.
+6. Read the entire proposed plan, including tool inputs, then approve it. Click **Execute next approved tool step** for one restricted action, or **Run approved local-only steps** for a bounded sequence of previously approved local note/read-only actions.
 7. Run evidence and AI QA. This checks real file hashes and can request a skeptical separate model critique. The verdict remains human_review_required, not independent business certification.
 
 **No local AI model required for initial tests:** Select "Synthetic local file test" for real, scoped local note generation and file listing, but no AI. "Synthetic Chrome navigation test" opens one approved HTTPS host (default example.com) in Chrome after approval; it does not inspect web page contents or automate clicks. "Synthetic Notepad launch test" starts notepad.exe on Windows; it does not automate general desktop GUI interactions.

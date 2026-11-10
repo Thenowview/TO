@@ -40,6 +40,12 @@ test("all Supervisor commands are routed by the extension background",()=>{
  assert.ok(routes.has("execution_queue"));
  assert.ok(routes.has("dispatch_next"));
  assert.ok(routes.has("get_qa_packet"));
+ // The execution buttons invoke rpc(command,...) using commands from a data table,
+ // not rpc("literal",...), so the general static check alone cannot see them.
+ const dynamicBindings=[...ui.matchAll(/\["agent[A-Za-z]+","(agent_[a-z_]+)",\{/g)].map(m=>m[1]);
+ assert.ok(dynamicBindings.includes("agent_run_safe_batch"),"Expected local batch action in Supervisor");
+ assert.deepEqual(dynamicBindings.filter(command=>!routes.has(command)),[],
+   "Dynamic agent actions must be routed by background service worker");
 });
 
 test("artifact previews cannot render untrusted HTML and are read-only text",()=>{
