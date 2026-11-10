@@ -285,7 +285,7 @@ async function renderDeliveries(taskId) {
       const actions=node("div",undefined,"action-row");
       const verify=node("button","Verify SHA-256","secondary");
       const download=node("button","Download","secondary");
-      const canPreview=/\\.(txt|md|json|csv)$/i.test(artifact.fileName) && artifact.bytes<=32768;
+      const canPreview=/\.(txt|md|json|csv)$/i.test(artifact.fileName) && artifact.bytes<=32768;
       const previewButton=node("button","Preview text","secondary");
       const previewPane=node("pre",undefined,"artifact-preview");
       previewPane.hidden=true;
@@ -297,7 +297,7 @@ async function renderDeliveries(taskId) {
         const result=response.preview;
         if(result.renderMode!=="textContent_only" || result.contentApproved!==false)
           throw new Error("Unexpected preview security contract");
-        previewPane.textContent=result.text+(result.truncated?"\\n[Preview truncated]":"");
+        previewPane.textContent=result.text+(result.truncated?"\n[Preview truncated]":"");
         previewPane.hidden=false;
         toast("Untrusted text preview only. No malware or independent content approval.");
       }));
