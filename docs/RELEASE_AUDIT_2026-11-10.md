@@ -62,3 +62,12 @@ This section supersedes the earlier snapshot only for the listed development-sou
 **Production decision: NO_GO.** `config/release-gates.json` remains fail-closed. No configured production target, deployment workflow, authenticated Chrome/Windows end-user acceptance, live authorized AI-provider execution, completed legacy source reconciliation, independent semantic/security review, file scanning, code signing, or proven rollback/read-back are available. No production deployment occurred. Owner approval does not substitute for those requirements.
 
 **Next acceptance actions:** reconcile sanitized original archives; implement and verify allowed provider execution; complete independent QA and file-safety controls; test the owner Windows/Chrome installation; configure signed distribution, release destination and audited rollback; then independently verify all gates before revisiting GO/NO_GO.
+
+## Release-gate follow-up — 2026-11-10
+
+- The source state on `main` at `573ef0d9c38605cfd4721b1ccd94bfb93b73d7b7` passed both CI jobs: https://github.com/faisalwrokksa-hub/TO/actions/runs/42827782620.
+- Original archive filenames `TheOrg(2).zip` and `Theorg's.zip` were located in the owner's file Library, but are **not** present in the repo and have not been reconciled or certified. Availability of an archive alone does not clear any migration gate.
+- The release checker now treats missing required gates as blockers, rejects invalid destination URLs/identities and checks whether the evidence commit matches the current build. This is defense-in-depth against accidental checklist drift, not independent truth verification.
+- See [production acceptance and deployment handoff](PRODUCTION_READINESS_HANDOFF_2026-11-10.md) for the target-specific steps and unresolved acceptance evidence.
+
+**Decision unchanged: NO-GO for production deployment.** There is still no verified production destination, signed distributor, real Windows/Chrome acceptance, provider integration or complete independent security acceptance. No production deployment is represented as complete.
