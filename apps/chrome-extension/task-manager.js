@@ -139,8 +139,38 @@
           reason: "Untrusted AI-suggested tasks need owner review before execution"
         };
         await this.saveOrders(all);
-        return {taskId, plan, status: order.phase};
+        // The planning chat has been handed off; close its TheOrg-owned tab only.
+        const closedSupervisorTabs = await this.closeAgentTabsLocked(taskId, "supervisor");
+        return {taskId, plan, status: order.phase, closedSupervisorTabs};
       });
+    }
+
+    async approvePlan(taskId) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid order");
+      return this.serialize(async () => {
+        const all = await this.orders();
+        const order = all[taskId];
+        if (!order || !order.plan || !order.plan.tasks.length)
+          throw new Error("No Supervisor plan to approve");
+        if (order.phase !== "plan_review_required") throw new Error("Plan is already approved or running");
+        order.plan.reviewed = true;
+        order.phase = "plan_approved";
+        order.plan.reviewedUtc = new Date().toISOString();
+        await this.saveOrders(all);
+        return {taskId, phase:order.phase, taskCount:order.plan.tasks.length};
+      });
+    }
+
+    async openSupervisorTab(taskId, providerId) {
+      return this.openAgentTab(taskId, "supervisor", providerId);
+    }
+
+    async getNativeOrder(taskId) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid order");
+      const orders = await this.orders();
+      const order = orders[taskId];
+      if (!order) throw new Error("Order is not registered");
+      return this.native({command:"get_order", companyId:order.companyId, orderId:taskId});
     }
 
     async agentPrompt(taskId, agentId) {
@@ -159,8 +189,11 @@
         const all = await this.orders();
         const order = all[taskId];
         if (!order) throw new Error("Work order not found");
-        if (!order.plan || !order.plan.tasks.some(task => task.id === agentId))
-          throw new Error("Supervisor must assign a specialist task before opening a provider tab");
+        if (agentId !== "supervisor") {
+          if (!order.plan || !order.plan.reviewed ||
+              !order.plan.tasks.some(task => task.id === agentId))
+            throw new Error("A reviewed Supervisor plan is required before dispatching agents");
+        }
         if (order.phase === "archived") throw new Error("Archived task cannot open tabs");
 
         const session = await this.owned();
