@@ -68,6 +68,10 @@ function fakeChrome(options = {}) {
           imports.push(item);
           return {ok:true,artifact:item};
         }
+        case "preview_text_artifact":return {ok:true,preview:{
+          fileName:"report.md",text:"This is untrusted text.",
+          renderMode:"textContent_only",contentApproved:false,malwareScanStatus:"not_scanned"
+        }};
         case "list_artifacts":return {ok:true,artifacts:imports};
         case "get_order":return {ok:true,order:{artifacts:options.noDemo ? [] :
           [{fileName:"plan.md",sha256:"C".repeat(64)}]}};
@@ -481,4 +485,16 @@ test("v2 specialist training enforces execution checkpoints, evidence, and bound
   const manual=context.TheOrgPlanner.agentPrompt(validInstruction,plan,"research1");
   assert.match(manual,/read back the result/i);
   assert.match(manual,/self-reported success/i);
+});
+
+test("Supervisor company-scoped preview forwards only validated task and artifact IDs",async()=>{
+  const fake=fakeChrome();
+  const manager=new context.TheOrgTaskManager(fake.api);
+  const order=await manager.createOrder("demo",validInstruction);
+  const preview=await manager.previewTextArtifact(order.taskId,"c".repeat(32));
+  assert.equal(preview.text,"This is untrusted text.");
+  assert.equal(preview.contentApproved,false);
+  assert.equal(preview.renderMode,"textContent_only");
+  await assert.rejects(()=>manager.previewTextArtifact(order.taskId,"../malicious"),
+    /Invalid order or artifact ID/);
 });
