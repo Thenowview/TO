@@ -18,6 +18,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "providers": return {ok:true,providers:manager.providers()};
       case "agent_skills": return {ok:true,version:globalThis.TheOrgSkills.version,profiles:globalThis.TheOrgSkills.profiles(),rubric:globalThis.TheOrgSkills.qualityRubric()};
       case "orders": return {ok:true,orders:await manager.listOrders()};
+      case "execution_queue": return {ok:true,...await manager.executionQueue(message.taskId)};
+      case "dispatch_next": return {ok:true,...await manager.dispatchNextTask(message.taskId)};
       case "get_order": return await manager.getNativeOrder(message.taskId);
       case "open_supervisor_tab": return {ok:true,...await manager.openSupervisorTab(message.taskId,message.providerId)};
       case "approve_plan": return {ok:true,...await manager.approvePlan(message.taskId)};
