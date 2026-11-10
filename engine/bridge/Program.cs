@@ -383,7 +383,72 @@ internal static class SelfTest
 
             var isolation = Call(c, new { command = "get_order", companyId = "other", orderId = id });
             Check(!isolation.GetProperty("ok").GetBoolean(), "company isolation");
-            Console.WriteLine("PASS: 13 native-host controller checks");
+
+            byte[] sample = Encoding.UTF8.GetBytes("# AI-generated draft\nSource content is untrusted.\n");
+            var imported = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "agent-report.md",
+                dataBase64 = Convert.ToBase64String(sample),
+                sourceProvider = "manual_import", sourceReference = "test_chat"
+            });
+            Check(imported.GetProperty("ok").GetBoolean(), "artifact intake");
+            string artifactId = imported.GetProperty("artifact").GetProperty("artifactId").GetString()!;
+            Check(imported.GetProperty("artifact").GetProperty("version").GetInt32() == 1,
+                "first artifact version");
+            Check(imported.GetProperty("artifact").GetProperty("intakeStatus").GetString() == "received_unverified",
+                "intake stays unverified");
+
+            var verified = Call(c, new {
+                command = "verify_artifact", companyId = "demo", orderId = id, artifactId
+            });
+            Check(verified.GetProperty("ok").GetBoolean() &&
+                verified.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
+                "artifact checksum verification");
+            Check(verified.GetProperty("artifact").GetProperty("intakeStatus").GetString() ==
+                "integrity_verified_content_qa_pending", "semantic QA remains pending");
+
+            var downloaded = Call(c, new {
+                command = "read_artifact", companyId = "demo", orderId = id, artifactId
+            });
+            string echoed = downloaded.GetProperty("content").GetProperty("dataBase64").GetString()!;
+            Check(Convert.FromBase64String(echoed).SequenceEqual(sample), "file byte roundtrip");
+
+            var second = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "agent-report.md",
+                dataBase64 = Convert.ToBase64String(sample),
+                sourceProvider = "manual_import", sourceReference = "revised_test_chat"
+            });
+            Check(second.GetProperty("artifact").GetProperty("version").GetInt32() == 2,
+                "new revision preserves earlier artifact");
+            var artifacts = Call(c, new {
+                command = "list_artifacts", companyId = "demo", orderId = id
+            });
+            Check(artifacts.GetProperty("artifacts").GetArrayLength() == 2, "list both versions");
+
+            var badFilename = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "../secret.txt",
+                dataBase64 = Convert.ToBase64String(sample),
+                sourceProvider = "manual_import", sourceReference = ""
+            });
+            Check(!badFilename.GetProperty("ok").GetBoolean(), "reject filename traversal");
+
+            var otherCompany = Call(c, new {
+                command = "read_artifact", companyId = "another", orderId = id, artifactId
+            });
+            Check(!otherCompany.GetProperty("ok").GetBoolean(), "cross-company artifact blocked");
+
+            string filePath = Path.Combine(folder, "agent_artifacts", artifactId + ".blob");
+            File.AppendAllText(filePath, "tampered");
+            var compromised = Call(c, new {
+                command = "verify_artifact", companyId = "demo", orderId = id, artifactId
+            });
+            Check(compromised.GetProperty("ok").GetBoolean() &&
+                !compromised.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
+                "tampered content detected");
+
+            Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
         catch (Exception ex)
