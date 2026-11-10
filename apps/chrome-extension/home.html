@@ -98,6 +98,8 @@
               <div id="agentsList" class="agents-list"><p class="muted">No specialist tasks defined yet.</p></div>
               <div class="step-line"><span class="step-index">3</span><b>Supervisor outcome audit</b><span class="step-helper">Evidence before completion</span></div>
               <button id="reviewOrder" class="secondary" type="button">Check results and blockers</button>
+              <button id="exportAuditPacket" class="secondary" type="button">Export audit evidence packet (JSON)</button>
+              <p class="form-note">QA findings are manually entered and the reviewer's identity is not independently authenticated. They cannot certify an AI agent's real-world performance.</p>
               <div id="reviewResult" class="review-result">No Supervisor review has been performed.</div>
             </div>
           </div>
@@ -141,6 +143,26 @@
     <label for="handoffOutcome">Result</label><select id="handoffOutcome"><option value="submitted">Submitted for Supervisor review</option><option value="blocked">Blocked</option><option value="needs_help">Needs more information</option></select>
     <label for="handoffSummary">Evidence and handoff</label><textarea id="handoffSummary" rows="7" minlength="20" maxlength="8000" required></textarea>
     <div class="action-row"><button type="button" id="cancelHandoff" class="secondary">Cancel</button><button type="submit" class="primary">Save handoff & close agent tabs</button></div>
+  </form>
+</dialog>
+
+<dialog id="qaDialog" class="dialog">
+  <form id="qaForm">
+    <h3 id="qaHeading">QA acceptance-criterion review</h3>
+    <p id="qaCriterion" class="muted"></p>
+    <p class="form-note">Inspect actual content, source evidence, and applicable tests before recording a finding. A manually entered pass is not independent identity verification.</p>
+    <label for="qaVerdict">Criterion result</label>
+    <select id="qaVerdict">
+      <option value="pass">Pass — evidence checked manually</option>
+      <option value="fail">Fail — correction required</option>
+      <option value="needs_information">Needs information — return to specialist</option>
+    </select>
+    <label for="qaEvidence">What was checked? Include file IDs, test output or source references.</label>
+    <textarea id="qaEvidence" minlength="30" maxlength="4000" rows="5" required placeholder="Describe concrete evidence you opened or tested. Do not paste credentials."></textarea>
+    <div class="action-row">
+      <button id="qaCancel" type="button" class="secondary">Cancel</button>
+      <button type="submit" class="primary">Save QA finding</button>
+    </div>
   </form>
 </dialog>
 </body>
