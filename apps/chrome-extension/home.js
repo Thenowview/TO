@@ -114,6 +114,7 @@ async function renderExecutionQueue(taskId) {
     const statuses = {
       plan_review_required:"Needs plan approval",
       agent_tab_open:"Chat tab open",
+      browser_session_untracked:"Previous Chrome session needs manual recovery",
       waiting_on_dependencies:"Waiting on earlier assignments",
       needs_agent_followup:"Agent needs follow-up",
       needs_revision:"Revision required",
@@ -131,6 +132,28 @@ async function renderExecutionQueue(taskId) {
       if(item.pendingDependencies?.length)
         summary.append(node("small","Waiting for: "+item.pendingDependencies.join(", ")));
       append(line,summary,node("small","Verified completion: No"));
+      if(item.state==="browser_session_untracked") {
+        const recover=node("button","Recover this agent tab","secondary");
+        recover.type="button";
+        recover.addEventListener("click",()=>action(async()=>{
+          const consent=window.confirm(
+            "Open a NEW TheOrg-owned tab for "+item.agentId+"? "+
+            "Tabs from the earlier Chrome session will not be closed automatically."
+          );
+          if(!consent)return;
+          const restored=await rpc("recover_agent",{
+            taskId,agentId:item.agentId
+          });
+          let copied=false;
+          try {await navigator.clipboard.writeText(restored.prompt);copied=true;}
+          catch {}
+          toast(item.agentId+" re-opened. Previous tabs were left untouched. "+
+            (copied?"Paste the copied task instructions into the new chat.":
+             "Copy the agent instructions from the specialist card."));
+          await refreshOrders(taskId);
+        }));
+        line.append(recover);
+      }
       target.append(line);
     }
     target.append(node("p",response.trustNotice,"form-note"));
