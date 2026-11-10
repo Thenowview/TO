@@ -1,0 +1,137 @@
+name: TheOrg Single EXE - Existing Chrome
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  onefile-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test extension and Native Messaging routing
+        shell: pwsh
+        run: |
+          node --check apps/chrome-extension/background.js
+          node --check apps/chrome-extension/home.js
+          node --test tests/ui-contract.test.cjs tests/task-manager.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Supervisor tests failed' }
+
+      - name: Publish self-contained Windows local controller
+        shell: pwsh
+        run: |
+          dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/onefile/bridge
+          if ($LASTEXITCODE -ne 0) { throw 'Bridge publish failed' }
+          & out/onefile/bridge/TheOrg.Bridge.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Bridge self test failed' }
+          python tests/native-messaging-smoke.py out/onefile/bridge/TheOrg.Bridge.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Native Messaging framing failed' }
+
+      - name: Create fixed-ID unpacked Chrome extension
+        shell: pwsh
+        run: |
+          node tools/prepare-onefile-extension.cjs apps/chrome-extension out/onefile/chrome-extension tools/onefile-extension-public-key.txt tools/onefile-extension-id.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Fixed ID packaging failed' }
+
+      - name: Directly validate Windows registration before packaging
+        shell: pwsh
+        run: |
+          $root=(Resolve-Path 'out/onefile').Path
+          Copy-Item -LiteralPath 'tools/Setup-OneFile.ps1' -Destination (Join-Path $root 'Setup-OneFile.ps1')
+          Copy-Item -LiteralPath 'tools/Cleanup-OneFile.ps1' -Destination (Join-Path $root 'Cleanup-OneFile.ps1')
+          Copy-Item -LiteralPath 'tools/TheOrg-OneFile-START.html' -Destination (Join-Path $root 'TheOrg-OneFile-START.html')
+          Copy-Item -LiteralPath 'portable/Open-TheOrg.ps1' -Destination (Join-Path $root 'Open-TheOrg.ps1')
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Setup-OneFile.ps1') -InstallRoot $root -ValidateOnly
+          if ($LASTEXITCODE -ne 0) { throw 'One-file setup validation failed before NSIS' }
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Setup-OneFile.ps1') -InstallRoot $root
+          if ($LASTEXITCODE -ne 0) { throw 'Native host registration failed before NSIS' }
+          $key='HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.theorg.bridge'
+          if (-not (Test-Path -LiteralPath $key)) { throw 'Setup did not create registry key' }
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Cleanup-OneFile.ps1') -InstallRoot $root
+          if ($LASTEXITCODE -ne 0) { throw 'Preflight cleanup failed' }
+          if (Test-Path -LiteralPath $key) { throw 'Preflight registry key not cleaned up' }
+
+      - name: Install NSIS compiler
+        shell: pwsh
+        run: choco install nsis --yes --no-progress --limit-output
+
+      - name: Build one unsigned Windows EXE (no Chrome bundle)
+        shell: pwsh
+        run: |
+          $compiler=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'NSIS\makensis.exe'
+          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) { throw 'NSIS compiler missing' }
+          & $compiler /V2 tools/TheOrg-OneFile.nsi
+          if ($LASTEXITCODE -ne 0) { throw "One-file installer NSIS error: $LASTEXITCODE" }
+          if (-not (Test-Path -LiteralPath 'out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe')) {
+            throw 'One-file EXE missing'
+          }
+
+      - name: Smoke-test real Windows install, exact extension ID, registration and uninstall
+        shell: pwsh
+        run: |
+          $file=(Resolve-Path 'out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe').Path
+          $proc=Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Installer error $($proc.ExitCode)" }
+          $root=Join-Path $env:LOCALAPPDATA 'Programs\TheOrg-OneFile'
+          $bridge=Join-Path $root 'bridge\TheOrg.Bridge.exe'
+          $extensionManifest=Join-Path $root 'chrome-extension\manifest.json'
+          $guide=Join-Path $root 'START-HERE.html'
+          $idFile=Join-Path $root 'ExtensionId.txt'
+          foreach($item in @($bridge,$extensionManifest,$guide,$idFile)) {
+            if (-not (Test-Path -LiteralPath $item -PathType Leaf)) { throw "Missing installed file $item" }
+          }
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Setup-OneFile.ps1') -InstallRoot $root -ValidateOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Installed validation failed' }
+          & $bridge --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Installed controller failed' }
+          $extensionId=(Get-Content -LiteralPath $idFile -Raw).Trim()
+          $expected=(Get-Content -LiteralPath tools/onefile-extension-id.txt -Raw).Trim()
+          if ($extensionId -ne $expected) { throw 'Incorrect installed extension ID' }
+          $key='HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.theorg.bridge'
+          if (-not (Test-Path -LiteralPath $key)) { throw 'Chrome native host key missing' }
+          $hostFile=(Get-Item -LiteralPath $key).GetValue('')
+          if (-not (Test-Path -LiteralPath $hostFile -PathType Leaf)) { throw 'Native host JSON missing' }
+          $hostData=Get-Content -LiteralPath $hostFile -Raw | ConvertFrom-Json
+          if ($hostData.path -ne $bridge -or @($hostData.allowed_origins).Count -ne 1 -or
+            $hostData.allowed_origins[0] -cne "chrome-extension://$extensionId/") {
+            throw 'Chrome native host path or origin mismatch'
+          }
+          $local=Join-Path $root 'Local-Files'
+          Set-Content -LiteralPath (Join-Path $local 'keep-my-work.txt') -Value 'synthetic only'
+          $uninstaller=Join-Path $root 'Uninstall.exe'
+          $removed=Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
+          if ($removed.ExitCode -ne 0) { throw "Uninstall error $($removed.ExitCode)" }
+          if (Test-Path -LiteralPath $bridge) { throw 'Bridge still exists after uninstall' }
+          if (Test-Path -LiteralPath $key) { throw 'Chrome native registration still exists' }
+          if (-not (Test-Path -LiteralPath (Join-Path $local 'keep-my-work.txt'))) {
+            throw 'User output was deleted!'
+          }
+          Write-Host 'PASS one-file EXE, Native Messaging registration, uninstall and user data retention'
+
+      - name: Report installer SHA-256
+        shell: pwsh
+        run: |
+          $file='out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe'
+          $sha=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "SHA256 installer: $sha"
+          Write-Host "Source commit: $env:GITHUB_SHA"
+          Write-Host 'Unsigned developer preview. Production remains NO_GO.'
+      - name: Upload ONE Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-OneFile-ExistingChrome-Win-x64
+          path: out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe
+          if-no-files-found: error
+          retention-days: 30
