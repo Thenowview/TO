@@ -167,6 +167,87 @@
       });
     }
 
+    // This is a plan-execution queue, not a proof of externally completed work.
+    // Dependencies can progress after a submitted handoff and manually recorded QA pass.
+    // Such passes remain explicitly unauthenticated until independent verification exists.
+    async executionQueue(taskId) {
+      if (!TASK_ID.test(taskId)) throw new Error("Invalid work order ID");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order || !order.plan) throw new Error("Work order has no task plan");
+      const owned = await this.owned();
+      const activeTabs = ((owned[taskId] || {}).tabs || [])
+        .map(item => item.agentId);
+      const reviews = order.qaFindings || {};
+      const reports = order.agentReports || {};
+      const tasks = order.plan.tasks || [];
+      function qaPass(id) {
+        const task = tasks.find(t => t.id === id);
+        const report = reports[id];
+        if (!task || !report || report.outcome !== "submitted") return false;
+        return task.acceptanceCriteria.every((_, index) => {
+          const finding = (reviews[id] || {})[index];
+          return finding &&
+            finding.verdict === "pass" &&
+            finding.handoffUtc === report.savedUtc;
+        });
+      }
+      const queue = tasks.map(task => {
+        const report = reports[task.id] || null;
+        const pendingDependencies = (task.dependencies || []).filter(dep => !qaPass(dep));
+        const active = activeTabs.includes(task.id);
+        const allCriteriaPassed = qaPass(task.id);
+        const anyFailed = Object.values(reviews[task.id] || {}).some(f =>
+          f.verdict === "fail" || f.verdict === "needs_information");
+        let state;
+        if (!order.plan.reviewed) state = "plan_review_required";
+        else if (active) state = "agent_tab_open";
+        else if (pendingDependencies.length) state = "waiting_on_dependencies";
+        else if (report && report.outcome !== "submitted") state = "needs_agent_followup";
+        else if (anyFailed) state = "needs_revision";
+        else if (allCriteriaPassed) state = "manual_qa_pass_unverified";
+        else if (report) state = "awaiting_qa_evidence";
+        else state = "ready_for_manual_provider_consultation";
+        return {
+          agentId: task.id, role: task.role, providerId: task.provider,
+          objective: task.objective,
+          dependencies: task.dependencies || [], pendingDependencies,
+          state, activeTabCount: activeTabs.filter(id => id === task.id).length,
+          verifiedComplete: false,
+          outstandingCriteria: task.acceptanceCriteria.filter((_,index) => {
+            const finding = (reviews[task.id] || {})[index];
+            return !finding || finding.verdict !== "pass" ||
+              !report || finding.handoffUtc !== report.savedUtc;
+          })
+        };
+      });
+      return {
+        taskId, planApproved: !!order.plan.reviewed,
+        reviewStatus: order.review?.verdict || "pending",
+        queue,
+        ready: queue.filter(t => t.state === "ready_for_manual_provider_consultation")
+          .map(t => t.agentId),
+        trustNotice: "SOP queue only. A manual QA pass is not authenticated certification; no AI provider was automatically consulted."
+      };
+    }
+
+    async dispatchNextTask(taskId) {
+      const sequence = await this.executionQueue(taskId);
+      if (!sequence.planApproved)
+        throw new Error("Review and approve the Supervisor plan before dispatch");
+      const next = sequence.queue.find(t =>
+        t.state === "ready_for_manual_provider_consultation");
+      if (!next) return { taskId, dispatched: false,
+        reason: "No eligible specialist. Review pending handoffs, QA criteria and task dependencies.",
+        queue: sequence.queue };
+      const prompt = await this.agentPrompt(taskId, next.agentId);
+      const tab = await this.openAgentTab(taskId,next.agentId,next.providerId);
+      return { taskId, dispatched: true, agentId: next.agentId,
+        providerId: next.providerId, prompt,
+        manualProviderHandoff: true,
+        browserTab: tab };
+    }
+
     async openSupervisorTab(taskId, providerId) {
       return this.openAgentTab(taskId, "supervisor", providerId);
     }
@@ -199,12 +280,31 @@
           if (!order.plan || !order.plan.reviewed ||
               !order.plan.tasks.some(task => task.id === agentId))
             throw new Error("A reviewed Supervisor plan is required before dispatching agents");
+          const task = order.plan.tasks.find(t => t.id === agentId);
+          const reports = order.agentReports || {};
+          const checks = order.qaFindings || {};
+          const dependenciesReady = (task.dependencies || []).every(depId => {
+            const dependency = order.plan.tasks.find(t => t.id === depId);
+            const report = reports[depId];
+            if (!dependency || !report || report.outcome !== "submitted") return false;
+            return dependency.acceptanceCriteria.every((_, index) => {
+              const finding = (checks[depId] || {})[index];
+              return finding && finding.verdict === "pass" &&
+                finding.handoffUtc === report.savedUtc;
+            });
+          });
+          if (!dependenciesReady)
+            throw new Error("Complete prerequisite handoffs and record QA findings before opening dependent agent tabs");
         }
         if (order.phase === "archived") throw new Error("Archived task cannot open tabs");
 
         const session = await this.owned();
         const state = session[taskId] || { tabs: [], groupId: null, windowId: null };
         if (state.tabs.length >= 16) throw new Error("Limit of 16 task tabs reached");
+        if (agentId !== "supervisor" &&
+            state.tabs.some(tab => tab.agentId === agentId)) {
+          throw new Error("Agent already has an open TheOrg task tab");
+        }
 
         // Create TheOrg-owned tabs only. Never group an existing personal tab.
         const created = await this.api.tabs.create({
