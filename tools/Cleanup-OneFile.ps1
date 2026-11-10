@@ -11,8 +11,8 @@ try {
   if (Test-Path -LiteralPath $reg) {
     $registered=(Get-Item -LiteralPath $reg).GetValue('')
     if ($registered -eq $path -and (Test-Path -LiteralPath $path -PathType Leaf)) {
-      $host=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
-      if ([IO.Path]::GetFullPath([string]$host.path) -ieq $exe) {
+      $hostData=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+      if ([IO.Path]::GetFullPath([string]$hostData.path) -ieq $exe) {
         Remove-Item -LiteralPath $reg -Force
         Remove-Item -LiteralPath $path -Force
       }
