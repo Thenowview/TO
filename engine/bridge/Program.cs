@@ -134,7 +134,7 @@ internal sealed class Controller
                         "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact",
                         "begin_artifact_upload", "append_artifact_chunk", "upload_status",
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk",
-                        "agent_create", "agent_get", "agent_list", "agent_approve", "agent_run_next",
+                        "agent_create", "agent_get", "agent_list", "agent_approve", "agent_run_next", "agent_run_safe_batch",
                         "agent_complete_browser", "agent_review", "agent_cancel", "agent_recover",
                         "agent_memory_put", "agent_memory_list", "agent_tools" },
                     maxArtifactImportBytes = 256000,
@@ -757,6 +757,24 @@ internal static class SelfTest
             Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
                 !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
                 "independent checksum QA does not certify content quality");
+            // One-click safe batch cannot bypass approval or launch external applications.
+            var batchPlan=Call(c,new {
+                command="agent_create",companyId="demo",orderId=id,
+                instruction="Produce a second synthetic local note and list it.",
+                mode="demo",model="qwen3:4b",approvedHosts=""
+            });
+            string batchId=batchPlan.GetProperty("jobId").GetString()!;
+            var unapprovedBatch=Call(c,new {command="agent_run_safe_batch",companyId="demo",jobId=batchId});
+            Check(!unapprovedBatch.GetProperty("ok").GetBoolean(),"batch cannot bypass owner approval");
+            Call(c,new {command="agent_approve",companyId="demo",jobId=batchId,approved=true});
+            var batchResult=Call(new Controller(root),new {command="agent_run_safe_batch",companyId="demo",jobId=batchId});
+            Check(batchResult.GetProperty("ok").GetBoolean()&&
+                  batchResult.GetProperty("executedSteps").GetInt32()==2&&
+                  batchResult.GetProperty("status").GetString()=="completed_pending_review",
+                  "approved local batch runs both safe steps and preserves review gate");
+            var batchAudit=Call(c,new {command="agent_review",companyId="demo",jobId=batchId});
+            Check(batchAudit.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required",
+                "safe batch does not self-certify");
             var foreignJob=Call(c,new {command="agent_get",companyId="other",jobId});
             Check(!foreignJob.GetProperty("ok").GetBoolean(),"agent jobs isolated by company");
             var put=Call(c,new {command="agent_memory_put",companyId="demo",key="project",

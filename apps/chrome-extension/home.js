@@ -667,6 +667,8 @@ async function showAgentJob() {
   $("agentDetails").textContent=details.join("\n\n");
   $("agentApprove").disabled=r.status!=="awaiting_approval";
   $("agentRunNext").disabled=r.status!=="queued";
+  $("agentRunSafeBatch").disabled=r.status!=="queued" ||
+    !["write_note","read_note","list_notes","system_info"].includes(r.plan?.steps?.[r.stepIndex]?.tool);
   $("agentReview").disabled=r.status!=="completed_pending_review";
   $("agentRecover").disabled=r.status!=="running";
   $("agentCancel").disabled=["review_pending","cancelled","blocked"].includes(r.status);
@@ -719,6 +721,7 @@ function registerLocalAgentEvents() {
   for(const [id,command,extras] of [
     ["agentApprove","agent_approve",{approved:true}],
     ["agentRunNext","agent_run_next",{}],
+    ["agentRunSafeBatch","agent_run_safe_batch",{}],
     ["agentReview","agent_review",{}],
     ["agentRecover","agent_recover",{}],
     ["agentCancel","agent_cancel",{}]
@@ -729,6 +732,8 @@ function registerLocalAgentEvents() {
       const response=await rpc(command,{taskId:o.taskId,jobId,...extras});
       toast(command==="agent_run_next" ?
         "Tool step requested. Examine evidence and output before continuing." :
+        command==="agent_run_safe_batch" ?
+        (response.executedSteps||0)+" approved local-only step(s) executed; inspect evidence and QA." :
         "Local agent status: "+(response.status||response.qa?.verdict||"updated"));
       await showAgentJob();
     }));

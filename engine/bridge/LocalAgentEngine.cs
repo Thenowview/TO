@@ -60,6 +60,7 @@ internal sealed class LocalAgentEngine
                 "agent_list" => List(request),
                 "agent_approve" => Approve(request),
                 "agent_run_next" => RunNext(request),
+                "agent_run_safe_batch" => RunSafeBatch(request),
                 "agent_complete_browser" => CompleteBrowser(request),
                 "agent_review" => Review(request),
                 "agent_cancel" => Cancel(request),
@@ -206,6 +207,29 @@ internal sealed class LocalAgentEngine
             return new{ok=false,error="step_blocked",reason=ex.GetType().Name};
         }
     }
+    // A single owner-approved batch executes only closed-catalog local/read-only tools.
+    // Browser navigation and desktop launches are intentionally excluded.
+    internal object RunSafeBatch(JsonElement request)
+    {
+        var initial=Find(request);
+        if(initial.Status!="queued") throw new InvalidOperationException("Approve the plan before batch execution");
+        var receipts=new List<object>();
+        while(receipts.Count<MaxSteps)
+        {
+            var current=Find(request);
+            if(current.Status!="queued"||current.StepIndex>=current.Plan.Steps.Count) break;
+            string tool=current.Plan.Steps[current.StepIndex].Tool;
+            if(tool is not ("write_note" or "read_note" or "list_notes" or "system_info")) break;
+            receipts.Add(RunNext(request));
+            if(Find(request).Status!="queued") break;
+        }
+        var final=Find(request);
+        bool separateAction=final.Status=="queued"&&final.StepIndex<final.Plan.Steps.Count;
+        return new {ok=final.Status!="blocked",jobId=final.Id,status=final.Status,
+            executedSteps=receipts.Count,receipts,requiresSeparateAction=separateAction,
+            note="Only previously approved local notes and read-only tools were run; browser and desktop actions require separate execution."};
+    }
+
     internal object CompleteBrowser(JsonElement request)
     {
         var job=Find(request);
