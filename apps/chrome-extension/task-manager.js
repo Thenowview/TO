@@ -102,6 +102,7 @@
           plan: localPlan,
           agentReports: {},
           qaFindings: {},
+          agentSessions: {},
           providerTabs: {},
           review: {
             verdict: "pending",
@@ -138,6 +139,7 @@
         order.plan = plan;
         order.agentReports = {};
         order.qaFindings = {};
+        order.agentSessions = {};
         order.providerTabs = {};
         order.phase = "plan_review_required";
         order.review = {
@@ -217,6 +219,8 @@
         let state;
         if (!order.plan.reviewed) state = "plan_review_required";
         else if (active) state = "agent_tab_open";
+        else if (order.agentSessions?.[task.id]?.status === "open")
+          state = "browser_session_untracked";
         else if (pendingDependencies.length) state = "waiting_on_dependencies";
         else if (!artifactsValidFor(task.id)) state = "artifact_validation_pending";
         else if (report && report.outcome !== "submitted") state = "needs_agent_followup";
@@ -299,7 +303,7 @@
       return globalThis.TheOrgSkills.agentPrompt(order.instruction || order.title, order.plan, agentId);
     }
 
-    async openAgentTab(taskId, agentId, providerId) {
+    async openAgentTab(taskId, agentId, providerId, allowRecovery = false) {
       if (!TASK_ID.test(taskId) || !AGENT.test(agentId)) throw new Error("Invalid task or agent ID");
       const provider = PROVIDERS[providerId];
       if (!provider) throw new Error("Choose a registered AI provider");
@@ -349,6 +353,10 @@
             state.tabs.some(tab => tab.agentId === agentId)) {
           throw new Error("Agent already has an open TheOrg task tab");
         }
+        if (agentId !== "supervisor" && !allowRecovery &&
+            order.agentSessions?.[agentId]?.status === "open") {
+          throw new Error("Previous browser session ownership was lost; use Recover task to open a new owned tab");
+        }
 
         // Create TheOrg-owned tabs only. Never group an existing personal tab.
         const created = await this.api.tabs.create({
@@ -374,6 +382,16 @@
         state.windowId = created.windowId;
         session[taskId] = state;
         await this.saveOwned(session);
+        if (agentId !== "supervisor") {
+          order.agentSessions = order.agentSessions || {};
+          order.agentSessions[agentId] = {
+            status: "open", providerId, startedUtc: item.createdUtc,
+            recoveryNote: allowRecovery
+              ? "Opened a new task-owned tab without closing previously untracked tabs"
+              : "Normal task-owned Chrome tab"
+          };
+          await this.saveOrders(all);
+        }
 
         try {
           let groupId;
@@ -404,6 +422,27 @@
         await this.saveOrders(all);
         return { taskId, agentId, providerId, tabId: created.id, groupId: state.groupId };
       });
+    }
+
+    async recoverAgentTask(taskId, agentId) {
+      if (!TASK_ID.test(taskId) || !AGENT.test(agentId))
+        throw new Error("Invalid recovery request");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order || order.agentSessions?.[agentId]?.status !== "open")
+        throw new Error("No untracked agent session to recover");
+      const owned = await this.owned();
+      if (((owned[taskId] || {}).tabs || []).some(t => t.agentId === agentId))
+        throw new Error("TheOrg already owns an active tab for this agent");
+      const task = (order.plan?.tasks || []).find(t=>t.id===agentId);
+      if (!task) throw new Error("Agent is not in the current plan");
+      const prompt = await this.agentPrompt(taskId,agentId);
+      const browserTab = await this.openAgentTab(taskId,agentId,task.provider,true);
+      return {
+        taskId,agentId,providerId:task.provider,browserTab,prompt,
+        untrackedTabsWereClosed:false,
+        note:"Previously untracked browser tabs were left untouched."
+      };
     }
 
     async importArtifact(taskId, agentId, fileName, dataBase64, provider, sourceReference) {
@@ -545,6 +584,11 @@
           verification: "unverified_agent_claim"
         };
         order.agentReports = reports;
+        order.agentSessions = order.agentSessions || {};
+        order.agentSessions[agentId] = {
+          status:"handoff_saved", providerId: order.agentSessions[agentId]?.providerId || "",
+          handedOffUtc: reports[agentId].savedUtc
+        };
         // Any subsequent handoff invalidates prior manual QA findings for this agent.
         if (order.qaFindings) delete order.qaFindings[agentId];
         const assigned = order.plan.tasks.find(t => t.id === agentId);
