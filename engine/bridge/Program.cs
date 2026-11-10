@@ -525,6 +525,34 @@ internal static class SelfTest
             Check(!refusedHtml.GetProperty("ok").GetBoolean(),
                 "browser-executable HTML never previewed");
 
+            var oversizedText = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "oversized.txt",
+                dataBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(new string('x', 33000))),
+                sourceProvider = "manual_import", sourceReference = "test"
+            });
+            Check(oversizedText.GetProperty("ok").GetBoolean(), "oversize preview fixture imported");
+            var tooLargePreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id,
+                artifactId = oversizedText.GetProperty("artifact").GetProperty("artifactId").GetString()!
+            });
+            Check(!tooLargePreview.GetProperty("ok").GetBoolean(), "preview refuses files above 32 KiB");
+
+            var malformedJson = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "broken.json",
+                dataBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes("{not-valid-json}")),
+                sourceProvider = "manual_import", sourceReference = "test"
+            });
+            Check(malformedJson.GetProperty("ok").GetBoolean(), "malformed JSON kept for review");
+            var invalidJsonPreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id,
+                artifactId = malformedJson.GetProperty("artifact").GetProperty("artifactId").GetString()!
+            });
+            Check(!invalidJsonPreview.GetProperty("ok").GetBoolean(),
+                "malformed JSON rejected by structural preview validation");
+
+
             var downloaded = Call(c, new {
                 command = "read_artifact", companyId = "demo", orderId = id, artifactId
             });
