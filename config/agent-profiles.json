@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "organization": "TheOrg",
-  "releaseStatus": "configuration-only:not-runtime-integrated",
+  "releaseStatus": "playbook-prompt-runtime-wired;no-model-fine-tuning-or-automated-provider-access",
   "principles": [
     "Permanent profiles do not imply continuously running LLM sessions.",
     "A specialist may open only its own tracked Chrome task tabs.",
@@ -52,7 +52,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "supervisor",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "planner",
@@ -90,7 +98,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "planner",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "researcher",
@@ -127,7 +143,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "researcher",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "browser",
@@ -164,7 +188,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "browser",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "desktop",
@@ -200,7 +232,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "desktop",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "developer",
@@ -238,7 +278,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "developer",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "analyst",
@@ -276,7 +324,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "analyst",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "documents",
@@ -314,7 +370,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "documents",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "communications",
@@ -352,7 +416,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "communications",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "integrations",
@@ -390,7 +462,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "integrations",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "qa_auditor",
@@ -428,7 +508,15 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "qa_auditor",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     },
     {
       "id": "security_officer",
@@ -465,7 +553,23 @@
           "needs_information"
         ],
         "requiredEvidence": true
-      }
+      },
+      "sop": {
+        "id": "security_officer",
+        "version": "sop-1.0.0",
+        "source": "apps/chrome-extension/agent-playbooks.js",
+        "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
+        "changesRequireReview": true
+      },
+      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
     }
-  ]
+  ],
+  "playbookPolicy": {
+    "version": "sop-1.0.0",
+    "source": "apps/chrome-extension/agent-playbooks.js",
+    "method": "versioned_instruction_templates_not_weight_training",
+    "changeApproval": "human_reviewed_pull_request",
+    "evidenceStandard": "verification_not_model_self_report",
+    "independentQARequired": true
+  }
 }
