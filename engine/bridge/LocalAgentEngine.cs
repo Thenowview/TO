@@ -97,7 +97,7 @@ internal sealed class LocalAgentEngine
         {
             Summary="Synthetic browser navigation test; no site content extraction",
             Steps=new List<AgentStep>{
-                new(){Title="Navigate one approved HTTPS site",Tool="browser_open",
+                new(){Title="Navigate one approved HTTPS site",AgentId="browser",Tool="browser_open",
                     Input=approved.Length>0?"https://"+approved[0]+"/":"https://example.com/",
                     ExpectedOutput="Browser tab navigation request; page contents not independently verified"}
             }
@@ -105,15 +105,15 @@ internal sealed class LocalAgentEngine
         {
             Summary="Synthetic Windows Notepad launch test only",
             Steps=new List<AgentStep>{
-                new(){Title="Start Windows Notepad",Tool="windows_open_notepad",Input="",
+                new(){Title="Start Windows Notepad",AgentId="desktop",Tool="windows_open_notepad",Input="",
                     ExpectedOutput="Notepad process starts; GUI interaction remains unverified"}
             }
         } : mode=="demo" ? new AgentPlan
         {
             Summary="Synthetic local action test, not model reasoning",
             Steps=new List<AgentStep> {
-                new(){Title="Write a synthetic test note",Tool="write_note",Input="Demo request: "+instruction,ExpectedOutput="An example note with checksum"},
-                new(){Title="Inspect local workspace",Tool="list_notes",Input="",ExpectedOutput="List of agent-generated notes"}
+                new(){Title="Write a synthetic test note",AgentId="documents",Tool="write_note",Input="Demo request: "+instruction,ExpectedOutput="An example note with checksum"},
+                new(){Title="Inspect local workspace",AgentId="analyst",Tool="list_notes",Input="",ExpectedOutput="List of agent-generated notes"}
             }
         } : GeneratePlan(instruction,model);
         ValidatePlan(plan,approved);
@@ -379,8 +379,8 @@ internal sealed class LocalAgentEngine
     private AgentPlan GeneratePlan(string instruction,string model)
     {
         string system=@"You are a local Windows workflow planner. Return ONLY a strict JSON object with
-        {""summary"":string,""steps"":[{""title"":string,""tool"":string,""input"":string,""expectedOutput"":string}]}.
-        No more than five steps. Allowed tool names: write_note,read_note,list_notes,system_info,browser_open,windows_open_notepad.
+        {""summary"":string,""steps"":[{""title"":string,""agentId"":string,""tool"":string,""input"":string,""expectedOutput"":string}]}.
+        No more than five steps. Allowed agentId values: supervisor,planner,researcher,browser,desktop,developer,analyst,documents,communications,integrations,qa_auditor,security_officer. Allowed tool names: write_note,read_note,list_notes,system_info,browser_open,windows_open_notepad.
         You are planning only, not executing. write_note creates a text file with the exact input as its content,
         and cannot conduct research. read_note may only use known agent note filenames. browser_open navigates to one
         HTTPS URL and cannot read or interact with the page. windows_open_notepad only starts Notepad.
@@ -408,9 +408,10 @@ internal sealed class LocalAgentEngine
         if(plan.Summary.Length is < 4 or > 600||plan.Steps.Count is < 1 or > MaxSteps)
             throw new ArgumentException("Plan summary or step count invalid");
         string[] supported={"write_note","read_note","list_notes","system_info","browser_open","windows_open_notepad"};
+        string[] agents={"supervisor","planner","researcher","browser","desktop","developer","analyst","documents","communications","integrations","qa_auditor","security_officer"};
         foreach(var step in plan.Steps)
         {
-            if(!supported.Contains(step.Tool)||step.Title.Length is < 4 or > 130
+            if(!supported.Contains(step.Tool)||!agents.Contains(step.AgentId)||step.Title.Length is < 4 or > 130
                ||step.Input.Length>16000||step.ExpectedOutput.Length is < 4 or > 450)
                 throw new ArgumentException("Invalid or unsupported agent step");
             if(step.Tool=="browser_open") RequireApprovedUrl(step.Input,approved);
@@ -510,6 +511,7 @@ internal sealed class LocalAgentEngine
     }
     internal sealed class AgentStep
     {
+        public string AgentId {get;set;}="planner";
         public string Title {get;set;}="";
         public string Tool {get;set;}="";
         public string Input {get;set;}="";
