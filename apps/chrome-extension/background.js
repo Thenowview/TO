@@ -20,6 +20,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "orders": return {ok:true,orders:await manager.listOrders()};
       case "execution_queue": return {ok:true,...await manager.executionQueue(message.taskId)};
       case "dispatch_next": return {ok:true,...await manager.dispatchNextTask(message.taskId)};
+      case "recover_agent": return {ok:true,...await manager.recoverAgentTask(message.taskId,message.agentId)};
       case "get_order": return await manager.getNativeOrder(message.taskId);
       case "open_supervisor_tab": return {ok:true,...await manager.openSupervisorTab(message.taskId,message.providerId)};
       case "approve_plan": return {ok:true,...await manager.approvePlan(message.taskId)};
