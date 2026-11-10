@@ -12,10 +12,10 @@
 3. The Supervisor validates the plan structure and requires review before specialist tabs open.
 4. Agents consult AI providers in separate, TheOrg-owned, task-scoped Chrome tabs. TheOrg does **not** scrape chats, reuse ChatGPT plugin tokens or bypass provider controls.
 5. After a permitted AI chat provides a file, an operator downloads the file normally and selects it in the **Deliveries → Import artifact** form.
-6. The Chrome extension reads the explicitly selected file and sends its base64 contents to the registered Windows Native Messaging host. Import size is **250 KiB per file** in this first implementation.
+6. The Chrome extension reads the explicitly selected file and sends its base64 contents to the registered Windows Native Messaging host. Import uses **128 KiB chunks** for files up to **32 MiB**. Upload sessions have a 24-hour expiry, a stored byte offset and SHA-256 verification. The previous 250 KiB single-message path remains available for legacy callers.
 7. The host binds the artifact to its company, work order, and assigned agent. It stores actual bytes under a randomly generated artifact ID, preserving the original filename as metadata only.
 8. On each import, the host records a version for that agent+filename, SHA-256, length, source-provider label, source reference, creation time and intake status.
-9. The owner can list, verify and download local imported artifacts. Integrity verification re-reads the stored bytes; it does **not** establish content accuracy, macro safety, malware safety or task completion.
+9. The owner can list, verify and download local imported artifacts. Integrity verification re-reads the stored bytes; separate structural checks inspect format signatures, UTF-8/JSON validity, Office container structure, macro indicators and ZIP expansion limits. **These checks are not malware scanning, semantic verification, or proof of task completion.**
 10. An agent's handoff is saved before its tracked tabs close.
 11. The Supervisor may only report **pending independent verification** when all agents submitted and the files have passed integrity checks. Actual semantic QA and business acceptance are not implemented in this release.
 
@@ -26,7 +26,9 @@ All extension data and files remain local unless the human explicitly shares the
 | Path | Change |
 |---|---|
 | \`engine/bridge/ArtifactStore.cs\` | Validated intake, per-company storage, immutable versions, metadata and byte checks |
-| \`engine/bridge/Program.cs\` | Native commands: import_artifact, list_artifacts, verify_artifact, read_artifact; regression self-test |
+| \`engine/bridge/Program.cs\` | Native commands for intake, multi-chunk transfer, list, checksum/structure checks and download; regression self-test |
+| \`engine/bridge/ArtifactTransfers.cs\` | Recoverable 32 MiB staged transfer with offset, size and SHA-256 checks; expired-session cleanup |
+| \`engine/bridge/ArtifactInspection.cs\` | Bounded format signature and archive inspection, not a malware scanner |
 | \`apps/chrome-extension/task-manager.js\` | Agent-assigned intake, artifact list/read/check, Supervisor review gate |
 | \`apps/chrome-extension/background.js\` | Extension message router to the Windows controller |
 | \`apps/chrome-extension/home.html\` | Local file-intake form and Deliveries region |
@@ -40,7 +42,7 @@ All extension data and files remain local unless the human explicitly shares the
 - No AI-generated code is executed from an imported file.
 - Imported files are **untrusted** and not auto-approved, published, opened by privileged tools or uploaded to cloud storage.
 - The host accepts only known extensions and safe basename characters and rejects path traversal.
-- Native messages are bounded to 1 MiB; file import is limited to 250 KiB.
+- Native messages are bounded to 1 MiB by our host; individual transfer chunks are at most 128 KiB, and per-file transfers are capped at 32 MiB. Chrome's own directional limits differ. Each staged transfer is tied to one company, order, random ID and access token.
 - The Chrome manifest has no host-wide webpage scraping permissions.
 - The installation helper registers only the extension ID supplied by the owner; use the ID from \`chrome://extensions\`.
 - The browser closes only TheOrg-created tabs tracked in the same task group after saving the specialist handoff.
@@ -61,15 +63,24 @@ GitHub Actions run https://github.com/faisalwrokksa-hub/TO/actions/runs/42807867
 
 A separate direct simulated Chrome workflow check passed 9 steps: plan interpretation, work order creation, Supervisor tab grouping, planning handoff/closing, approval, specialist grouping, file intake, handoff/closing, and blocked completion when an imported file was unverified.
 
+## Release branch additions (November 2026)
+
+- Windows upload controller now uses `begin_artifact_upload`, `append_artifact_chunk`, `upload_status`, `complete_artifact_upload` and `cancel_artifact_upload`.
+- Browser download uses `read_artifact_chunk`, with a final browser-side SHA-256 comparison before writing the user's downloaded file.
+- `chrome.storage.session` holds an in-progress transfer token while Chrome remains open; a Chrome restart clears it, so full browser-restart recovery is **not** complete.
+- `ArtifactInspection` reports structural indicators only. It does not guarantee the file is harmless.
+- `tools/TheOrgPreview.nsi` and the NSIS workflow aim to create an unsigned one-file Windows developer-preview installer. Installing and connecting the Chrome extension remains an authorized user step.
+
 ## Remaining acceptance gates
 
 - [ ] Import and audit original TheOrg/sidebar source and preserve legacy generators
 - [ ] Validate the extension and Native Messaging on an actual Chrome Stable + Windows 11 installation
 - [ ] Implement approved website-based file-download routing where supported (manual import is operational design only)
-- [ ] Add streamed transfer for files above 250 KiB
-- [ ] Implement malware scanning and content-format validation in a safe sandbox
+- [x] Add recoverable 32 MiB chunked file transfer and verified download (unit tests passed; browser integration remains untested)
+- [x] Add bounded format and container checks (unit-tested; **not** a malware scan)
+- [ ] Integrate an independent malware scanner and safe preview sandbox
 - [ ] Implement independent semantic QA against each specialist's acceptance criteria
-- [ ] Test rollback/version restore, storage quotas and crash recovery for the full pipeline
-- [ ] Validate signed installation/uninstallation and production-security boundaries
+- [ ] Test end-to-end browser restart recovery, version restore, storage quotas and on-device crash behavior (recovered host-process transfer covered by self-tests)
+- [ ] Confirm preview installer built and validate silent install/uninstall in Windows CI; signed production installation is still pending
 
 **Release decision:** development candidate accepted for code review; **not production-ready**.
