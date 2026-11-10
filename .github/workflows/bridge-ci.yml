@@ -66,6 +66,33 @@ jobs:
       - name: Test actual Native Messaging stdio framing and tenant isolation
         shell: pwsh
         run: python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
+      - name: Fetch pinned official Chrome for Testing for dedicated TheOrg workspace
+        shell: pwsh
+        run: |
+          $version = '157.0.8103.50'
+          $url = "https://storage.googleapis.com/chrome-for-testing-public/$version/win64/chrome-win64.zip"
+          New-Item -ItemType Directory -Force out/browser | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile out/browser/chrome-win64.zip
+          Expand-Archive -LiteralPath out/browser/chrome-win64.zip -DestinationPath out/browser -Force
+          $browser = 'out/browser/chrome-win64/chrome.exe'
+          if (!(Test-Path -LiteralPath $browser)) { throw 'Official browser binary missing from archive' }
+          $versionText = & $browser --version
+          if ($LASTEXITCODE -ne 0) { throw 'Browser version check failed' }
+          if ("$versionText" -notmatch [regex]::Escape($version)) { throw "Unexpected browser version: $versionText" }
+          $archiveHash = (Get-FileHash -Path out/browser/chrome-win64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $binaryHash = (Get-FileHash -Path $browser -Algorithm SHA256).Hash.ToLowerInvariant()
+          @(
+            'Chrome for Testing (official GoogleChromeLabs browser automation build)'
+            "Version: $version"
+            "Official source: $url"
+            "Downloaded archive SHA256: $archiveHash"
+            "Extracted chrome.exe SHA256: $binaryHash"
+            'Build channel: pinned testing build; does NOT auto-update'
+            'This upstream browser is NOT renamed or modified; TheOrg is the application launcher.'
+            'Use synthetic data in this developer preview. Review browser licensing before public redistribution.'
+          ) | Set-Content -LiteralPath out/browser/BROWSER_SOURCE.txt -Encoding utf8
+          Remove-Item -LiteralPath out/browser/chrome-win64.zip
+
       - name: Install NSIS compiler
         shell: pwsh
         run: choco install nsis --yes --no-progress --limit-output
@@ -89,9 +116,13 @@ jobs:
           $root = Join-Path $env:LOCALAPPDATA 'Programs\TheOrg'
           $binary = Join-Path $root 'TheOrg.Bridge.exe'
           $manifest = Join-Path $root 'chrome-extension\manifest.json'
-          if (!(Test-Path $binary) -or !(Test-Path $manifest)) {
+          $browser = Join-Path $root 'browser\chrome.exe'
+          $launcher = Join-Path $root 'TheOrg-Start.ps1'
+          if (!(Test-Path $binary) -or !(Test-Path $manifest) -or !(Test-Path $browser) -or !(Test-Path $launcher)) {
             throw 'Installed bridge or Chrome extension is missing'
           }
+          & $launcher -ValidateOnly
+          if (!$?) { throw 'TheOrg dedicated browser package validation failed' }
           & $binary --self-test
           if ($LASTEXITCODE -ne 0) { throw 'Installed binary self-test failed' }
           & .\tests\windows-install-registration.ps1 -InstallRoot $root
@@ -99,15 +130,17 @@ jobs:
           $uninstall = Join-Path $root 'Uninstall.exe'
           $uninstalled = Start-Process -FilePath $uninstall -ArgumentList '/S' -Wait -PassThru
           if ($uninstalled.ExitCode -ne 0) { throw 'Silent uninstall failed' }
-          if (Test-Path $binary) { throw 'Uninstall left the Windows controller installed' }
+          if (Test-Path $binary -or Test-Path $browser) { throw 'Uninstall left TheOrg components installed' }
       - name: Record SHA-256 checksums for unsigned release candidates
         shell: pwsh
         run: |
           $binary = "out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe"
           $bridge = "out/bridge/TheOrg.Bridge.exe"
+          $browser = "out/browser/chrome-win64/chrome.exe"
           $rows = @(
             "$( (Get-FileHash -Path $binary -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg-DevPreview-Windows-x64-unsigned.exe"
             "$( (Get-FileHash -Path $bridge -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg.Bridge.exe"
+            "$( (Get-FileHash -Path $browser -Algorithm SHA256).Hash.ToLowerInvariant() )  chrome.exe (bundled, pinned upstream browser)"
             "Source commit: $env:GITHUB_SHA"
             "Release channel: developer-preview-unsigned; NOT production"
           )
@@ -117,10 +150,12 @@ jobs:
         run: |
           Copy-Item -LiteralPath docs/OPERATE_THEORG_WINDOWS.md -Destination out/installer/START_HERE.md
           Copy-Item -LiteralPath tools/verify-preview.ps1 -Destination out/installer/VERIFY.ps1
+          Copy-Item -LiteralPath out/browser/BROWSER_SOURCE.txt -Destination out/installer/BROWSER_SOURCE.txt
           $checksums = 'out/installer/SHA256SUMS.txt'
           @(
             "$( (Get-FileHash -Path out/installer/START_HERE.md -Algorithm SHA256).Hash.ToLowerInvariant() )  START_HERE.md"
             "$( (Get-FileHash -Path out/installer/VERIFY.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() )  VERIFY.ps1"
+            "$( (Get-FileHash -Path out/installer/BROWSER_SOURCE.txt -Algorithm SHA256).Hash.ToLowerInvariant() )  BROWSER_SOURCE.txt"
           ) | Add-Content -LiteralPath $checksums -Encoding utf8
           & ./out/installer/VERIFY.ps1 -PackageDirectory out/installer
       - name: Upload unsigned Windows developer-preview installer
@@ -132,6 +167,7 @@ jobs:
             out/installer/SHA256SUMS.txt
             out/installer/START_HERE.md
             out/installer/VERIFY.ps1
+            out/installer/BROWSER_SOURCE.txt
           if-no-files-found: error
           retention-days: 30
       - name: Upload unsigned Windows bridge candidate
