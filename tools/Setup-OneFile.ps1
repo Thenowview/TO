@@ -30,7 +30,7 @@ try {
   try { $digest = $hash.ComputeHash($keyBytes) } finally { $hash.Dispose() }
   $alphabet = 'abcdefghijklmnop'
   $computed = -join ($digest[0..15] | ForEach-Object {
-    $alphabet[[int]($_ -shr 4)] + $alphabet[[int]($_ -band 15)]
+    ([string]$alphabet[[int]($_ -shr 4)]) + ([string]$alphabet[[int]($_ -band 15)])
   })
   if ($computed -cne $extensionId) { throw "Extension ID mismatch: $computed" }
   if ($ValidateOnly) { Write-Host 'PASS TheOrg one-file installer layout and extension identity'; exit 0 }
@@ -62,8 +62,8 @@ try {
 
   $template = Get-Content -LiteralPath (Join-Path $root 'TheOrg-OneFile-START.html') -Raw -Encoding UTF8
   $guide = $template.Replace('__EXT_PATH__', [Net.WebUtility]::HtmlEncode($extensionPath))
-                    .Replace('__EXT_ID__', $extensionId)
-                    .Replace('__WORKSPACE_PATH__', [Net.WebUtility]::HtmlEncode((Join-Path $env:LOCALAPPDATA 'TheOrg\workspace')))
+  $guide = $guide.Replace('__EXT_ID__', $extensionId)
+  $guide = $guide.Replace('__WORKSPACE_PATH__', [Net.WebUtility]::HtmlEncode((Join-Path $env:LOCALAPPDATA 'TheOrg\workspace')))
   [IO.File]::WriteAllText((Join-Path $root 'START-HERE.html'), $guide, (New-Object Text.UTF8Encoding($false)))
   Write-Host 'PASS TheOrg one-file installation and exact Chrome Native Messaging host registration'
 } catch {
