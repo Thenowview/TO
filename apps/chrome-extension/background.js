@@ -51,6 +51,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
           message.taskId,message.artifactId,message.offset,message.chunkBytes)};
       case "list_artifacts": return {ok:true,artifacts:await manager.listArtifacts(message.taskId)};
       case "verify_artifact": return {ok:true,artifact:await manager.verifyArtifact(message.taskId,message.artifactId)};
+      case "preview_text_artifact": return {ok:true,preview:await manager.previewTextArtifact(message.taskId,message.artifactId)};
       case "read_artifact": return {ok:true,content:await manager.readArtifact(message.taskId,message.artifactId)};
       case "handoff": return {ok:true,...await manager.handoffAndClose(message.taskId,message.agentId,message.summary,message.outcome)};
       case "record_qa_finding":

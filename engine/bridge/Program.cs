@@ -129,7 +129,7 @@ internal sealed class Controller
                 {
                     ok = true,
                     commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
-                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact",
+                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact",
                         "begin_artifact_upload", "append_artifact_chunk", "upload_status",
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk" },
                     maxArtifactImportBytes = 256000,
@@ -145,6 +145,7 @@ internal sealed class Controller
                 "list_artifacts" => ListArtifacts(request),
                 "verify_artifact" => VerifyArtifact(request),
                 "read_artifact" => ReadArtifact(request),
+                "preview_text_artifact" => PreviewTextArtifact(request),
                 "begin_artifact_upload" => BeginArtifactUpload(request),
                 "append_artifact_chunk" => AppendArtifactChunk(request),
                 "upload_status" => UploadStatus(request),
@@ -184,6 +185,14 @@ internal sealed class Controller
         string orderId = RequireOrder(Text(request, "orderId"));
         var record = _artifactStore.Verify(companyId, orderId, Text(request, "artifactId"));
         return new { ok = true, artifact = record };
+    }
+
+    private object PreviewTextArtifact(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        var preview = _artifactStore.PreviewText(companyId, orderId, Text(request, "artifactId"));
+        return new { ok = true, preview };
     }
 
     private object ReadArtifact(JsonElement request)
@@ -482,6 +491,68 @@ internal static class SelfTest
             Check(verified.GetProperty("artifact").GetProperty("intakeStatus").GetString() ==
                 "structure_verified_content_qa_pending", "semantic QA remains pending");
 
+            // Actual safe preview must be plain text, bounded, unapproved and company-scoped.
+            var preview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id, artifactId
+            });
+            Check(preview.GetProperty("ok").GetBoolean(), "text preview response");
+            var previewData = preview.GetProperty("preview");
+            Check(previewData.GetProperty("text").GetString() ==
+                Encoding.UTF8.GetString(sample), "preview content is plain text");
+            Check(previewData.GetProperty("renderMode").GetString() == "textContent_only" &&
+                !previewData.GetProperty("contentApproved").GetBoolean(),
+                "preview does not confer content approval");
+            var foreignPreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "another", orderId = id, artifactId
+            });
+            Check(!foreignPreview.GetProperty("ok").GetBoolean(),
+                "cross-company preview rejected");
+
+            var disallowed = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "untrusted.html",
+                dataBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+                    "<script>alert(1)</script>")),
+                sourceProvider = "manual_import", sourceReference = "test"
+            });
+            Check(disallowed.GetProperty("ok").GetBoolean(), "HTML intake for QA");
+            string htmlId = disallowed.GetProperty("artifact")
+                .GetProperty("artifactId").GetString()!;
+            var refusedHtml = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id,
+                artifactId = htmlId
+            });
+            Check(!refusedHtml.GetProperty("ok").GetBoolean(),
+                "browser-executable HTML never previewed");
+
+            var oversizedText = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "oversized.txt",
+                dataBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(new string('x', 33000))),
+                sourceProvider = "manual_import", sourceReference = "test"
+            });
+            Check(oversizedText.GetProperty("ok").GetBoolean(), "oversize preview fixture imported");
+            var tooLargePreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id,
+                artifactId = oversizedText.GetProperty("artifact").GetProperty("artifactId").GetString()!
+            });
+            Check(!tooLargePreview.GetProperty("ok").GetBoolean(), "preview refuses files above 32 KiB");
+
+            var malformedJson = Call(c, new {
+                command = "import_artifact", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "broken.json",
+                dataBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes("{not-valid-json}")),
+                sourceProvider = "manual_import", sourceReference = "test"
+            });
+            Check(malformedJson.GetProperty("ok").GetBoolean(), "malformed JSON kept for review");
+            var invalidJsonPreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id,
+                artifactId = malformedJson.GetProperty("artifact").GetProperty("artifactId").GetString()!
+            });
+            Check(!invalidJsonPreview.GetProperty("ok").GetBoolean(),
+                "malformed JSON rejected by structural preview validation");
+
+
             var downloaded = Call(c, new {
                 command = "read_artifact", companyId = "demo", orderId = id, artifactId
             });
@@ -501,7 +572,11 @@ internal static class SelfTest
             var artifacts = Call(c, new {
                 command = "list_artifacts", companyId = "demo", orderId = id
             });
-            Check(artifacts.GetProperty("artifacts").GetArrayLength() == 2, "list both versions");
+            var listed = artifacts.GetProperty("artifacts");
+            Check(listed.GetArrayLength() == 5, "list five QA and version fixtures");
+            Check(listed.EnumerateArray().Count(item =>
+                item.GetProperty("fileName").GetString() == "agent-report.md") == 2,
+                "both historical report versions still listed");
 
             var badFilename = Call(c, new {
                 command = "import_artifact", companyId = "demo", orderId = id,
@@ -524,6 +599,12 @@ internal static class SelfTest
             Check(compromised.GetProperty("ok").GetBoolean() &&
                 !compromised.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
                 "tampered content detected");
+            var tamperedPreview = Call(c, new {
+                command = "preview_text_artifact", companyId = "demo", orderId = id, artifactId
+            });
+            Check(!tamperedPreview.GetProperty("ok").GetBoolean(),
+                "tampered content rejected from text preview");
+
 
 
             // Multi-message transfer: explicitly test a file above the legacy 250 KiB cap.

@@ -549,6 +549,19 @@
       return result.artifact;
     }
 
+    async previewTextArtifact(taskId, artifactId) {
+      if (!TASK_ID.test(taskId) || !TASK_ID.test(artifactId))
+        throw new Error("Invalid order or artifact ID");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order) throw new Error("Unknown work order");
+      const result = await this.native({
+        command: "preview_text_artifact", companyId: order.companyId,
+        orderId: taskId, artifactId
+      });
+      return result.preview;
+    }
+
     async readArtifact(taskId, artifactId) {
       if (!TASK_ID.test(taskId) || !TASK_ID.test(artifactId))
         throw new Error("Invalid work order or artifact ID");

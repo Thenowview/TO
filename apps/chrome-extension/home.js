@@ -285,7 +285,22 @@ async function renderDeliveries(taskId) {
       const actions=node("div",undefined,"action-row");
       const verify=node("button","Verify SHA-256","secondary");
       const download=node("button","Download","secondary");
-      verify.type="button";download.type="button";
+      const canPreview=/\.(txt|md|json|csv)$/i.test(artifact.fileName) && artifact.bytes<=32768;
+      const previewButton=node("button","Preview text","secondary");
+      const previewPane=node("pre",undefined,"artifact-preview");
+      previewPane.hidden=true;
+      verify.type="button";download.type="button";previewButton.type="button";
+      previewButton.hidden=!canPreview;
+      previewButton.addEventListener("click",()=>action(async()=>{
+        if(!previewPane.hidden){previewPane.hidden=true;previewPane.textContent="";return;}
+        const response=await rpc("preview_text_artifact",{taskId,artifactId:artifact.artifactId});
+        const result=response.preview;
+        if(result.renderMode!=="textContent_only" || result.contentApproved!==false)
+          throw new Error("Unexpected preview security contract");
+        previewPane.textContent=result.text+(result.truncated?"\n[Preview truncated]":"");
+        previewPane.hidden=false;
+        toast("Untrusted text preview only. No malware or independent content approval.");
+      }));
       verify.addEventListener("click",()=>action(async()=>{
         const r=await rpc("verify_artifact",{taskId,artifactId:artifact.artifactId});
         toast(r.artifact.integrityValid
@@ -326,8 +341,8 @@ async function renderDeliveries(taskId) {
         toast("Downloaded locally with SHA-256 checked. Independent content QA remains pending.");
         await renderDeliveries(taskId);
       }));
-            append(actions,verify,download);
-      append(item,details,actions);
+            append(actions,verify,previewButton,download);
+      append(item,details,actions,previewPane);
       target.append(item);
     }
     const demoTitle=node("h4","Controller demonstration files ("+demo.length+")");

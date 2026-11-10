@@ -103,3 +103,13 @@ textarea::placeholder,input::placeholder{color:#667e9e}.composer-bottom{display:
 @media(max-width:1150px){.content{padding:0 26px}.service-grid,.provider-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.work-layout{grid-template-columns:1fr}.hero-icon{width:120px;min-width:120px}.hero h1{font-size:32px}}
 @media(max-width:760px){.shell{grid-template-columns:1fr}.rail{position:static;height:auto;padding:13px 15px}.brand{padding:4px 8px 13px}.navigation{display:flex;flex-direction:row;overflow-x:auto}.nav-link{white-space:nowrap;font-size:11px;padding:10px 8px}.rail-label,.rail-footer{display:none}.content{padding:0 15px}.topbar{height:auto;padding:14px 0;align-items:start;flex-wrap:wrap}.hero{margin:20px 0;padding:22px}.hero-icon{display:none}.section-head{align-items:start;flex-wrap:wrap}.service-grid,.provider-grid,.audit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.composer-bottom{flex-wrap:wrap}.artifact-upload{grid-template-columns:1fr}.step-line{flex-wrap:wrap}.step-helper{margin-left:0}.artifact-entry{display:block}.artifact-entry .action-row{margin-top:10px}}
 @media(max-width:460px){.service-grid,.provider-grid,.audit-grid{grid-template-columns:1fr}.hero h1{font-size:28px}}
+
+
+/* Imported content is untrusted: display as escaped text, never as active HTML. */
+.artifact-preview{
+  white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;
+  max-height:320px;max-width:100%;margin:10px 0 0;padding:12px 14px;
+  font:12px/1.55 Consolas,"Courier New",monospace;
+  background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;
+}
+.artifact-preview[hidden]{display:none}
