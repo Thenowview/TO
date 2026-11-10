@@ -24,7 +24,7 @@ test("automated preflight is provenance-linked and never calls unsigned preview 
   assert.ok(value.blockers.some(b=>b.gate==="production_deployment_destination"));
   assert.ok(value.blockers.some(b=>b.gate==="evidence_commit"));
   assert.match(markdown,/Deployment executed:\*\* NO/);
-  assert.match(markdown,/not independent proof/i);
+  assert.match(markdown,/not the actual security or functional truth/i);
 });
 
 test("release preflight remains fail-closed without a source commit",()=>{
