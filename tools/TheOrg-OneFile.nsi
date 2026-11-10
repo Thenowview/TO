@@ -43,7 +43,10 @@ Section "Install TheOrg" SecMain
 
   ExecWait '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\Setup-OneFile.ps1" -InstallRoot "$INSTDIR"' $0
   StrCmp $0 0 setupOK
-    MessageBox MB_ICONSTOP|MB_OK "TheOrg controller setup failed with code $0. See the install log."
+    SetErrorLevel 1
+    IfSilent setupErrorSilent
+      MessageBox MB_ICONSTOP|MB_OK "TheOrg controller setup failed with code $0. See the installer details."
+    setupErrorSilent:
     Abort "Controller registration failed"
   setupOK:
 
