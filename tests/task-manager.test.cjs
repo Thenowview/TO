@@ -463,3 +463,22 @@ test("Chrome restart never closes untracked tabs and requires explicit recovery"
   const final=await afterRestart.executionQueue(order.taskId);
   assert.equal(final.queue[0].state,"awaiting_qa_evidence");
 });
+
+
+test("v2 specialist training enforces execution checkpoints, evidence, and bounded recovery",()=>{
+  assert.equal(context.TheOrgSkills.version,"sop-2.0.0");
+  const local=context.TheOrgSkills.route(validInstruction);
+  const prompt=context.TheOrgSkills.agentPrompt(validInstruction,local,local.tasks[0].id);
+  assert.match(prompt,/OBSERVE-ACT-VERIFY/);
+  assert.match(prompt,/CHECKPOINT/);
+  assert.match(prompt,/idempotent/i);
+  assert.match(prompt,/GOAL SPECIFICATION/);
+  assert.match(prompt,/independent review/i);
+  const planning=context.TheOrgPlanner.supervisorPrompt(validInstruction);
+  assert.match(planning,/edge cases/i);
+  assert.match(planning,/bounded recovery/i);
+  const plan=context.TheOrgPlanner.interpret(rawPlan);
+  const manual=context.TheOrgPlanner.agentPrompt(validInstruction,plan,"research1");
+  assert.match(manual,/read back the result/i);
+  assert.match(manual,/self-reported success/i);
+});

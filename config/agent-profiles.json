@@ -9,7 +9,8 @@
     "Only explicit verified integration registrations make a plugin callable.",
     "ChatGPT account plugin authorizations do not transfer to TheOrg.",
     "External write operations need separate, revocable authorization.",
-    "QA cannot approve work it performed; security cannot override owner approvals."
+    "QA cannot approve work it performed; security cannot override owner approvals.",
+    "Training instructions must distinguish tool-observed results from proposals and prevent unbounded non-idempotent retries."
   ],
   "defaultPermission": "deny",
   "maxSpecialistsPerWorkOrder": 8,
@@ -55,12 +56,12 @@
       },
       "sop": {
         "id": "supervisor",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "planner",
@@ -101,12 +102,12 @@
       },
       "sop": {
         "id": "planner",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "researcher",
@@ -146,12 +147,12 @@
       },
       "sop": {
         "id": "researcher",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "browser",
@@ -191,12 +192,12 @@
       },
       "sop": {
         "id": "browser",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "desktop",
@@ -235,12 +236,12 @@
       },
       "sop": {
         "id": "desktop",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "developer",
@@ -281,12 +282,12 @@
       },
       "sop": {
         "id": "developer",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "analyst",
@@ -327,12 +328,12 @@
       },
       "sop": {
         "id": "analyst",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "documents",
@@ -373,12 +374,12 @@
       },
       "sop": {
         "id": "documents",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "communications",
@@ -419,12 +420,12 @@
       },
       "sop": {
         "id": "communications",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "integrations",
@@ -465,12 +466,12 @@
       },
       "sop": {
         "id": "integrations",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "qa_auditor",
@@ -511,12 +512,12 @@
       },
       "sop": {
         "id": "qa_auditor",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     },
     {
       "id": "security_officer",
@@ -556,18 +557,18 @@
       },
       "sop": {
         "id": "security_officer",
-        "version": "sop-1.0.0",
+        "version": "sop-2.0.0",
         "source": "apps/chrome-extension/agent-playbooks.js",
         "qualityRubric": "accuracy:30,completeness:25,evidence:20,safety:15,clarity:10",
         "changesRequireReview": true
       },
-      "trainingStatus": "role-instructions-implemented;not-fine-tuned"
+      "trainingStatus": "structured-goal-and-observe-act-verify-prompts;not-fine-tuned"
     }
   ],
   "playbookPolicy": {
-    "version": "sop-1.0.0",
+    "version": "sop-2.0.0",
     "source": "apps/chrome-extension/agent-playbooks.js",
-    "method": "versioned_instruction_templates_not_weight_training",
+    "method": "versioned_instruction_templates_with_goal_contract_checkpoints_and_bounded_recovery_not_weight_training",
     "changeApproval": "human_reviewed_pull_request",
     "evidenceStandard": "verification_not_model_self_report",
     "independentQARequired": true
