@@ -1,7 +1,7 @@
 !include "MUI2.nsh"
 
 Name "TheOrg Developer Preview"
-OutFile "out\installer\TheOrg-DevPreview-Windows-x64-unsigned.exe"
+OutFile "..\out\installer\TheOrg-DevPreview-Windows-x64-unsigned.exe"
 InstallDir "$LOCALAPPDATA\Programs\TheOrg"
 RequestExecutionLevel user
 Unicode true
@@ -23,13 +23,13 @@ ShowUninstDetails show
 Section "TheOrg local controller and Chrome extension" SecMain
   SetShellVarContext current
   SetOutPath "$INSTDIR"
-  File "out\bridge\TheOrg.Bridge.exe"
-  File /oname=install-native-host.ps1 "tools\install-native-host.ps1"
-  File /oname=uninstall-native-host.ps1 "tools\uninstall-native-host.ps1"
-  File /oname=configure-chrome.ps1 "tools\configure-chrome.ps1"
+  File "..\out\bridge\TheOrg.Bridge.exe"
+  File /oname=install-native-host.ps1 "..\tools\install-native-host.ps1"
+  File /oname=uninstall-native-host.ps1 "..\tools\uninstall-native-host.ps1"
+  File /oname=configure-chrome.ps1 "..\tools\configure-chrome.ps1"
 
   SetOutPath "$INSTDIR\chrome-extension"
-  File /r "apps\chrome-extension\*.*"
+  File /r "..\apps\chrome-extension\*.*"
 
   CreateDirectory "$SMPROGRAMS\TheOrg"
   CreateShortCut "$SMPROGRAMS\TheOrg\Connect Chrome extension.lnk" \
