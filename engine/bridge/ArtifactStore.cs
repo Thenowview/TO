@@ -206,9 +206,14 @@ internal sealed class ArtifactStore
         }
         record.IntegrityValid = valid;
         record.LastIntegrityCheckUtc = DateTimeOffset.UtcNow.ToString("O");
-        record.IntakeStatus = valid
-            ? "integrity_verified_content_qa_pending"
-            : "integrity_failed";
+        var structural = valid
+            ? ArtifactInspection.Inspect(blob, record.FileName)
+            : new InspectionResult(false, "integrity_failed");
+        record.FormatValid = structural.Valid;
+        record.StructuralReview = structural.Code;
+        record.IntakeStatus = !valid ? "integrity_failed" :
+            !structural.Valid ? "format_invalid" :
+            "structure_verified_content_qa_pending";
         File.WriteAllText(MetadataPath(folder, artifactId),
             JsonSerializer.Serialize(record, JsonOptions), Encoding.UTF8);
         return record;
@@ -273,5 +278,9 @@ internal sealed class ArtifactRecord
     public string SourceReference { get; set; } = "";
     public string IntakeStatus { get; set; } = "";
     public bool IntegrityValid { get; set; }
+    public bool FormatValid { get; set; }
+    public string StructuralReview { get; set; } = "not_inspected";
+    public string MalwareScanStatus { get; set; } = "not_scanned";
+    public string ContentQaStatus { get; set; } = "pending_independent_review";
     public string LastIntegrityCheckUtc { get; set; } = "";
 }
