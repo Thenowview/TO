@@ -1,5 +1,5 @@
 /* TheOrg MV3 background — extension-owned messages only, no content scripts or site scraping. */
-importScripts("supervisor-plan.js", "task-manager.js");
+importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js");
 const manager = new globalThis.TheOrgTaskManager(chrome);
 const planner = globalThis.TheOrgPlanner;
 
@@ -16,6 +16,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     switch(message.command){
       case "ping": return await manager.checkEngine();
       case "providers": return {ok:true,providers:manager.providers()};
+      case "agent_skills": return {ok:true,version:globalThis.TheOrgSkills.version,profiles:globalThis.TheOrgSkills.profiles(),rubric:globalThis.TheOrgSkills.qualityRubric()};
       case "orders": return {ok:true,orders:await manager.listOrders()};
       case "get_order": return await manager.getNativeOrder(message.taskId);
       case "open_supervisor_tab": return {ok:true,...await manager.openSupervisorTab(message.taskId,message.providerId)};
