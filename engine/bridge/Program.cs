@@ -523,6 +523,107 @@ internal static class SelfTest
                 !compromised.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
                 "tampered content detected");
 
+
+            // Multi-message transfer: explicitly test a file above the legacy 250 KiB cap.
+            byte[] large = new byte[420_000];
+            for (int i = 0; i < large.Length; i++) large[i] = (byte)(i % 251);
+            string fullHash = Convert.ToHexString(SHA256.HashData(large));
+            var begun = Call(c, new {
+                command = "begin_artifact_upload", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "large-report.pdf",
+                totalBytes = large.Length, sha256 = fullHash,
+                sourceProvider = "manual_download", sourceReference = "local-test"
+            });
+            Check(begun.GetProperty("ok").GetBoolean(), "begin large-file upload");
+            var transfer = begun.GetProperty("transfer");
+            string uploadId = transfer.GetProperty("uploadId").GetString()!;
+            string accessToken = transfer.GetProperty("accessToken").GetString()!;
+            var rejectedOrder = Call(c, new {
+                command = "append_artifact_chunk", companyId = "demo", orderId = id,
+                uploadId, accessToken, index = 1,
+                dataBase64 = Convert.ToBase64String(large[..100])
+            });
+            Check(!rejectedOrder.GetProperty("ok").GetBoolean(), "reject out-of-order chunk");
+
+            int index = 0;
+            int offset = 0;
+            while (offset < large.Length)
+            {
+                int count = Math.Min(ArtifactTransfers.ChunkBytes, large.Length - offset);
+                var next = Call(c, new {
+                    command = "append_artifact_chunk", companyId = "demo", orderId = id,
+                    uploadId, accessToken, index,
+                    dataBase64 = Convert.ToBase64String(large, offset, count)
+                });
+                Check(next.GetProperty("ok").GetBoolean(), "append chunk");
+                offset += count;
+                index++;
+                // A new Controller instance emulates Chrome launching a new Native Messaging process.
+                var resumed = Call(new Controller(root), new {
+                    command = "upload_status", companyId = "demo", orderId = id,
+                    uploadId, accessToken
+                });
+                Check(resumed.GetProperty("result").GetProperty("bytesReceived").GetInt64() == offset,
+                    "resume transfer from stored state");
+            }
+
+            var finish = Call(new Controller(root), new {
+                command = "complete_artifact_upload", companyId = "demo", orderId = id,
+                uploadId, accessToken
+            });
+            Check(finish.GetProperty("ok").GetBoolean(), "finalize verified transfer");
+            string bigArtifactId = finish.GetProperty("result").GetProperty("artifact")
+                .GetProperty("artifactId").GetString()!;
+            Check(finish.GetProperty("result").GetProperty("artifact").GetProperty("intakeStatus")
+                .GetString() == "received_unverified", "large file still requires content QA");
+
+            var bigVerify = Call(c, new {
+                command = "verify_artifact", companyId = "demo", orderId = id,
+                artifactId = bigArtifactId
+            });
+            Check(bigVerify.GetProperty("artifact").GetProperty("integrityValid").GetBoolean(),
+                "large-file SHA-256 check");
+
+            using var recovered = new MemoryStream();
+            long cursor = 0;
+            while (cursor < large.Length)
+            {
+                var part = Call(c, new {
+                    command = "read_artifact_chunk", companyId = "demo", orderId = id,
+                    artifactId = bigArtifactId, offset = cursor, chunkBytes = 64000
+                }).GetProperty("result");
+                byte[] next = Convert.FromBase64String(part.GetProperty("dataBase64").GetString()!);
+                recovered.Write(next);
+                cursor += next.Length;
+            }
+            Check(recovered.ToArray().SequenceEqual(large),
+                "large-file download byte-for-byte roundtrip");
+
+            var wrongHash = Call(c, new {
+                command = "begin_artifact_upload", companyId = "demo", orderId = id,
+                agentId = "research1", fileName = "wrong-hash.txt", totalBytes = 4,
+                sha256 = new string('0', 64),
+                sourceProvider = "test", sourceReference = ""
+            });
+            string badId = wrongHash.GetProperty("transfer").GetProperty("uploadId").GetString()!;
+            string badToken = wrongHash.GetProperty("transfer").GetProperty("accessToken").GetString()!;
+            Call(c, new {
+                command = "append_artifact_chunk", companyId = "demo", orderId = id,
+                uploadId = badId, accessToken = badToken, index = 0,
+                dataBase64 = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 })
+            });
+            var rejectedHash = Call(c, new {
+                command = "complete_artifact_upload", companyId = "demo", orderId = id,
+                uploadId = badId, accessToken = badToken
+            });
+            Check(!rejectedHash.GetProperty("ok").GetBoolean(),
+                "cannot finalize file with incorrect checksum");
+            var cancelled = Call(c, new {
+                command = "cancel_artifact_upload", companyId = "demo", orderId = id,
+                uploadId = badId, accessToken = badToken
+            });
+            Check(cancelled.GetProperty("ok").GetBoolean(), "cancel and clean staged upload");
+
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
