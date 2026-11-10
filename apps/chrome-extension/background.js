@@ -17,6 +17,9 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "ping": return await manager.checkEngine();
       case "providers": return {ok:true,providers:manager.providers()};
       case "orders": return {ok:true,orders:await manager.listOrders()};
+      case "get_order": return await manager.getNativeOrder(message.taskId);
+      case "open_supervisor_tab": return {ok:true,...await manager.openSupervisorTab(message.taskId,message.providerId)};
+      case "approve_plan": return {ok:true,...await manager.approvePlan(message.taskId)};
       case "create_order": return {ok:true,...await manager.createOrder(message.companyId,message.instruction)};
       case "open_agent_tab": return {ok:true,...await manager.openAgentTab(message.taskId,message.agentId,message.providerId)};
       case "handoff": return {ok:true,...await manager.handoffAndClose(message.taskId,message.agentId,message.summary,message.outcome)};
