@@ -34,7 +34,7 @@ If any file is missing or a hash differs, **stop** and download a new artifact. 
 
 This preview EXE installs the Windows agent controller, extension and an **unmodified, official Chrome for Testing browser**. It creates **TheOrg Workspace** desktop and Start menu shortcuts and uses an isolated browser profile under `%LOCALAPPDATA%\TheOrg\BrowserProfile`. Your normal Chrome profiles and cookies are never copied or modified.
 
-1. Verify the extracted ZIP by running `powershell -NoProfile -File '.\VERIFY.ps1'`.
+1. Verify the extracted ZIP by running `powershell -NoProfile -ExecutionPolicy Bypass -File '.\VERIFY.ps1'` from the extracted folder. This applies only to this process; it does not change your system-wide policy.
 2. Install `TheOrg-DevPreview-Windows-x64-unsigned.exe` for the current Windows user.
 3. The interactive installer opens TheOrg automatically. You can also double-click **TheOrg Workspace** on your desktop.
 4. At first launch, the launcher loads the bundled extension into its dedicated browser, discovers the actual extension ID from the profile and registers the Windows native host for precisely that ID.
