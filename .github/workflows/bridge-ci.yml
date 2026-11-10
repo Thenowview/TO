@@ -2,6 +2,9 @@ name: TheOrg Chrome and Windows Bridge CI
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -26,9 +29,13 @@ jobs:
         run: node --test tests/task-manager.test.cjs
       - name: Audit Supervisor UI to background contracts
         run: node --test tests/ui-contract.test.cjs
+      - name: Audit fail-closed production release gates
+        run: |
+          node --test tests/release-gates.test.cjs
+          node tools/check-release-readiness.cjs
       - name: Validate extension and profile JSON
         run: |
-          node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
+          node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json','config/release-gates.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
 
   windows-bridge:
     runs-on: windows-latest
@@ -78,17 +85,31 @@ jobs:
           $uninstalled = Start-Process -FilePath $uninstall -ArgumentList '/S' -Wait -PassThru
           if ($uninstalled.ExitCode -ne 0) { throw 'Silent uninstall failed' }
           if (Test-Path $binary) { throw 'Uninstall left the Windows controller installed' }
+      - name: Record SHA-256 checksums for unsigned release candidates
+        shell: pwsh
+        run: |
+          $binary = "out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe"
+          $bridge = "out/bridge/TheOrg.Bridge.exe"
+          $rows = @(
+            "$( (Get-FileHash -Path $binary -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg-DevPreview-Windows-x64-unsigned.exe"
+            "$( (Get-FileHash -Path $bridge -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg.Bridge.exe"
+            "Source commit: $env:GITHUB_SHA"
+            "Release channel: developer-preview-unsigned; NOT production"
+          )
+          $rows | Set-Content -Path out/installer/SHA256SUMS.txt -Encoding utf8
       - name: Upload unsigned Windows developer-preview installer
         uses: actions/upload-artifact@v4
         with:
           name: TheOrg-DevPreview-Windows-x64-unsigned-installer
-          path: out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe
+          path: |
+            out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe
+            out/installer/SHA256SUMS.txt
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
       - name: Upload unsigned Windows bridge candidate
         uses: actions/upload-artifact@v4
         with:
           name: TheOrg-Windows-bridge-unsigned-candidate
           path: out/bridge/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
