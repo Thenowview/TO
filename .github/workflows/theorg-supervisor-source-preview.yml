@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/company-agent-directory.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs
+          node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs
           node --check apps/chrome-extension/company-agent-directory.js
           node --check apps/chrome-extension/provider-auto-handoff.js
           node --check apps/chrome-extension/provider-page-agent.js
