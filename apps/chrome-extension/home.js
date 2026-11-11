@@ -452,6 +452,76 @@ async function uploadChunkedFile(order,file) {
   }
 }
 
+/* Guided Supervisor prompt starters. Selection only fills the existing order form.
+ * No provider access, order creation, or local command runs on template selection.
+ */
+let showAllSupervisorStarters=false;
+function renderSupervisorStarters(){
+  const api=globalThis.TheOrgSupervisorStarters;
+  const list=$("starterList");
+  list.replaceChildren();
+  if(!api){
+    list.append(node("p","Prompt library unavailable; you can still write an instruction manually.","muted"));
+    $("starterShowAll").hidden=true;
+    return;
+  }
+  const category=$("starterCategory").value;
+  const search=$("starterSearch").value.trim();
+  const matches=api.list({category,query:search});
+  const preview=(showAllSupervisorStarters||category!=="All"||search)
+    ?matches:matches.slice(0,6);
+  if(!preview.length){
+    list.append(node("p","No matching prompt. Try another category or keyword.","muted"));
+  }
+  for(const template of preview){
+    const card=node("div",undefined,"starter-item");
+    card.setAttribute("role","listitem");
+    const copy=node("div",undefined,"starter-item-copy");
+    append(copy,node("strong",template.title),node("small",template.description));
+    const use=node("button","Use prompt","starter-use");
+    use.type="button";
+    use.setAttribute("aria-label","Use "+template.title+" prompt");
+    use.addEventListener("click",()=>{
+      try{
+        const instruction=api.prepare(template.id,$("starterFocus").value);
+        $("ownerInstruction").value=instruction;
+        $("starterFeedback").textContent=template.title+
+          " selected. Review or edit the instruction below, then choose Create work order.";
+        $("ownerInstruction").focus();
+        $("ownerInstruction").scrollIntoView({behavior:"smooth",block:"center"});
+      }catch(error){toast(error.message||String(error),true);}
+    });
+    append(card,copy,use);
+    list.append(card);
+  }
+  const more=category==="All"&&!search&&matches.length>6;
+  $("starterShowAll").hidden=!more;
+  $("starterShowAll").textContent=showAllSupervisorStarters?"Show fewer prompts":
+    "See all "+matches.length+" prompts";
+}
+function registerSupervisorStarters(){
+  if(!globalThis.TheOrgSupervisorStarters){
+    renderSupervisorStarters();
+    return;
+  }
+  $("starterCategory").addEventListener("change",()=>{
+    showAllSupervisorStarters=false;renderSupervisorStarters();
+  });
+  $("starterSearch").addEventListener("input",()=>{
+    showAllSupervisorStarters=false;renderSupervisorStarters();
+  });
+  $("starterShowAll").addEventListener("click",()=>{
+    showAllSupervisorStarters=!showAllSupervisorStarters;
+    renderSupervisorStarters();
+  });
+  $("copyReadyInstruction").addEventListener("click",()=>action(async()=>{
+    const text=$("ownerInstruction").value.trim();
+    if(text.length<5)throw new Error("Choose a prompt or write an instruction first.");
+    await copy(text,"Supervisor instruction");
+  }));
+  renderSupervisorStarters();
+}
+
 function registerEvents() {
   $("recheck").addEventListener("click",()=>action(checkEngine));
   $("refreshOrders").addEventListener("click",()=>action(()=>refreshOrders()));
@@ -741,6 +811,7 @@ function registerLocalAgentEvents() {
 }
 
 (async function init(){
+  registerSupervisorStarters();
   registerEvents();
   registerLocalAgentEvents();
   await checkEngine();
