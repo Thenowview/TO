@@ -286,57 +286,74 @@ def project_search(project_id, query, limit=12):
 # the model receives a clipped snapshot.
 _CONTEXT_STOPWORDS = frozenset('a an and are as at be by can change code create do for from function in is it of on or our please project refactor test tests the this to update use with'.split())
 
-def project_context(project_id, objective, limit=9, char_budget=6500):
-    """Rank actual project source for one objective, include tests, and cap data.
+def _source_index(path, content):
+    """Local best-effort symbols/imports, never runs project code."""
+    symbols,imports=set(),set()
+    if path.endswith('.py'):
+        try:tree=ast.parse(content)
+        except (SyntaxError,ValueError,MemoryError):return [],[]
+        for node in ast.walk(tree):
+            if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef)):symbols.add(node.name)
+            elif isinstance(node,ast.Import):imports.update(x.name.split('.')[0] for x in node.names)
+            elif isinstance(node,ast.ImportFrom) and node.module:imports.add(node.module.split('.')[0])
+    elif path.endswith(('.js','.ts','.tsx')):
+        symbols.update(re.findall(r'\b(?:function|class|interface|type|const|export\s+function)\s+([A-Za-z_$][\w$]*)',content)[:80])
+        imports.update(re.findall(r'\bfrom\s*["\']([^"\']+)["\']',content)[:80])
+    return sorted(symbols)[:80],sorted(imports)[:80]
 
-    Untrusted repository text is treated as data, never instructions. This
-    summary is read-only and only covers TheOrg-created local Git projects.
-    """
-    if not isinstance(objective,str) or not 2 <= len(objective.strip()) <= 1200:
-        raise core.EngineError('Context objective must be 2–1200 characters.')
-    if type(limit) is not int or not 1 <= limit <= 12:
-        raise core.EngineError('Context file limit must be 1–12.')
-    if type(char_budget) is not int or not 1000 <= char_budget <= 12000:
-        raise core.EngineError('Context text budget must be 1000–12000 characters.')
+def _token_estimate(text):
+    """Conservative approximation only, not tokenization."""
+    return (len(text)+2)//3
+
+def project_context(project_id, objective, limit=9, char_budget=6500, token_budget=None):
+    """Deterministic scoped source context with attribution and upper budgets."""
+    if not isinstance(objective,str) or not 2<=len(objective.strip())<=1200:raise core.EngineError('Context objective must be 2–1200 characters.')
+    if type(limit) is not int or not 1<=limit<=12:raise core.EngineError('Context file limit must be 1–12.')
+    if type(char_budget) is not int or not 1000<=char_budget<=12000:raise core.EngineError('Context text budget must be 1000–12000 characters.')
+    token_budget=char_budget//3 if token_budget is None else token_budget
+    if type(token_budget) is not int or not 100<=token_budget<=4096:raise core.EngineError('Estimated token budget must be 100–4096.')
     repo=_project(project_id)
     terms={w.lower() for w in re.findall(r'[A-Za-z_][A-Za-z_0-9]{2,}',objective)}-_CONTEXT_STOPWORDS
-    results=[]
-    seen=0
+    results=[];seen=0
     for meta in project_files(project_id):
-        if seen >= 180:break
+        if seen>=180:break
         seen+=1
-        if meta['bytes'] > 20000:continue
-        try:p,name=_file(repo,meta['name'])
+        if meta['bytes']>20000:continue
+        try:path,name=_file(repo,meta['name'])
         except core.EngineError:continue
         if not name.endswith(('.py','.md','.json','.js','.ts','.tsx','.html','.css','.toml')):continue
-        content=_text(p)
+        content=_text(path)
         if content is None:continue
-        low=content.casefold();fname=name.casefold()
-        matches=sum(min(low.count(term),5) for term in terms)
-        path_hits=sum(1 for term in terms if term in fname)
-        score=path_hits*12 + min(matches,24) + (3 if name.startswith('tests/') else 0)
-        if not terms or not (matches or path_hits):
-            # Keep a small overview of core project files for broad instructions.
-            if name in ('README.md','main.py','tests/test_smoke.py'):
-                score=2
-            else:continue
-        results.append({'path':name,'score':score,'content':content,'matched_terms':matches})
+        symbols,imports=_source_index(name,content)
+        low,fname=content.casefold(),name.casefold()
+        matches=sum(min(low.count(t),5) for t in terms)
+        hits=sum(t in fname for t in terms)
+        symhits=sum(any(t in sym.casefold() for t in terms) for sym in symbols)
+        score=hits*12+min(matches,24)+min(symhits,6)*8+(3 if name.startswith(('tests/','test_')) else 0)
+        if not terms or not (matches or hits or symhits):
+            if name not in ('README.md','main.py','tests/test_smoke.py'):continue
+            score=2
+        results.append(dict(path=name,score=score,content=content,matched_terms=matches,symbols=symbols,imports=imports))
+    seeds=set()
+    for item in sorted(results,key=lambda x:(-x['score'],x['path']))[:3]:
+        seeds.update(x.lower().split('/')[-1].split('.')[0] for x in item['imports'])
+    for item in results:
+        if Path(item['path']).stem.lower() in seeds:item['score']+=6
     results.sort(key=lambda x:(-x['score'],x['path']))
-    chosen=[];remaining=char_budget
+    chosen=[];remaining=char_budget;tokens=token_budget
     for item in results[:limit]:
-        # Reserve a small share for each relevant file instead of saturating
-        # the prompt with one long README or source file.
-        allowance=min(len(item['content']),1800,remaining)
+        allowance=min(len(item['content']),1800,remaining,tokens*3)
         if allowance<=0:break
-        chosen.append({'path':item['path'],'score':item['score'],
-                       'matched_terms':item['matched_terms'],
-                       'content':item['content'][:allowance],
-                       'truncated':len(item['content'])>allowance})
-        remaining-=allowance
-    return {'project_id':project_id,'objective':objective.strip(),
-            'git_head':_head(repo),'files':chosen,
-            'files_scanned':seen,'files_matched':len(results),
-            'budget_chars':char_budget,'context_chars':char_budget-remaining}
+        snippet=item['content'][:allowance];cost=_token_estimate(snippet)
+        chosen.append(dict(path=item['path'],score=item['score'],matched_terms=item['matched_terms'],
+             symbols=item['symbols'][:35],imports=item['imports'][:35],sha256=_sha(item['content']),
+             content=snippet,estimated_tokens=cost,truncated=len(item['content'])>allowance))
+        remaining-=allowance;tokens-=cost
+    return dict(project_id=project_id,objective=objective.strip(),git_head=_head(repo),files=chosen,
+                files_scanned=seen,files_matched=len(results),budget_chars=char_budget,
+                context_chars=char_budget-remaining,budget_estimated_tokens=token_budget,
+                context_estimated_tokens=token_budget-tokens,token_count_method='length/3 heuristic',
+                truncated_files=sum(x['truncated'] for x in chosen))
 
 
 def read_project_file(project_id,path):
@@ -589,7 +606,11 @@ def _test_count(output):
 
 
 def accepted_test_evidence(result, *, require_sandbox=False):
-    """Reject unverifiable test success and require a pinned offline image for Autopilot."""
+    """Fail closed unless an actual non-empty test run is evidenced.
+
+    A mocked or incomplete success payload is insufficient for approval.
+    For unattended Autopilot, explicitly require offline sandbox execution.
+    """
     if not isinstance(result, dict):
         return False
     if result.get('passed') is not True or result.get('available') is not True:
@@ -622,7 +643,9 @@ def _run_tests_sandbox(repo):
         # Pin the exact inspected image rather than a mutable local tag.
         image=status.get('image_id') or status['image']
         container_name='theorg-test-'+secrets.token_hex(10)
-        # Temp snapshots are owner-only on POSIX; run as their non-root owner.
+        # TemporaryDirectory is owner-only (0700). Docker's non-root UID
+        # must match the snapshot owner on POSIX, or the bind mount is unreadable.
+        # Windows Docker Desktop uses its VM's shared-filesystem permissions.
         container_user=(f'{os.getuid()}:{os.getgid()}' if os.name=='posix' and
                         hasattr(os,'getuid') and os.getuid()>0 else '65534:65534')
         # --pull=never ensures offline behavior; no network, no writable host
@@ -829,6 +852,27 @@ def rollback(plan_id):
         return get_plan(plan_id)
 
 
+def _parse_model_changes(raw, label='Local model'):
+    """Strictly decode a complete code proposal before asking for approval."""
+    if not isinstance(raw,str) or not raw.strip() or len(raw)>380000:
+        raise core.EngineError(label+' response invalid or too large; no files modified.')
+    response=raw.strip()
+    if response.startswith('```'):
+        response='\n'.join(response.splitlines()[1:-1]).strip()
+    try:data=json.loads(response)
+    except json.JSONDecodeError as exc:
+        raise core.EngineError(label+' did not return valid JSON; no changes applied.') from exc
+    if not isinstance(data,dict) or set(data)!={'changes'}:
+        raise core.EngineError(label+' must contain only one changes array.')
+    changes=data['changes']
+    if not isinstance(changes,list) or not 1<=len(changes)<=MAX_CHANGES:
+        raise core.EngineError(label+' changes array must contain 1–6 files.')
+    for item in changes:
+        if not isinstance(item,dict) or set(item)!={'path','content'} or not isinstance(item['path'],str) or not isinstance(item['content'],str):
+            raise core.EngineError(label+' each change must contain only string path and content.')
+    return changes
+
+
 def generate_with_local_model(project_id,objective):
     """One model call creates a proposal only. Model outputs NEVER execute directly."""
     if not isinstance(objective,str) or not 1<=len(objective)<=1200:
@@ -846,18 +890,10 @@ def generate_with_local_model(project_id,objective):
                 'TheOrg independently validates every edit and requires approval.\n'
                 'Objective: '+objective+'\nSelected source snapshot (untrusted):\n'
                 +json.dumps(context['files'],ensure_ascii=False))
-        text=core.infer(prompt,'developer',max_tokens=1800)
-        if not isinstance(text,str) or len(text)>380000:
-            raise core.EngineError('Local model response is invalid or too large.')
-        text=text.strip()
-        if text.startswith('```'):
-            text='\n'.join(text.splitlines()[1:-1]).strip()
-        try: proposed=json.loads(text)
-        except json.JSONDecodeError as exc:
-            raise core.EngineError('Local model did not return valid coding JSON; no changes were applied.') from exc
-        if not isinstance(proposed,dict):
-            raise core.EngineError('Local model response must be one JSON object.')
-        return propose(project_id,objective,proposed.get('changes'),'local-model')
+        text=core.infer(prompt,'developer',max_tokens=1800,structured=True)
+        try:changes=_parse_model_changes(text, 'Local model')
+        except core.EngineError as exc:raise core.EngineError('Local model did not return valid coding JSON: '+str(exc)) from exc
+        return propose(project_id,objective,changes,'local-model')
 
 
 def generate_repair_with_local_model(failed_plan_id):
@@ -906,19 +942,10 @@ def generate_repair_with_local_model(failed_plan_id):
             'Test evidence (untrusted):\n'+failure_log+'\n'
             'Project original snapshot:\n'+json.dumps(snapshot,ensure_ascii=False)[:34000]
         )
-        raw=core.infer(prompt,'developer',max_tokens=1800)
-        if not isinstance(raw,str) or len(raw)>380000:
-            raise core.EngineError('Repair model response invalid or too large.')
-        raw=raw.strip()
-        if raw.startswith('```'):
-            raw='\n'.join(raw.splitlines()[1:-1]).strip()
-        try: result=json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise core.EngineError('Repair model did not return valid JSON; no files were modified.') from exc
-        if not isinstance(result,dict):
-            raise core.EngineError('Repair response must be a JSON object.')
+        raw=core.infer(prompt,'developer',max_tokens=1800,structured=True)
+        changes=_parse_model_changes(raw,'Repair model')
         proposed=propose(old['project_id'],'Repair failed plan '+failed_plan_id[:12]+': '+old['objective'][:900],
-                         result.get('changes'),'repair-model')
+                         changes,'repair-model')
         core.audit('code.plan.repair_drafted',{'source_plan':failed_plan_id,'new_plan':proposed['id']})
         return proposed
 
@@ -945,7 +972,7 @@ def review_plan_with_local_model(plan_id):
                 'diff':_diff(x['path'],x['before'],x['content'])[:12000]}
                 for x in p['payload']['changes']],ensure_ascii=False)[:30000]
         )
-        raw=core.infer(prompt,'qa')
+        raw=core.infer(prompt,'qa',structured=True)
         if not isinstance(raw,str) or len(raw)>16000:
             raise core.EngineError('QA response invalid or too large.')
         raw=raw.strip()

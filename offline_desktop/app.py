@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot
+from engine import core, coding, autopilot, device_capabilities, orchestration
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -51,11 +51,14 @@ class Handler(BaseHTTPRequestHandler):
                         'model_files':len(core.local_models()),'tasks':counts,
                         'portable':bool(core.FROZEN or os.getenv('THEORG_PORTABLE')=='1'), 'workspace_files':len(core.list_files()),'memory_count':len(core.memories()),
                         'coding_projects':len(core.records('SELECT id FROM code_projects')),'coding_git_available':core.git_binary() is not None})
+                elif path=='/api/device/capabilities':
+                    self._json({'capabilities':device_capabilities.detect()})
                 elif path=='/api/models':
                     self._json({'files':core.local_models(),'backends':core.available_backends(),
                        'selected':core.setting('backend','auto'),
                        'ollama_model':core.setting('ollama_model',''),
                        'llama_binary':core.llama_binary() is not None,'model_directory':str(core.MODELS)})
+                elif path=='/api/workflows':self._json({'workflows':orchestration.list_workflows()})
                 elif path=='/api/tasks':self._json({'tasks':core.tasks()})
                 elif path=='/api/memories':self._json({'memories':core.memories()})
                 elif path=='/api/files':self._json({'files':core.list_files()})
@@ -115,9 +118,24 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({'error':'Payload must be between 1 byte and 150 KB.'},413);return
             payload=json.loads(self.rfile.read(n).decode('utf-8'))
             if not isinstance(payload,dict):raise core.EngineError('Request body must be an object.')
-            if path=='/api/tasks':
+            if path=='/api/workflows':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit workflow creation confirmation required.')
+                self._json({'workflow':orchestration.create(payload.get('project_id'),payload.get('objective'),payload.get('steps'))},201)
+            elif path=='/api/workflows/authorize':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit workflow step authorization required.')
+                self._json(orchestration.authorize_step(payload.get('step_id'),payload.get('minutes',15)))
+            elif path=='/api/workflows/finish':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit workflow completion confirmation required.')
+                self._json(orchestration.finish_step(payload.get('step_id'),payload.get('status'),payload.get('evidence')))
+            elif path=='/api/workflows/cancel':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit workflow cancellation required.')
+                orchestration.cancel(payload.get('workflow_id'));self._json({'ok':True})
+            elif path=='/api/tasks':
                 ident=core.enqueue(payload.get('prompt'),payload.get('role','supervisor'))
                 self._json({'ok':True,'id':ident},201)
+            elif path=='/api/tasks/retry':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit restart confirmation required.')
+                core.retry_interrupted_task(payload.get('id'));self._json({'ok':True})
             elif path=='/api/tasks/cancel':
                 core.cancel_task(payload.get('id'));self._json({'ok':True})
             elif path=='/api/memories':
@@ -287,6 +305,7 @@ def main():
         TOKEN=core.init()
         coding.init_schema()
         autopilot.init_schema()
+        orchestration.init_schema()
         try:
             outcome=core.benchmark_local_model()
             print(json.dumps(outcome,ensure_ascii=False))
@@ -303,6 +322,7 @@ def main():
         TOKEN=core.init()
         coding.init_schema()
         autopilot.init_schema()
+        orchestration.init_schema()
         print('PASS bundled dashboard, engine, SQLite and role registry')
         return 0
     TOKEN=core.init()

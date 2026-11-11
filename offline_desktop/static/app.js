@@ -134,6 +134,15 @@
     for(const file of data.files){
       const card=element('div','model-card');
       card.append(element('strong','',file.name));card.append(element('small','',fmtSize(file.bytes)));
+      const inspect=element('button','btn secondary','Inspect GGUF metadata');
+      const detail=element('small','','Local model has not been verified for this device.');
+      inspect.addEventListener('click',async()=>{
+        try{
+          const r=await request('models/preflight',{method:'POST',body:{name:file.name}});
+          const p=r.preflight,m=p.metadata||{};
+          text(detail,(m.metadata_recognized?('GGUF v'+m.gguf_version+' · '+(m.architecture||'unknown')+' · chat template '+(m.chat_template_present?'present':'not verified')):('Header unverified: '+(m.metadata_error||'not inspected')))+' · RAM '+(p.ram_check_passed?'estimate passed':'blocked: '+p.ram_block_reason)+' · real inference NOT VERIFIED');
+        }catch(e){text(detail,'GGUF inspection failed: '+e.message)}
+      });card.append(inspect,detail);
       const btn=element('button','btn secondary','Start offline inference');
       btn.disabled=!data.llama_binary;
       btn.title=data.llama_binary?'Start this local GGUF with llama.cpp':'Install llama-server to enable model loading';
@@ -468,7 +477,7 @@
     try{
       const q='code/context?project_id='+encodeURIComponent(chosenCodeProject)+'&objective='+encodeURIComponent(objective);
       const data=await request(q), target=$('codeContextResults');target.replaceChildren();
-      const summary=element('div','inline-note',data.files_matched+' matching files · '+data.context_chars+' characters of context · Git '+data.git_head.slice(0,9));
+      const summary=element('div','inline-note',data.files_matched+' matching files · '+data.context_chars+' characters · approximately '+(data.context_estimated_tokens||0)+' tokens · Git '+data.git_head.slice(0,9));
       target.append(summary);
       for(const file of data.files){
         const row=element('div','file-item',file.path+' · rank '+file.score+(file.truncated?' · clipped':''));
