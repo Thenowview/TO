@@ -206,6 +206,12 @@ async function showSelected() {
       capture.append(node("p","Saved file: "+auto.resultPath,"mono"));
       capture.append(node("p","File integrity checked. Response quality and completeness still need review.","muted"));
     }
+    if(auto.truncated===true)capture.append(node("p","Response exceeded the capture limit. Saved content is partial, not a complete answer.","note"));
+    for(const warning of (auto.fileWarnings||[]))
+      capture.append(node("p","File capture: "+warning,"note"));
+    for(const file of (auto.files||[])){
+      capture.append(node("p","Saved generated file: "+file.path,"mono"));
+    }
     if(auto.status==="saved" && auto.preview){
       const preview=node("pre",auto.preview.slice(0,15000),"artifact-preview");
       preview.setAttribute("aria-label","Captured AI response (untrusted)");
