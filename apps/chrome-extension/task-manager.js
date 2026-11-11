@@ -531,108 +531,103 @@
       return result.artifact;
     }
 
-    // Provider content is untrusted. Store under the existing company/order and
-    // separately export a readable copy; never interpret it as permission to act.
-    async saveAutomaticResult(taskId, providerId, content, sourceUrl) {
-      if (!TASK_ID.test(taskId) || !["chatgpt","claude"].includes(providerId) ||
-          typeof content !== "string" || !content.trim() ||
-          typeof sourceUrl !== "string" || sourceUrl.length > 500) {
-        throw new Error("Invalid automated provider result");
-      }
-      // Bounded Native Messaging transfer: source can contain Unicode.
-      const trimmed = content.trim();
-      const bytes = new TextEncoder().encode(trimmed);
-      if (bytes.length > 180000)
-        throw new Error("AI response exceeds the 180 KB safe capture limit; smaller text/file import required");
-      const all = await this.orders();
-      const order = all[taskId];
-      if (!order || order.phase === "archived")
-        throw new Error("Work order missing or archived");
-      const allowed = order.autoHandoff;
-      if (!allowed || allowed.providerId !== providerId ||
-          allowed.status !== "armed" && allowed.status !== "in_progress")
-        throw new Error("Work order was not authorized for this provider result");
+    // Persist responses and files against one approved (company, order, agent, job).
+    // No AI content is automatically approved for correctness or execution.
+    async saveAutomaticResult(taskId,providerId,content,sourceUrl,agentId,jobId){
+      if(!TASK_ID.test(taskId)||!AGENT.test(agentId) ||
+         typeof jobId!=="string"||!["chatgpt","claude"].includes(providerId) ||
+         typeof content!=="string"||!content.trim()||
+         typeof sourceUrl!=="string"||sourceUrl.length>500)
+        throw new Error("Invalid provider response attribution.");
+      const bytes=new TextEncoder().encode(content.trim());
+      if(bytes.length<10||bytes.length>180000)
+        throw new Error("AI response outside 10–180 KB capture limits.");
+      const all=await this.orders(),order=all[taskId];
+      const job=order?.automationJobs?.[jobId];
+      if(!order||order.phase==="archived"||!job||
+         job.agentId!==agentId||job.providerId!==providerId||
+         !["starting","waiting_response"].includes(job.status))
+        throw new Error("No matching active approved agent job.");
       let binary="";
       for(let i=0;i<bytes.length;i+=8192)
-        binary += String.fromCharCode(...bytes.slice(i,i+8192));
-      const fileName = providerId+"-response.md";
-      const stored=await this.native({
-        command:"import_artifact", companyId:order.companyId,
-        orderId:taskId,agentId:"supervisor",fileName,
-        dataBase64:btoa(binary),sourceProvider:providerId,sourceReference:sourceUrl
+        binary+=String.fromCharCode(...bytes.slice(i,i+8192));
+      const fileName=providerId+"-"+agentId+"-response.md";
+      const saved=await this.native({
+        command:"import_artifact",companyId:order.companyId,orderId:taskId,
+        agentId,fileName,dataBase64:btoa(binary),
+        sourceProvider:providerId,sourceReference:sourceUrl
       });
-      if(!stored.artifact || !stored.artifact.artifactId)
-        throw new Error("Native bridge did not return a saved response artifact");
-      const checked=await this.native({
-        command:"verify_artifact", companyId:order.companyId,
-        orderId:taskId,artifactId:stored.artifact.artifactId
-      });
-      if(checked.artifact?.integrityValid !== true)
-        throw new Error("Native bridge could not verify response bytes");
-      const exported=await this.native({
-        command:"export_artifact_file",companyId:order.companyId,
-        orderId:taskId,artifactId:stored.artifact.artifactId
-      });
-      if(!exported.export || !exported.export.path)
-        throw new Error("Readable result export was not confirmed");
+      const artifactId=saved.artifact?.artifactId;
+      if(!artifactId)throw new Error("Native bridge did not store AI response.");
+      const check=await this.native({command:"verify_artifact",
+        companyId:order.companyId,orderId:taskId,artifactId});
+      if(check.artifact?.integrityValid!==true)
+        throw new Error("AI response checksum verification failed.");
+      const exported=await this.native({command:"export_artifact_file",
+        companyId:order.companyId,orderId:taskId,artifactId});
+      if(!exported.export?.path)
+        throw new Error("Native bridge did not export readable AI response.");
       await this.serialize(async()=>{
-        const all2=await this.orders();
-        const live=all2[taskId];
-        if(!live || !live.autoHandoff || live.autoHandoff.providerId!==providerId)
-          throw new Error("Work order provider authorization changed during save");
-        live.autoHandoff.status="saved";
-        live.autoHandoff.updatedUtc=new Date().toISOString();
-        live.autoHandoff.artifactId=stored.artifact.artifactId;
-        live.autoHandoff.fileName=exported.export.fileName;
-        live.autoHandoff.resultPath=exported.export.path;
-        live.autoHandoff.preview=trimmed.slice(0,60000);
-        live.autoHandoff.contentApproved=false;
+        const all2=await this.orders(),o=all2[taskId],j=o?.automationJobs?.[jobId];
+        if(!j||j.agentId!==agentId||j.providerId!==providerId)
+          throw new Error("Job authorization changed while saving.");
+        j.artifactId=artifactId;
+        j.resultPath=exported.export.path;
+        j.preview=content.trim().slice(0,30000);
+        j.contentApproved=false;
+        j.integrityVerified=true;
         await this.saveOrders(all2);
       });
-      return {artifactId:stored.artifact.artifactId,fileName:exported.export.fileName,
-        resultPath:exported.export.path,bytes:bytes.length,integrityVerified:true,
-        contentApproved:false};
+      // Previously recorded manual QA becomes stale after receiving new AI output.
+      if(agentId!=="supervisor")
+        await this.invalidateAgentQA(taskId,agentId,"AI provider output changed; repeat independent QA.");
+      return {artifactId,resultPath:exported.export.path,
+        fileName:exported.export.fileName,bytes:bytes.length,
+        integrityVerified:true,contentApproved:false};
     }
 
-    async beginAutomaticFile(taskId,providerId,fileName,size,sha256,sourceReference){
-      if(!TASK_ID.test(taskId)||!["chatgpt","claude"].includes(providerId) ||
-         typeof fileName!=="string" ||
+    async beginAutomaticFile(taskId,providerId,fileName,size,sha256,sourceReference,agentId,jobId){
+      if(!TASK_ID.test(taskId)||!AGENT.test(agentId)||
+         !["chatgpt","claude"].includes(providerId) ||
+         typeof fileName!=="string"||
          !/^[\w][\w .()-]{0,110}\.(pdf|docx|xlsx|pptx|csv|txt|md|zip|png|jpg|jpeg|webp)$/i.test(fileName) ||
          !Number.isSafeInteger(size)||size<1||size>16*1024*1024||
-         !/^[0-9a-fA-F]{64}$/.test(sha256))
-        throw new Error("Invalid or unsupported automatic AI file");
-      const orders=await this.orders(),o=orders[taskId];
-      if(!o||o.autoHandoff?.providerId!==providerId||
-         !["in_progress","saved"].includes(o.autoHandoff.status))
-        throw new Error("No matching approved provider file transfer");
-      const result=await this.native({
-        command:"begin_artifact_upload",companyId:o.companyId,orderId:taskId,
-        agentId:"supervisor",fileName,totalBytes:size,sha256,
-        sourceProvider:providerId,sourceReference:sourceReference.slice(0,500)
-      });
-      return result.transfer;
+         !/^[0-9a-fA-F]{64}$/.test(sha256)||
+         typeof sourceReference!=="string")
+        throw new Error("Unapproved generated file metadata.");
+      const all=await this.orders(),o=all[taskId],j=o?.automationJobs?.[jobId];
+      if(!j||j.agentId!==agentId||j.providerId!==providerId||
+         j.status!=="saved")
+        throw new Error("File capture must match a saved approved provider job.");
+      const response=await this.native({command:"begin_artifact_upload",
+        companyId:o.companyId,orderId:taskId,agentId,fileName,totalBytes:size,sha256,
+        sourceProvider:providerId,sourceReference:sourceReference.slice(0,500)});
+      return response.transfer;
     }
-    async completeAutomaticFile(taskId,uploadId,accessToken){
-      const completed=await this.artifactTransfer(taskId,"complete_artifact_upload",uploadId,accessToken);
-      const artifactId=completed?.artifact?.artifactId;
-      if(!artifactId)throw new Error("Completed AI file upload did not return an artifact");
-      const all=await this.orders(),order=all[taskId];
-      const checked=await this.native({command:"verify_artifact",companyId:order.companyId,
+
+    async completeAutomaticFile(taskId,uploadId,accessToken,agentId,jobId){
+      const result=await this.artifactTransfer(taskId,"complete_artifact_upload",uploadId,accessToken);
+      const artifactId=result?.artifact?.artifactId;
+      if(!artifactId)throw new Error("Generated file upload was not completed.");
+      const all=await this.orders(),o=all[taskId],j=o?.automationJobs?.[jobId];
+      if(!j||j.agentId!==agentId||j.status!=="saved")
+        throw new Error("File result no longer matches the approved agent job.");
+      const verified=await this.native({command:"verify_artifact",companyId:o.companyId,
         orderId:taskId,artifactId});
-      if(checked.artifact?.integrityValid!==true)
-        throw new Error("AI-generated file bytes failed SHA-256 verification");
-      const exp=await this.native({command:"export_artifact_file",companyId:order.companyId,
-        orderId:taskId,artifactId});
-      if(!exp.export?.path)throw new Error("Readable file export did not return a path");
+      if(verified.artifact?.integrityValid!==true)
+        throw new Error("Generated file failed SHA256 integrity verification.");
+      const exported=await this.native({command:"export_artifact_file",
+        companyId:o.companyId,orderId:taskId,artifactId});
+      if(!exported.export?.path)throw new Error("Readable generated file was not exported.");
       await this.serialize(async()=>{
-        const all2=await this.orders(),live=all2[taskId];
-        if(!live?.autoHandoff)throw new Error("Work order no longer exists");
-        live.autoHandoff.files=live.autoHandoff.files||[];
-        live.autoHandoff.files.push({artifactId,path:exp.export.path,fileName:exp.export.fileName,
-          integrityVerified:true,contentApproved:false});
+        const all2=await this.orders(),live=all2[taskId]?.automationJobs?.[jobId];
+        if(!live)throw new Error("Job no longer exists.");
+        live.files=live.files||[];
+        live.files.push({artifactId,path:exported.export.path,
+          fileName:exported.export.fileName,contentApproved:false});
         await this.saveOrders(all2);
       });
-      return exp.export;
+      return exported.export;
     }
 
     async beginArtifactUpload(taskId, agentId, fileName, totalBytes, sha256, provider, sourceReference) {
