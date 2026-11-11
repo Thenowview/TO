@@ -79,6 +79,14 @@
           instruction.length > 5000) throw new Error("Instruction must be 5–5000 characters");
 
       const localPlan = globalThis.TheOrgSkills.route(instruction.trim());
+      const companyRouting = this.companyDirectory
+        ? await this.companyDirectory.recommend(companyId, instruction.trim()) : null;
+      if (companyRouting) {
+        // Informational routing only: specialist assignments remain review-gated.
+        localPlan.companyRouting = companyRouting;
+        localPlan.summary += " Company profile recommendations: " +
+          companyRouting.recommended.map(p => p.name+" ("+p.title+")").join(", ") + ".";
+      }
 
       const reply = await this.native({
         command: "submit_order",
@@ -362,7 +370,15 @@
       const all = await this.orders();
       const order = all[taskId];
       if (!order || !order.plan) throw new Error("Save a Supervisor plan first");
-      return globalThis.TheOrgSkills.agentPrompt(order.instruction || order.title, order.plan, agentId);
+      const base = globalThis.TheOrgSkills.agentPrompt(order.instruction || order.title, order.plan, agentId);
+      if (!this.companyDirectory) return base;
+      const task = order.plan.tasks.find(t=>t.id===agentId);
+      const known = globalThis.TheOrgSkills.profiles();
+      const matched = known.find(p=>p.id===agentId) ||
+        known.find(p=>p.role===task?.role);
+      if (!matched) return base;
+      return base + "\n\n" +
+        await this.companyDirectory.context(order.companyId,matched.id);
     }
 
     async openAgentTab(taskId, agentId, providerId, allowRecovery = false) {
