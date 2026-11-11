@@ -160,3 +160,27 @@ textarea::placeholder,input::placeholder{color:#667e9e}.composer-bottom{display:
 .intake-question{color:#d4e6f7;font-weight:600}
 .intake-answer{width:100%;min-height:90px}
 @media(max-width:760px){.auto-provider-config>label:not(.check-label){align-items:stretch;flex-direction:column}}
+
+
+/* Company agent organization: explicit named profiles, per-company editing. */
+.company-agents-panel{background:#0c1b2d;border:1px solid #345067;border-radius:13px;padding:12px 15px;margin:10px 0 14px}
+.company-agents-panel>summary{cursor:pointer;font-size:12px;color:#cce7ed;line-height:1.6}
+.company-agents-panel>summary strong{color:#8ee7cc}
+.company-agents-panel>p{margin:11px 0}
+.company-agent-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.company-agent-card{display:grid;gap:6px;text-align:left;background:#15283c;color:#e4f1ff;padding:11px;border:1px solid #2c4964;border-radius:9px;min-width:0;cursor:pointer}
+.company-agent-card strong{font-size:12px}.company-agent-card small{font-size:10px;line-height:1.5;color:#9cb3ca}
+.company-agent-card:hover{background:#1b3548}
+.company-agent-editor{border-top:1px solid #2d4859;padding-top:12px;display:grid;gap:10px}
+.company-agent-editor>label{display:grid;gap:6px;font-size:11px}
+.company-agent-fields{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.company-agent-fields>label{display:grid;gap:5px;font-size:11px;color:#a9bfd4}
+.company-agent-fields>label:nth-child(n+4){grid-column:1/-1}
+.company-agent-fields textarea{min-height:58px}
+.company-agent-fields input,.company-agent-fields textarea,.company-agent-editor select{width:100%}
+.company-agent-fields input[type=checkbox]{width:17px;height:17px}
+.company-agent-fields>label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}
+.agent-recommendation{display:flex;gap:5px;flex-wrap:wrap;align-items:baseline;margin:8px 0;font-size:11px}
+.agent-recommendation small{color:#a9bfd4}
+@media(max-width:850px){.company-agent-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.company-agent-cards,.company-agent-fields{grid-template-columns:1fr}}
