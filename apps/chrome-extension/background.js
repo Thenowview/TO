@@ -1,6 +1,8 @@
 /* TheOrg MV3 background — extension-owned messages only, no content scripts or site scraping. */
-importScripts("agent-playbooks.js", "supervisor-plan.js", "supervisor-job-intake.js", "task-manager.js", "provider-auto-handoff.js");
+importScripts("agent-playbooks.js", "supervisor-plan.js", "supervisor-job-intake.js", "company-agent-directory.js", "task-manager.js", "provider-auto-handoff.js");
 const manager = new globalThis.TheOrgTaskManager(chrome);
+const companyAgents = new globalThis.TheOrgCompanyAgentDirectory(chrome);
+manager.companyDirectory = companyAgents;
 const planner = globalThis.TheOrgPlanner;
 const autoHandoff = new globalThis.TheOrgProviderAutoHandoff(chrome,manager,planner);
 
@@ -51,6 +53,10 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "theorg.provider.file.finish":
         if(!sender.tab)throw new Error("Automatic files must originate in an allowlisted provider tab");
         return {ok:true,...await autoHandoff.fileEvent(message,sender)};
+      case "company_agents": return {ok:true,companyId:message.companyId,agents:await companyAgents.roster(message.companyId)};
+      case "company_agent_update": return {ok:true,agent:await companyAgents.update(message.companyId,message.agentId,message.changes)};
+      case "company_agent_reset": return {ok:true,agent:await companyAgents.reset(message.companyId,message.agentId)};
+      case "company_agent_recommend": return {ok:true,...await companyAgents.recommend(message.companyId,message.instruction)};
       case "agent_skills": return {ok:true,version:globalThis.TheOrgSkills.version,profiles:globalThis.TheOrgSkills.profiles(),rubric:globalThis.TheOrgSkills.qualityRubric()};
       case "orders": return {ok:true,orders:await manager.listOrders()};
       case "execution_queue": return {ok:true,...await manager.executionQueue(message.taskId)};
