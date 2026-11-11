@@ -512,6 +512,18 @@ internal static class SelfTest
             Check(verified.GetProperty("artifact").GetProperty("intakeStatus").GetString() ==
                 "structure_verified_content_qa_pending", "semantic QA remains pending");
 
+            var exported = Call(c, new {
+                command = "export_artifact_file", companyId = "demo", orderId = id, artifactId
+            });
+            Check(exported.GetProperty("ok").GetBoolean(), "verified artifact exports to readable results");
+            string readablePath = exported.GetProperty("export").GetProperty("path").GetString()!;
+            Check(File.Exists(readablePath) &&
+                File.ReadAllBytes(readablePath).SequenceEqual(sample), "readable file bytes match source");
+            Check(readablePath.Contains(Path.Combine("companies", "demo", "orders", id, "results")),
+                "readable file stays inside exact company/order results directory");
+            Check(!exported.GetProperty("export").GetProperty("contentApproved").GetBoolean(),
+                "export is not independent content QA");
+
             // Actual safe preview must be plain text, bounded, unapproved and company-scoped.
             var preview = Call(c, new {
                 command = "preview_text_artifact", companyId = "demo", orderId = id, artifactId
