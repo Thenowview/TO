@@ -531,6 +531,69 @@
       return result.artifact;
     }
 
+    // Provider content is untrusted. Store under the existing company/order and
+    // separately export a readable copy; never interpret it as permission to act.
+    async saveAutomaticResult(taskId, providerId, content, sourceUrl) {
+      if (!TASK_ID.test(taskId) || !["chatgpt","claude"].includes(providerId) ||
+          typeof content !== "string" || !content.trim() ||
+          typeof sourceUrl !== "string" || sourceUrl.length > 500) {
+        throw new Error("Invalid automated provider result");
+      }
+      // Bounded Native Messaging transfer: source can contain Unicode.
+      const trimmed = content.trim();
+      const bytes = new TextEncoder().encode(trimmed);
+      if (bytes.length > 180000)
+        throw new Error("AI response exceeds the 180 KB safe capture limit; smaller text/file import required");
+      const all = await this.orders();
+      const order = all[taskId];
+      if (!order || order.phase === "archived")
+        throw new Error("Work order missing or archived");
+      const allowed = order.autoHandoff;
+      if (!allowed || allowed.providerId !== providerId ||
+          allowed.status !== "armed" && allowed.status !== "in_progress")
+        throw new Error("Work order was not authorized for this provider result");
+      let binary="";
+      for(let i=0;i<bytes.length;i+=8192)
+        binary += String.fromCharCode(...bytes.slice(i,i+8192));
+      const fileName = providerId+"-response.md";
+      const stored=await this.native({
+        command:"import_artifact", companyId:order.companyId,
+        orderId:taskId,agentId:"supervisor",fileName,
+        dataBase64:btoa(binary),sourceProvider:providerId,sourceReference:sourceUrl
+      });
+      if(!stored.artifact || !stored.artifact.artifactId)
+        throw new Error("Native bridge did not return a saved response artifact");
+      const checked=await this.native({
+        command:"verify_artifact", companyId:order.companyId,
+        orderId:taskId,artifactId:stored.artifact.artifactId
+      });
+      if(checked.artifact?.integrityValid !== true)
+        throw new Error("Native bridge could not verify response bytes");
+      const exported=await this.native({
+        command:"export_artifact_file",companyId:order.companyId,
+        orderId:taskId,artifactId:stored.artifact.artifactId
+      });
+      if(!exported.export || !exported.export.path)
+        throw new Error("Readable result export was not confirmed");
+      await this.serialize(async()=>{
+        const all2=await this.orders();
+        const live=all2[taskId];
+        if(!live || !live.autoHandoff || live.autoHandoff.providerId!==providerId)
+          throw new Error("Work order provider authorization changed during save");
+        live.autoHandoff.status="saved";
+        live.autoHandoff.updatedUtc=new Date().toISOString();
+        live.autoHandoff.artifactId=stored.artifact.artifactId;
+        live.autoHandoff.fileName=exported.export.fileName;
+        live.autoHandoff.resultPath=exported.export.path;
+        live.autoHandoff.preview=trimmed.slice(0,60000);
+        live.autoHandoff.contentApproved=false;
+        await this.saveOrders(all2);
+      });
+      return {artifactId:stored.artifact.artifactId,fileName:exported.export.fileName,
+        resultPath:exported.export.path,bytes:bytes.length,integrityVerified:true,
+        contentApproved:false};
+    }
+
     async beginArtifactUpload(taskId, agentId, fileName, totalBytes, sha256, provider, sourceReference) {
       if (!TASK_ID.test(taskId) || !AGENT.test(agentId) ||
           !Number.isSafeInteger(totalBytes) || totalBytes < 1 || totalBytes > 32*1024*1024 ||
