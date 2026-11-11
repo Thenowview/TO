@@ -1,0 +1,63 @@
+name: TheOrg v0.10 portable Windows EXE
+on:
+  push:
+    branches:
+      - feat/theorg-v010-offline-portable
+    paths:
+      - 'offline_desktop/**'
+      - '.github/workflows/theorg-v010-portable-exe.yml'
+  pull_request:
+    paths:
+      - 'offline_desktop/**'
+      - '.github/workflows/theorg-v010-portable-exe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: theorg-v010-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  portable-windows:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: offline_desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+      - name: Run Python tests and static validation
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -q
+          if ($LASTEXITCODE -ne 0) { throw 'Unit tests failed' }
+          node --check static/app.js
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend JavaScript syntax failed' }
+          python app.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Engine source self-test failed' }
+      - name: Build one-file portable EXE with bundled llama.cpp and Git
+        shell: pwsh
+        run: |
+          ./Build-TheOrg-Portable-Windows.ps1 -SkipTests
+      - name: Verify executable and hash
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist/TheOrg.exe)) { throw 'Missing TheOrg.exe' }
+          if (!(Test-Path dist/SHA256SUMS.txt)) { throw 'Missing SHA256SUMS.txt' }
+          $line=(Get-Content dist/SHA256SUMS.txt | Select-Object -First 1)
+          $expected=($line -split '\s+')[0].ToLowerInvariant()
+          $actual=(Get-FileHash dist/TheOrg.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw 'EXE checksum mismatch' }
+          Write-Host "PASS TheOrg.exe SHA256 $actual"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-v0.10-Portable-Windows-EXE
+          path: |
+            offline_desktop/dist/TheOrg.exe
+            offline_desktop/dist/SHA256SUMS.txt
+            offline_desktop/dist/UPSTREAM-DIGESTS.txt
+          retention-days: 30
+          if-no-files-found: error

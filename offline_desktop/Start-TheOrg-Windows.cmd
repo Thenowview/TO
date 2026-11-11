@@ -1,0 +1,14 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+where py >nul 2>nul
+if %errorlevel%==0 (
+  py -3 app.py
+) else (
+  python app.py
+)
+if errorlevel 1 (
+  echo.
+  echo TheOrg failed to start. Install Python 3.10+ and enable the PATH option.
+  pause
+)

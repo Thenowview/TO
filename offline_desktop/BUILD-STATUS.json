@@ -1,0 +1,11 @@
+{
+  "version": "0.10.0",
+  "release_type": "verified-source-and-Windows-builder",
+  "source_tests": 78,
+  "zip_gguf_import": "tested-with-synthetic-payload",
+  "ram_preflight": "tested-with-mocked-physical-memory",
+  "structured_benchmark": "schema-mock-tested",
+  "windows_exe": "not-yet-built",
+  "real_gguf_generation": "not-tested",
+  "codex_parity": "not-established"
+}
