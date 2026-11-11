@@ -70,6 +70,14 @@
         <div class="inline-note">Requires a running local LLM and a preloaded Docker sandbox image. No trusted-host test fallback, external Git push, Internet access, deployment, or system-wide approval.</div>
         <div class="task-stack" id="autopilotRuns" aria-live="polite"></div>
       </article>
+      <article class="panel studio-results" id="advisoryPanel">
+        <div class="panel-heading"><div><div class="section-kicker">PERSISTENT ADVISORY AGENTS</div><h2>Five-role review</h2></div><button class="text-btn" id="agentRefresh">↻ Refresh</button></div>
+        <p class="muted">Planner, Developer, QA, Security and Supervisor provide a read-only project review. No code edits or tool execution are authorized by this workflow.</p>
+        <label for="agentObjective">Review objective</label><textarea id="agentObjective" rows="2" maxlength="1200" placeholder="Example: Review source safety and quality gaps"></textarea>
+        <label class="check-label"><input type="checkbox" id="agentScope"> I authorize an on-device advisory review of the selected project only.</label>
+        <div class="button-row"><button class="btn secondary" id="agentStart">Run advisory review</button></div>
+        <div class="task-stack" id="agentReviewList" aria-live="polite"></div>
+      </article>
       <article class="panel studio-results"><div class="panel-heading"><div><div class="section-kicker">REVIEW & EXECUTION</div><h2>Proposals and verification</h2></div><button class="text-btn" id="codeRefresh">↻ Refresh</button></div>
         <div class="inline-note" id="sandboxReadiness">Checking optional offline Docker test sandbox...</div><div id="codePlans" class="task-stack"></div><div id="codePlanDetail" class="code-detail"></div>
       </article>
