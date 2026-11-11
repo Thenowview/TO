@@ -88,10 +88,90 @@
       const stop=!!findVisible(config.stop);
       if(value.length>=10 && value!==latest){latest=value;stableSince=Date.now();}
       if(value.length>=10 && !stop && stableSince && Date.now()-stableSince>=5500)
-        return value.slice(0,85000);
+        return {content:value.slice(0,70000),truncated:value.length>70000,container:item};
       await sleep(1000);
     }
     throw new Error("No complete assistant response detected within 210 seconds. Review the provider tab manually.");
+  }
+  const FILE_RE=/^[\w][\w .()-]{0,110}\.(pdf|docx|xlsx|pptx|csv|txt|md|zip|png|jpg|jpeg|webp)$/i;
+  const MAX_FILE=16*1024*1024;
+  const encodeChunk=chunk=>{
+    let binary="";
+    for(let i=0;i<chunk.length;i+=8192)
+      binary+=String.fromCharCode(...chunk.subarray(i,i+8192));
+    return btoa(binary);
+  };
+  const shaHex=bytes=>crypto.subtle.digest("SHA-256",bytes).then(hash=>
+    [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,"0")).join(""));
+  function downloadLinks(responseNode){
+    const found=[],unique=new Set();
+    if(!responseNode)return found;
+    for(const a of responseNode.querySelectorAll("a[href]")){
+      if(found.length>=2)break;
+      let url;
+      try{url=new URL(a.href,location.href);}catch{continue;}
+      if(!((url.protocol==="https:"||url.protocol==="blob:") && url.origin===location.origin))
+        continue;
+      let name=(a.getAttribute("download")||"").trim();
+      if(!name){
+        try{name=decodeURIComponent(url.pathname.split("/").at(-1)||"");}catch{continue;}
+      }
+      if(!FILE_RE.test(name) || unique.has(url.href))continue;
+      unique.add(url.href);found.push({url:url.href,fileName:name});
+    }
+    return found;
+  }
+  async function fetchBounded(url){
+    const response=await fetch(url,{credentials:"include",redirect:"follow"});
+    if(!response.ok || !response.body)throw new Error("The provider file could not be retrieved.");
+    if(new URL(response.url).origin!==location.origin)
+      throw new Error("Cross-origin AI file links require separate permission.");
+    const size=Number(response.headers.get("content-length")||0);
+    if(size>MAX_FILE)throw new Error("AI file exceeds 16 MB.");
+    const reader=response.body.getReader(),parts=[];
+    let count=0;
+    try{
+      while(true){
+        const {done,value}=await reader.read();
+        if(done)break;
+        count+=value.length;
+        if(count>MAX_FILE)throw new Error("AI file is over the capture limit.");
+        parts.push(value);
+      }
+    }finally{reader.releaseLock();}
+    if(count<1)throw new Error("AI file was empty.");
+    const all=new Uint8Array(count);
+    let at=0;for(const part of parts){all.set(part,at);at+=part.length;}
+    return all;
+  }
+  async function captureFiles(nonce,responseNode){
+    for(const item of downloadLinks(responseNode)){
+      try{
+        const bytes=await fetchBounded(item.url);
+        const hash=await shaHex(bytes);
+        const beginning=await chrome.runtime.sendMessage({
+          command:"theorg.provider.file.start",nonce,fileName:item.fileName,
+          bytes:bytes.length,sha256:hash});
+        if(!beginning?.ok || !beginning.transfer)
+          throw new Error(beginning?.error||"Native file capture could not be started");
+        const {uploadId,accessToken}=beginning.transfer;
+        for(let index=0,at=0;at<bytes.length;index++,at+=96*1024){
+          const part=bytes.subarray(at,Math.min(at+96*1024,bytes.length));
+          const next=await chrome.runtime.sendMessage({
+            command:"theorg.provider.file.chunk",nonce,uploadId,accessToken,index,
+            dataBase64:encodeChunk(part)});
+          if(!next?.ok)throw new Error(next?.error||"File chunk rejected");
+        }
+        const completed=await chrome.runtime.sendMessage({
+          command:"theorg.provider.file.finish",nonce,uploadId,accessToken});
+        if(!completed?.ok || !completed.result?.path)
+          throw new Error(completed?.error||"Native file verification not confirmed");
+      }catch(e){
+        await safeStatus(nonce,"file_warning",{
+          error:"Cannot automatically import "+item.fileName+": "+String(e?.message||e).slice(0,160)
+        });
+      }
+    }
   }
   async function execute(msg){
     if(active)throw new Error("A task is already running in this provider tab.");
@@ -118,9 +198,21 @@
       if(!send || send.disabled || send.getAttribute("aria-disabled")==="true")
         throw new Error("Provider send control could not be verified. Review the page manually.");
       send.click();
+      // A click is not proof of submission; require a changed composer or user turn.
+      let actuallySent=false;
+      for(let attempt=0;attempt<22;attempt++){
+        if(!normalize(editorText(editor)) ||
+           document.querySelectorAll('[data-message-author-role="user"],[data-testid="user-message"]').length)
+          {actuallySent=true;break;}
+        await sleep(200);
+      }
+      if(!actuallySent)throw new Error("The provider did not confirm that the prompt was submitted.");
       await safeStatus(msg.nonce,"submitted");
-      const content=await waitForResponse(config,previous);
-      await safeStatus(msg.nonce,"captured",{content});
+      const answer=await waitForResponse(config,previous);
+      await safeStatus(msg.nonce,"captured",{
+        content:answer.content,truncated:answer.truncated
+      });
+      await captureFiles(msg.nonce,answer.container);
     }catch(error){
       await safeStatus(msg.nonce,"blocked",{error:String(error?.message||error).slice(0,230)});
     }finally{active=false;}
