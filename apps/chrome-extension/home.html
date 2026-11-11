@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>TheOrg — Supervisor</title>
   <link rel="stylesheet" href="home.css">
+  <script src="supervisor-starters.js" defer></script>
   <script src="home.js" defer></script>
 </head>
 <body>
@@ -48,11 +49,24 @@
         <div><span class="section-kicker">01 / START HERE</span><h2 id="startHeading">Give the Supervisor an instruction</h2></div>
         <span class="hint-pill">Supervisor-led</span>
       </div>
+      <div class="supervisor-how-it-works" aria-label="How to use the AI Supervisor">
+        <span><b>1</b> Choose a ready prompt</span><span><b>2</b> Edit and create a local work order</span><span><b>3</b> Review the plan before any agent action</span>
+      </div>
+      <div class="starter-panel" aria-labelledby="starterHeading">
+        <div class="starter-title"><div><h3 id="starterHeading">Start with a ready-to-use prompt</h3><p class="muted">Choose a task; the instruction is filled in for you. You can edit it before submitting.</p></div><span class="hint-pill">14 safe starters</span></div>
+        <div class="starter-filters">
+          <label for="starterCategory">Category <select id="starterCategory"><option>All</option><option>Build</option><option>Analyze</option><option>Operate</option><option>Communicate</option></select></label>
+          <label for="starterSearch">Find a task <input id="starterSearch" type="search" maxlength="120" autocomplete="off" placeholder="e.g. fix bug, dashboard, report"></label>
+          <label for="starterFocus">Project or topic (optional) <input id="starterFocus" maxlength="240" autocomplete="off" placeholder="e.g. TheOrg app or my project"></label>
+        </div>
+        <div class="starter-list" id="starterList" role="list" aria-live="polite"><p class="muted">Loading starter prompts…</p></div>
+        <div class="starter-bottom"><span id="starterFeedback" class="muted" role="status">Selecting a prompt does not execute it or send information anywhere.</span><button id="starterShowAll" class="tiny-btn" type="button">Show all prompts</button></div>
+      </div>
       <form id="newOrder" class="composer">
         <div class="composer-top"><label for="companyId">Company workspace</label><input id="companyId" value="demo" pattern="[a-z0-9_-]{1,40}" maxlength="40" title="Lowercase letters, numbers, hyphen and underscore"></div>
         <label class="sr-only" for="ownerInstruction">Work order instruction</label>
         <textarea id="ownerInstruction" required minlength="5" maxlength="5000" rows="4" placeholder="Tell your Supervisor what you want to accomplish. Describe the intended outcome, constraints, and the files you need."></textarea>
-        <div class="composer-bottom"><span class="subtle">Your order stays in your local company workspace unless you choose to share it with an external AI service.</span><button class="primary" type="submit">Create work order <span aria-hidden="true">↗</span></button></div>
+        <div class="composer-bottom"><span class="subtle">Saved locally first. Specialist tabs and outside services require separate actions and review.</span><div class="composer-actions"><button id="copyReadyInstruction" class="secondary" type="button">Copy instruction</button><button class="primary" type="submit">Create work order <span aria-hidden="true">↗</span></button></div></div>
       </form>
     </section>
 
