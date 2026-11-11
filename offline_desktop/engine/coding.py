@@ -281,63 +281,116 @@ def project_search(project_id, query, limit=12):
 
 
 
-# Bounded deterministic retrieval: no vector database, external provider or network.
-# Selection is intentionally reproducible and shown in the dashboard before
-# the model receives a clipped snapshot.
+# Bounded deterministic retrieval: no vector service, project leakage or network.
+# Metadata and selected text remain read-only untrusted project data.
 _CONTEXT_STOPWORDS = frozenset('a an and are as at be by can change code create do for from function in is it of on or our please project refactor test tests the this to update use with'.split())
 
-def project_context(project_id, objective, limit=9, char_budget=6500):
-    """Rank actual project source for one objective, include tests, and cap data.
 
-    Untrusted repository text is treated as data, never instructions. This
-    summary is read-only and only covers TheOrg-created local Git projects.
-    """
+def _source_index(path, content):
+    """Best-effort local symbol and import references, without executing code."""
+    symbols, imports = set(), set()
+    if path.endswith('.py'):
+        try:
+            tree = ast.parse(content)
+        except (SyntaxError, ValueError, MemoryError):
+            return [], []
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                symbols.add(node.name)
+            elif isinstance(node, ast.Import):
+                imports.update(alias.name.split('.')[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports.add(node.module.split('.')[0])
+    elif path.endswith(('.js', '.ts', '.tsx')):
+        symbols.update(re.findall(
+            r'\b(?:function|class|interface|type|const|export\s+function)\s+([A-Za-z_$][\w$]*)',
+            content)[:80])
+        imports.update(re.findall(
+            r'\bfrom\s*["\']([^"\']+)["\']',
+            content)[:80])
+    return sorted(symbols)[:80], sorted(imports)[:80]
+
+
+def _token_estimate(text):
+    """Conservative heuristic, not model-specific tokenizer accounting."""
+    return (len(text) + 2) // 3
+
+
+def project_context(project_id, objective, limit=9, char_budget=6500, token_budget=None):
+    """Build inspectable, project-isolated context with bounded source attribution."""
     if not isinstance(objective,str) or not 2 <= len(objective.strip()) <= 1200:
         raise core.EngineError('Context objective must be 2–1200 characters.')
     if type(limit) is not int or not 1 <= limit <= 12:
         raise core.EngineError('Context file limit must be 1–12.')
     if type(char_budget) is not int or not 1000 <= char_budget <= 12000:
         raise core.EngineError('Context text budget must be 1000–12000 characters.')
-    repo=_project(project_id)
-    terms={w.lower() for w in re.findall(r'[A-Za-z_][A-Za-z_0-9]{2,}',objective)}-_CONTEXT_STOPWORDS
-    results=[]
-    seen=0
+    if token_budget is None:
+        token_budget = char_budget // 3
+    if type(token_budget) is not int or not 100 <= token_budget <= 4096:
+        raise core.EngineError('Context estimated token budget must be 100–4096.')
+    repo = _project(project_id)
+    terms = {w.lower() for w in re.findall(r'[A-Za-z_][A-Za-z_0-9]{2,}',objective)} - _CONTEXT_STOPWORDS
+    results = []
+    seen = 0
     for meta in project_files(project_id):
-        if seen >= 180:break
-        seen+=1
-        if meta['bytes'] > 20000:continue
-        try:p,name=_file(repo,meta['name'])
-        except core.EngineError:continue
-        if not name.endswith(('.py','.md','.json','.js','.ts','.tsx','.html','.css','.toml')):continue
-        content=_text(p)
-        if content is None:continue
-        low=content.casefold();fname=name.casefold()
-        matches=sum(min(low.count(term),5) for term in terms)
-        path_hits=sum(1 for term in terms if term in fname)
-        score=path_hits*12 + min(matches,24) + (3 if name.startswith('tests/') else 0)
-        if not terms or not (matches or path_hits):
-            # Keep a small overview of core project files for broad instructions.
+        if seen >= 180:
+            break
+        seen += 1
+        if meta['bytes'] > 20000:
+            continue
+        try: p, name = _file(repo, meta['name'])
+        except core.EngineError: continue
+        if not name.endswith(('.py','.md','.json','.js','.ts','.tsx','.html','.css','.toml')):
+            continue
+        content = _text(p)
+        if content is None: continue
+        symbols, imports = _source_index(name, content)
+        low, fname = content.casefold(), name.casefold()
+        matches = sum(min(low.count(term), 5) for term in terms)
+        path_hits = sum(1 for term in terms if term in fname)
+        symbol_hits = sum(1 for sym in symbols if any(t in sym.casefold() for t in terms))
+        score = path_hits * 12 + min(matches, 24) + min(symbol_hits, 6) * 8
+        score += 3 if name.startswith(('tests/','test_')) else 0
+        if not terms or not (matches or path_hits or symbol_hits):
             if name in ('README.md','main.py','tests/test_smoke.py'):
-                score=2
-            else:continue
-        results.append({'path':name,'score':score,'content':content,'matched_terms':matches})
+                score = 2
+            else:
+                continue
+        results.append({'path':name,'score':score,'content':content,
+                        'matched_terms':matches,'symbols':symbols,'imports':imports})
+    # Direct dependencies of relevant files should be available to the model as context.
+    seed_imports = set()
+    for item in sorted(results, key=lambda x:(-x['score'], x['path']))[:3]:
+        seed_imports.update(s.casefold().split('/')[-1].split('.')[0] for s in item['imports'])
+    for item in results:
+        stem = Path(item['path']).stem.casefold()
+        if stem in seed_imports:
+            item['score'] += 6
     results.sort(key=lambda x:(-x['score'],x['path']))
-    chosen=[];remaining=char_budget
+    chosen = []
+    remaining_chars, remaining_tokens = char_budget, token_budget
     for item in results[:limit]:
-        # Reserve a small share for each relevant file instead of saturating
-        # the prompt with one long README or source file.
-        allowance=min(len(item['content']),1800,remaining)
-        if allowance<=0:break
+        allowance = min(len(item['content']), 1800, remaining_chars, remaining_tokens * 3)
+        if allowance <= 0: break
+        snippet = item['content'][:allowance]
+        cost = _token_estimate(snippet)
         chosen.append({'path':item['path'],'score':item['score'],
                        'matched_terms':item['matched_terms'],
-                       'content':item['content'][:allowance],
+                       'symbols':item['symbols'][:35],
+                       'imports':item['imports'][:35],
+                       'sha256':_sha(item['content']),
+                       'content':snippet,'estimated_tokens':cost,
                        'truncated':len(item['content'])>allowance})
-        remaining-=allowance
+        remaining_chars -= len(snippet)
+        remaining_tokens -= cost
     return {'project_id':project_id,'objective':objective.strip(),
             'git_head':_head(repo),'files':chosen,
             'files_scanned':seen,'files_matched':len(results),
-            'budget_chars':char_budget,'context_chars':char_budget-remaining}
-
+            'budget_chars':char_budget,'context_chars':char_budget-remaining_chars,
+            'budget_estimated_tokens':token_budget,
+            'context_estimated_tokens':token_budget-remaining_tokens,
+            'token_count_method':'length/3 heuristic; not a tokenizer',
+            'truncated_files':sum(1 for x in chosen if x['truncated'])}
 
 def read_project_file(project_id,path):
     repo=_project(project_id)
