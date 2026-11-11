@@ -187,6 +187,43 @@ async function showSelected() {
   $("activeOrderId").textContent = "Order ID: " + order.taskId + " · Company: " + order.companyId;
   $("orderPhase").textContent = (order.phase || "pending").replaceAll("_"," ");
   $("planResponse").value = "";
+  const auto=order.autoHandoff;
+  const capture=$("autoCaptureStatus");
+  capture.replaceChildren();
+  if(!auto){
+    capture.append(node("p","Automatic AI handoff is not enabled for this work order."));
+  }else{
+    const statuses={
+      armed:"Ready: open a NEW ChatGPT or Claude chat in Chrome. TheOrg will send the authorized prompt once.",
+      in_progress:"Provider detected. TheOrg is attempting to send, capture and save the answer.",
+      saved:"AI output received and stored locally. The content is untrusted until reviewed.",
+      blocked:"Automation blocked. No result was certified; inspect the provider page.",
+      cancelled:"Automatic provider transfer cancelled."
+    };
+    capture.append(node("strong",statuses[auto.status]||"Automation status: "+auto.status));
+    if(auto.error)capture.append(node("p",auto.error,"muted"));
+    if(auto.resultPath){
+      capture.append(node("p","Saved file: "+auto.resultPath,"mono"));
+      capture.append(node("p","File integrity checked. Response quality and completeness still need review.","muted"));
+    }
+    if(auto.status==="saved" && auto.preview){
+      const preview=node("pre",auto.preview.slice(0,15000),"artifact-preview");
+      preview.setAttribute("aria-label","Captured AI response (untrusted)");
+      capture.append(preview);
+      if(auto.preview.trim().startsWith("{"))
+        $("planResponse").value=auto.preview;
+    }
+    if(["armed","in_progress"].includes(auto.status)){
+      const stop=node("button","Cancel automatic handoff","secondary");
+      stop.type="button";
+      stop.addEventListener("click",()=>action(async()=>{
+        await rpc("automation_cancel",{taskId:order.taskId});
+        await refreshOrders(order.taskId);
+        toast("Automatic provider handoff cancelled.");
+      }));
+      capture.append(stop);
+    }
+  }
   const approved = Boolean(order.plan && order.plan.reviewed);
   const plan = order.plan;
   $("planSummary").textContent = plan
@@ -568,10 +605,22 @@ function registerEvents() {
   $("newOrder").addEventListener("submit",event=>{
     event.preventDefault();
     action(async()=>{
+      const enable=$("autoProviderEnabled").checked;
+      const provider=$("autoProviderChoice").value;
       const r=await rpc("create_order",{companyId:$("companyId").value.trim(),
         instruction:$("ownerInstruction").value.trim()});
-      toast("Order created. The Supervisor prepared a local specialist plan automatically. Review it and approve dispatch.");
+      let notice="Order created. Review the local specialist plan before dispatch.";
+      if(enable){
+        try{
+          await rpc("automation_arm",{taskId:r.taskId,providerId:provider,approved:true});
+          notice="Automatic handoff armed. OPEN a new ChatGPT/Claude chat; TheOrg will submit and save the response.";
+        }catch(err){
+          notice="Order created, but automatic handoff was not enabled: "+(err?.message||String(err));
+        }
+      }
+      toast(notice);
       $("ownerInstruction").value="";
+      $("autoProviderEnabled").checked=false;
       await refreshOrders(r.taskId);
       $("work").scrollIntoView({behavior:"smooth"});
     });
