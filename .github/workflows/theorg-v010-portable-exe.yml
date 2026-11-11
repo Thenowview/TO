@@ -3,6 +3,7 @@ name: TheOrg portable Windows release acceptance
 on:
   push:
     branches:
+      - main
       - feat/theorg-v010-offline-portable
       - feat/theorg-release-gates
       - feat/theorg-v1-integrated-candidate
