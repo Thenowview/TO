@@ -134,25 +134,15 @@
     for(const file of data.files){
       const card=element('div','model-card');
       card.append(element('strong','',file.name));card.append(element('small','',fmtSize(file.bytes)));
-      card.append(element('small','','Imported file · runtime and coding compatibility unverified'));
       const inspect=element('button','btn secondary','Inspect GGUF metadata');
-      const details=element('div','inline-note','No local header inspection yet.');
+      const detail=element('small','','Local model has not been verified for this device.');
       inspect.addEventListener('click',async()=>{
-        text(details,'Inspecting local GGUF header…');
         try{
           const r=await request('models/preflight',{method:'POST',body:{name:file.name}});
           const p=r.preflight,m=p.metadata||{};
-          const metadata=m.metadata_recognized
-            ?('Recognized GGUF v'+m.gguf_version+' · architecture '+(m.architecture||'unknown')+
-              ' · tokenizer '+(m.tokenizer||'unknown')+' · chat template '+(m.chat_template_present?'present':'not confirmed'))
-            :('Metadata unverified: '+(m.metadata_error||'not recognized'));
-          text(details,metadata+' · llama.cpp executable '+(p.runtime_available?'found':'missing')+
-            ' · RAM estimate '+fmtSize(p.estimated_min_available_ram_bytes)+
-            ' · available '+(p.available_ram_bytes===null?'unknown':fmtSize(p.available_ram_bytes))+
-            ' · real inference and coding benchmark NOT YET VERIFIED.');
-        }catch(e){text(details,'Inspection failed: '+e.message);}
-      });
-      card.append(inspect,details);
+          text(detail,(m.metadata_recognized?('GGUF v'+m.gguf_version+' · '+(m.architecture||'unknown')+' · chat template '+(m.chat_template_present?'present':'not verified')):('Header unverified: '+(m.metadata_error||'not inspected')))+' · RAM '+(p.ram_check_passed?'estimate passed':'blocked: '+p.ram_block_reason)+' · real inference NOT VERIFIED');
+        }catch(e){text(detail,'GGUF inspection failed: '+e.message)}
+      });card.append(inspect,detail);
       const btn=element('button','btn secondary','Start offline inference');
       btn.disabled=!data.llama_binary;
       btn.title=data.llama_binary?'Start this local GGUF with llama.cpp':'Install llama-server to enable model loading';
@@ -487,10 +477,10 @@
     try{
       const q='code/context?project_id='+encodeURIComponent(chosenCodeProject)+'&objective='+encodeURIComponent(objective);
       const data=await request(q), target=$('codeContextResults');target.replaceChildren();
-      const summary=element('div','inline-note',data.files_matched+' matching files · '+data.context_chars+' characters · approx '+(data.context_estimated_tokens||0)+' tokens · Git '+data.git_head.slice(0,9));
+      const summary=element('div','inline-note',data.files_matched+' matching files · '+data.context_chars+' characters · approximately '+(data.context_estimated_tokens||0)+' tokens · Git '+data.git_head.slice(0,9));
       target.append(summary);
       for(const file of data.files){
-        const row=element('div','file-item',file.path+' · rank '+file.score+(file.truncated?' · clipped':'')+(file.symbols?.length?' · symbols: '+file.symbols.slice(0,6).join(', '):''));
+        const row=element('div','file-item',file.path+' · rank '+file.score+(file.truncated?' · clipped':''));
         target.append(row);
       }
       if(!data.files.length)target.append(element('div','empty','No matching source files. Refine the objective.'));

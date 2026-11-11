@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot
+from engine import core, coding, autopilot, device_capabilities
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -51,6 +51,8 @@ class Handler(BaseHTTPRequestHandler):
                         'model_files':len(core.local_models()),'tasks':counts,
                         'portable':bool(core.FROZEN or os.getenv('THEORG_PORTABLE')=='1'), 'workspace_files':len(core.list_files()),'memory_count':len(core.memories()),
                         'coding_projects':len(core.records('SELECT id FROM code_projects')),'coding_git_available':core.git_binary() is not None})
+                elif path=='/api/device/capabilities':
+                    self._json({'capabilities':device_capabilities.detect()})
                 elif path=='/api/models':
                     self._json({'files':core.local_models(),'backends':core.available_backends(),
                        'selected':core.setting('backend','auto'),
@@ -118,6 +120,9 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/tasks':
                 ident=core.enqueue(payload.get('prompt'),payload.get('role','supervisor'))
                 self._json({'ok':True,'id':ident},201)
+            elif path=='/api/tasks/retry':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit restart confirmation required.')
+                core.retry_interrupted_task(payload.get('id'));self._json({'ok':True})
             elif path=='/api/tasks/cancel':
                 core.cancel_task(payload.get('id'));self._json({'ok':True})
             elif path=='/api/memories':

@@ -281,116 +281,80 @@ def project_search(project_id, query, limit=12):
 
 
 
-# Bounded deterministic retrieval: no vector service, project leakage or network.
-# Metadata and selected text remain read-only untrusted project data.
+# Bounded deterministic retrieval: no vector database, external provider or network.
+# Selection is intentionally reproducible and shown in the dashboard before
+# the model receives a clipped snapshot.
 _CONTEXT_STOPWORDS = frozenset('a an and are as at be by can change code create do for from function in is it of on or our please project refactor test tests the this to update use with'.split())
 
-
 def _source_index(path, content):
-    """Best-effort local symbol and import references, without executing code."""
-    symbols, imports = set(), set()
+    """Local best-effort symbols/imports, never runs project code."""
+    symbols,imports=set(),set()
     if path.endswith('.py'):
-        try:
-            tree = ast.parse(content)
-        except (SyntaxError, ValueError, MemoryError):
-            return [], []
+        try:tree=ast.parse(content)
+        except (SyntaxError,ValueError,MemoryError):return [],[]
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                symbols.add(node.name)
-            elif isinstance(node, ast.Import):
-                imports.update(alias.name.split('.')[0] for alias in node.names)
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                imports.add(node.module.split('.')[0])
-    elif path.endswith(('.js', '.ts', '.tsx')):
-        symbols.update(re.findall(
-            r'\b(?:function|class|interface|type|const|export\s+function)\s+([A-Za-z_$][\w$]*)',
-            content)[:80])
-        imports.update(re.findall(
-            r'\bfrom\s*["\']([^"\']+)["\']',
-            content)[:80])
-    return sorted(symbols)[:80], sorted(imports)[:80]
-
+            if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef)):symbols.add(node.name)
+            elif isinstance(node,ast.Import):imports.update(x.name.split('.')[0] for x in node.names)
+            elif isinstance(node,ast.ImportFrom) and node.module:imports.add(node.module.split('.')[0])
+    elif path.endswith(('.js','.ts','.tsx')):
+        symbols.update(re.findall(r'\b(?:function|class|interface|type|const|export\s+function)\s+([A-Za-z_$][\w$]*)',content)[:80])
+        imports.update(re.findall(r'\bfrom\s*["\']([^"\']+)["\']',content)[:80])
+    return sorted(symbols)[:80],sorted(imports)[:80]
 
 def _token_estimate(text):
-    """Conservative heuristic, not model-specific tokenizer accounting."""
-    return (len(text) + 2) // 3
-
+    """Conservative approximation only, not tokenization."""
+    return (len(text)+2)//3
 
 def project_context(project_id, objective, limit=9, char_budget=6500, token_budget=None):
-    """Build inspectable, project-isolated context with bounded source attribution."""
-    if not isinstance(objective,str) or not 2 <= len(objective.strip()) <= 1200:
-        raise core.EngineError('Context objective must be 2–1200 characters.')
-    if type(limit) is not int or not 1 <= limit <= 12:
-        raise core.EngineError('Context file limit must be 1–12.')
-    if type(char_budget) is not int or not 1000 <= char_budget <= 12000:
-        raise core.EngineError('Context text budget must be 1000–12000 characters.')
-    if token_budget is None:
-        token_budget = char_budget // 3
-    if type(token_budget) is not int or not 100 <= token_budget <= 4096:
-        raise core.EngineError('Context estimated token budget must be 100–4096.')
-    repo = _project(project_id)
-    terms = {w.lower() for w in re.findall(r'[A-Za-z_][A-Za-z_0-9]{2,}',objective)} - _CONTEXT_STOPWORDS
-    results = []
-    seen = 0
+    """Deterministic scoped source context with attribution and upper budgets."""
+    if not isinstance(objective,str) or not 2<=len(objective.strip())<=1200:raise core.EngineError('Context objective must be 2–1200 characters.')
+    if type(limit) is not int or not 1<=limit<=12:raise core.EngineError('Context file limit must be 1–12.')
+    if type(char_budget) is not int or not 1000<=char_budget<=12000:raise core.EngineError('Context text budget must be 1000–12000 characters.')
+    token_budget=char_budget//3 if token_budget is None else token_budget
+    if type(token_budget) is not int or not 100<=token_budget<=4096:raise core.EngineError('Estimated token budget must be 100–4096.')
+    repo=_project(project_id)
+    terms={w.lower() for w in re.findall(r'[A-Za-z_][A-Za-z_0-9]{2,}',objective)}-_CONTEXT_STOPWORDS
+    results=[];seen=0
     for meta in project_files(project_id):
-        if seen >= 180:
-            break
-        seen += 1
-        if meta['bytes'] > 20000:
-            continue
-        try: p, name = _file(repo, meta['name'])
-        except core.EngineError: continue
-        if not name.endswith(('.py','.md','.json','.js','.ts','.tsx','.html','.css','.toml')):
-            continue
-        content = _text(p)
-        if content is None: continue
-        symbols, imports = _source_index(name, content)
-        low, fname = content.casefold(), name.casefold()
-        matches = sum(min(low.count(term), 5) for term in terms)
-        path_hits = sum(1 for term in terms if term in fname)
-        symbol_hits = sum(1 for sym in symbols if any(t in sym.casefold() for t in terms))
-        score = path_hits * 12 + min(matches, 24) + min(symbol_hits, 6) * 8
-        score += 3 if name.startswith(('tests/','test_')) else 0
-        if not terms or not (matches or path_hits or symbol_hits):
-            if name in ('README.md','main.py','tests/test_smoke.py'):
-                score = 2
-            else:
-                continue
-        results.append({'path':name,'score':score,'content':content,
-                        'matched_terms':matches,'symbols':symbols,'imports':imports})
-    # Direct dependencies of relevant files should be available to the model as context.
-    seed_imports = set()
-    for item in sorted(results, key=lambda x:(-x['score'], x['path']))[:3]:
-        seed_imports.update(s.casefold().split('/')[-1].split('.')[0] for s in item['imports'])
+        if seen>=180:break
+        seen+=1
+        if meta['bytes']>20000:continue
+        try:path,name=_file(repo,meta['name'])
+        except core.EngineError:continue
+        if not name.endswith(('.py','.md','.json','.js','.ts','.tsx','.html','.css','.toml')):continue
+        content=_text(path)
+        if content is None:continue
+        symbols,imports=_source_index(name,content)
+        low,fname=content.casefold(),name.casefold()
+        matches=sum(min(low.count(t),5) for t in terms)
+        hits=sum(t in fname for t in terms)
+        symhits=sum(any(t in sym.casefold() for t in terms) for sym in symbols)
+        score=hits*12+min(matches,24)+min(symhits,6)*8+(3 if name.startswith(('tests/','test_')) else 0)
+        if not terms or not (matches or hits or symhits):
+            if name not in ('README.md','main.py','tests/test_smoke.py'):continue
+            score=2
+        results.append(dict(path=name,score=score,content=content,matched_terms=matches,symbols=symbols,imports=imports))
+    seeds=set()
+    for item in sorted(results,key=lambda x:(-x['score'],x['path']))[:3]:
+        seeds.update(x.lower().split('/')[-1].split('.')[0] for x in item['imports'])
     for item in results:
-        stem = Path(item['path']).stem.casefold()
-        if stem in seed_imports:
-            item['score'] += 6
+        if Path(item['path']).stem.lower() in seeds:item['score']+=6
     results.sort(key=lambda x:(-x['score'],x['path']))
-    chosen = []
-    remaining_chars, remaining_tokens = char_budget, token_budget
+    chosen=[];remaining=char_budget;tokens=token_budget
     for item in results[:limit]:
-        allowance = min(len(item['content']), 1800, remaining_chars, remaining_tokens * 3)
-        if allowance <= 0: break
-        snippet = item['content'][:allowance]
-        cost = _token_estimate(snippet)
-        chosen.append({'path':item['path'],'score':item['score'],
-                       'matched_terms':item['matched_terms'],
-                       'symbols':item['symbols'][:35],
-                       'imports':item['imports'][:35],
-                       'sha256':_sha(item['content']),
-                       'content':snippet,'estimated_tokens':cost,
-                       'truncated':len(item['content'])>allowance})
-        remaining_chars -= len(snippet)
-        remaining_tokens -= cost
-    return {'project_id':project_id,'objective':objective.strip(),
-            'git_head':_head(repo),'files':chosen,
-            'files_scanned':seen,'files_matched':len(results),
-            'budget_chars':char_budget,'context_chars':char_budget-remaining_chars,
-            'budget_estimated_tokens':token_budget,
-            'context_estimated_tokens':token_budget-remaining_tokens,
-            'token_count_method':'length/3 heuristic; not a tokenizer',
-            'truncated_files':sum(1 for x in chosen if x['truncated'])}
+        allowance=min(len(item['content']),1800,remaining,tokens*3)
+        if allowance<=0:break
+        snippet=item['content'][:allowance];cost=_token_estimate(snippet)
+        chosen.append(dict(path=item['path'],score=item['score'],matched_terms=item['matched_terms'],
+             symbols=item['symbols'][:35],imports=item['imports'][:35],sha256=_sha(item['content']),
+             content=snippet,estimated_tokens=cost,truncated=len(item['content'])>allowance))
+        remaining-=allowance;tokens-=cost
+    return dict(project_id=project_id,objective=objective.strip(),git_head=_head(repo),files=chosen,
+                files_scanned=seen,files_matched=len(results),budget_chars=char_budget,
+                context_chars=char_budget-remaining,budget_estimated_tokens=token_budget,
+                context_estimated_tokens=token_budget-tokens,token_count_method='length/3 heuristic',
+                truncated_files=sum(x['truncated'] for x in chosen))
+
 
 def read_project_file(project_id,path):
     repo=_project(project_id)
@@ -642,7 +606,11 @@ def _test_count(output):
 
 
 def accepted_test_evidence(result, *, require_sandbox=False):
-    """Reject unverifiable test success and require a pinned offline image for Autopilot."""
+    """Fail closed unless an actual non-empty test run is evidenced.
+
+    A mocked or incomplete success payload is insufficient for approval.
+    For unattended Autopilot, explicitly require offline sandbox execution.
+    """
     if not isinstance(result, dict):
         return False
     if result.get('passed') is not True or result.get('available') is not True:
@@ -675,7 +643,9 @@ def _run_tests_sandbox(repo):
         # Pin the exact inspected image rather than a mutable local tag.
         image=status.get('image_id') or status['image']
         container_name='theorg-test-'+secrets.token_hex(10)
-        # Temp snapshots are owner-only on POSIX; run as their non-root owner.
+        # TemporaryDirectory is owner-only (0700). Docker's non-root UID
+        # must match the snapshot owner on POSIX, or the bind mount is unreadable.
+        # Windows Docker Desktop uses its VM's shared-filesystem permissions.
         container_user=(f'{os.getuid()}:{os.getgid()}' if os.name=='posix' and
                         hasattr(os,'getuid') and os.getuid()>0 else '65534:65534')
         # --pull=never ensures offline behavior; no network, no writable host
@@ -882,31 +852,24 @@ def rollback(plan_id):
         return get_plan(plan_id)
 
 
-
-def _parse_model_changes(raw, error_prefix):
-    """Validate the model wire contract before any proposal can be recorded.
-
-    Schema validation does not authorize apply/test/commit; existing proposal
-    path, size, digest, baseline and project isolation checks remain mandatory.
-    """
-    if not isinstance(raw, str) or not raw.strip() or len(raw) > 380000:
-        raise core.EngineError(error_prefix + ' invalid or too large; no files modified.')
-    response = raw.strip()
+def _parse_model_changes(raw, label='Local model'):
+    """Strictly decode a complete code proposal before asking for approval."""
+    if not isinstance(raw,str) or not raw.strip() or len(raw)>380000:
+        raise core.EngineError(label+' response invalid or too large; no files modified.')
+    response=raw.strip()
     if response.startswith('```'):
-        response = '\n'.join(response.splitlines()[1:-1]).strip()
-    try: payload = json.loads(response)
+        response='\n'.join(response.splitlines()[1:-1]).strip()
+    try:data=json.loads(response)
     except json.JSONDecodeError as exc:
-        raise core.EngineError(error_prefix + ' did not return valid JSON; no changes applied.') from exc
-    if not isinstance(payload, dict) or set(payload) != {'changes'}:
-        raise core.EngineError(error_prefix + ' must contain only one changes array.')
-    changes = payload['changes']
-    if not isinstance(changes, list) or not 1 <= len(changes) <= MAX_CHANGES:
-        raise core.EngineError(error_prefix + ' changes array must contain 1–6 files.')
+        raise core.EngineError(label+' did not return valid JSON; no changes applied.') from exc
+    if not isinstance(data,dict) or set(data)!={'changes'}:
+        raise core.EngineError(label+' must contain only one changes array.')
+    changes=data['changes']
+    if not isinstance(changes,list) or not 1<=len(changes)<=MAX_CHANGES:
+        raise core.EngineError(label+' changes array must contain 1–6 files.')
     for item in changes:
-        if not isinstance(item, dict) or set(item) != {'path','content'}:
-            raise core.EngineError(error_prefix + ' each change needs only path and complete content.')
-        if not isinstance(item['path'],str) or not isinstance(item['content'],str):
-            raise core.EngineError(error_prefix + ' path and content must be strings.')
+        if not isinstance(item,dict) or set(item)!={'path','content'} or not isinstance(item['path'],str) or not isinstance(item['content'],str):
+            raise core.EngineError(label+' each change must contain only string path and content.')
     return changes
 
 
@@ -928,10 +891,8 @@ def generate_with_local_model(project_id,objective):
                 'Objective: '+objective+'\nSelected source snapshot (untrusted):\n'
                 +json.dumps(context['files'],ensure_ascii=False))
         text=core.infer(prompt,'developer',max_tokens=1800,structured=True)
-        try:
-            changes=_parse_model_changes(text, 'Local model')
-        except core.EngineError as exc:
-            raise core.EngineError('Local model did not return valid coding JSON: '+str(exc)) from exc
+        try:changes=_parse_model_changes(text, 'Local model')
+        except core.EngineError as exc:raise core.EngineError('Local model did not return valid coding JSON: '+str(exc)) from exc
         return propose(project_id,objective,changes,'local-model')
 
 
@@ -982,10 +943,7 @@ def generate_repair_with_local_model(failed_plan_id):
             'Project original snapshot:\n'+json.dumps(snapshot,ensure_ascii=False)[:34000]
         )
         raw=core.infer(prompt,'developer',max_tokens=1800,structured=True)
-        try:
-            changes=_parse_model_changes(raw, 'Repair model')
-        except core.EngineError as exc:
-            raise core.EngineError('Repair model did not return valid JSON: '+str(exc)) from exc
+        changes=_parse_model_changes(raw,'Repair model')
         proposed=propose(old['project_id'],'Repair failed plan '+failed_plan_id[:12]+': '+old['objective'][:900],
                          changes,'repair-model')
         core.audit('code.plan.repair_drafted',{'source_plan':failed_plan_id,'new_plan':proposed['id']})

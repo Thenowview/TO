@@ -6,7 +6,7 @@ import json, os, re, secrets, shutil, sqlite3, subprocess, threading, time, urll
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from engine import model_behavior, gguf_diagnostics
+from engine import model_behavior, gguf_diagnostics, device_capabilities
 
 # Portable layout: TheOrg.exe is the visible launcher, while .theorg/ is
 # a relocatable local data directory beside it. The OS application is never
@@ -78,7 +78,7 @@ def init():
         CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         ''')
         # Preserve queued tasks; retry an interrupted job only on next launch.
-        db.execute("UPDATE tasks SET status='queued', error='Recovered after engine restart', updated=? WHERE status='running'",(utcnow(),))
+        db.execute("UPDATE tasks SET status='interrupted', error='Interrupted by restart; manual resubmission required', updated=? WHERE status='running'",(utcnow(),))
     tokenfile = DATA / 'access-token.txt'
     if not tokenfile.exists():
         # Exclusive file creation prevents accidental token replacement.
@@ -129,6 +129,13 @@ def cancel_task(ident):
     if not r.rowcount:
         raise EngineError('Only queued tasks can be cancelled; running calls cannot yet be interrupted.')
     audit('task.cancelled', {'id':ident})
+
+def retry_interrupted_task(ident):
+    """Explicit resubmission after crash/restart; no stale approval is renewed."""
+    with conn() as db:
+        result=db.execute("UPDATE tasks SET status='queued',error='',updated=? WHERE id=? AND status='interrupted'",(utcnow(),ident))
+    if not result.rowcount:raise EngineError('Task not interrupted; cannot requeue.')
+    audit('task.requeued_explicitly',{'id':ident})
 
 def pop_task():
     with conn() as db:
@@ -282,18 +289,14 @@ def active_backend():
     return None,None
 
 def infer(prompt,role,max_tokens=750,structured=False):
-    if type(structured) is not bool:
-        raise EngineError('Structured generation option must be boolean.')
+    if type(structured) is not bool:raise EngineError('Structured option must be boolean.')
     if type(max_tokens) is not int or not 1 <= max_tokens <= 3000:
         raise EngineError('Inference token budget must be 1–3000.')
     backend,model=active_backend()
     if not backend:
         raise EngineError('No offline AI model is running. Install a GGUF + llama-server or start Ollama with a downloaded model; check Models tab.')
-    if role not in PROFILES:
-        raise EngineError('Unknown agent profile.')
+    if role not in PROFILES: raise EngineError('Unknown agent profile.')
     system=model_behavior.system_prompt(role)
-    # Global notes are never silently incorporated into project-scoped coding,
-    # QA or security prompts. Code context must come from the selected project.
     past=memories()[:10] if role not in ('developer','qa','security') else []
     if past:
         # User-managed memory (not untrusted instructions) is bounded and labeled as context.
@@ -302,20 +305,16 @@ def infer(prompt,role,max_tokens=750,structured=False):
     messages=[{'role':'system','content':system},{'role':'user','content':prompt}]
     temp=0.0 if structured else model_behavior.temperature(role)
     if backend=='llamacpp':
-        request={'messages':messages,'max_tokens':max_tokens,'temperature':temp}
-        if structured:
-            # llama.cpp OpenAI-compatible constrained JSON object generation.
-            request['response_format']={'type':'json_object'}
-        r=local_http_json('http://127.0.0.1:8081/v1/chat/completions',request,timeout=180)
+        payload={'messages':messages,'max_tokens':max_tokens,'temperature':temp}
+        if structured: payload['response_format']={'type':'json_object'}
+        r=local_http_json('http://127.0.0.1:8081/v1/chat/completions',payload,timeout=180)
         try: content=r['choices'][0]['message']['content']
         except (KeyError,IndexError,TypeError) as exc:
             raise EngineError('Local llama.cpp returned an invalid completion payload.') from exc
     else:
-        request={'model':model,'messages':messages,'stream':False,
-                 'options':{'num_predict':max_tokens,'temperature':temp}}
-        if structured:
-            request['format']='json'
-        r=local_http_json('http://127.0.0.1:11434/api/chat',request,timeout=180)
+        payload={'model':model,'messages':messages,'stream':False,'options':{'num_predict':max_tokens,'temperature':temp}}
+        if structured:payload['format']='json'
+        r=local_http_json('http://127.0.0.1:11434/api/chat',payload,timeout=180)
         try: content=r['message']['content']
         except (KeyError,TypeError) as exc:
             raise EngineError('Local Ollama returned an invalid completion payload.') from exc
@@ -438,18 +437,15 @@ def model_start_preflight(name):
     # Quantized weight file plus working buffers, model graph and KV cache.
     # This is a conservative floor, not a guarantee of successful execution.
     required=int(candidate['bytes']*1.20 + 1024**3)
-    enough=available is None or available>=required
+    enough, reason=device_capabilities.model_allowed(required,available)
     try:
         metadata=gguf_diagnostics.inspect_file(candidate['path'])
-    except (gguf_diagnostics.GGUFInspectionError, OSError, ValueError) as exc:
-        metadata={'metadata_recognized':False,'metadata_error':str(exc)[:180],
-                  'runtime_compatible':None,'loaded':False,
-                  'inference_verified':False,'coding_benchmark_passed':False}
+    except (gguf_diagnostics.GGUFInspectionError,OSError,ValueError) as exc:
+        metadata={'metadata_recognized':False,'metadata_error':str(exc)[:180], 'runtime_compatible':None, 'inference_verified':False, 'coding_benchmark_passed':False}
     return {'name':name,'model_bytes':candidate['bytes'],
             'estimated_min_available_ram_bytes':required,'available_ram_bytes':available,
-            'ram_check_passed':enough,'runtime_available':bool(llama_binary()),
-            'metadata':metadata,
-            'note':'Header parsing is not runtime or coding verification. CPU inference memory is only an estimate; actual model/context may require more RAM.'}
+            'ram_check_passed':enough,'ram_block_reason':reason,'metadata':metadata,'runtime_available':bool(llama_binary()),
+            'note':'CPU inference memory estimate only; actual model architecture and context may require more memory.'}
 
 
 def start_local_model(name):
@@ -462,6 +458,8 @@ def start_local_model(name):
         raise EngineError('Model file is not a valid-looking GGUF. This prevents accidentally starting a placeholder or incomplete download.')
     preflight=model_start_preflight(name)
     if not preflight['ram_check_passed']:
+        if preflight['available_ram_bytes'] is None:
+            raise EngineError(preflight['ram_block_reason'])
         available=preflight['available_ram_bytes'] or 0
         required=preflight['estimated_min_available_ram_bytes']
         raise EngineError(f'Insufficient available RAM for CPU model: about {required//(1024**2)} MiB estimated required; {available//(1024**2)} MiB currently available. Choose a smaller GGUF.')
@@ -473,7 +471,7 @@ def start_local_model(name):
         if available_backends()['llamacpp']:
             raise EngineError('Port 8081 already hosts a llama.cpp server; configure it separately.')
         threads=max(1,(os.cpu_count() or 2)//2)
-        args=[binary,'-m',candidate['path'],'--host','127.0.0.1','--port','8081','-c',str(max(2048,min(8192,int(os.getenv('THEORG_MODEL_CONTEXT','4096')))) ),'-t',str(threads),'-np','1']
+        args=[binary,'-m',candidate['path'],'--host','127.0.0.1','--port','8081','-c',str(max(1024,min(8192,int(os.getenv('THEORG_MODEL_CONTEXT','4096'))))),'-t',str(threads),'-np','1']
         log=open(DATA/'llama-server.log','ab')
         try:
             _model_process=subprocess.Popen(args,stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL)

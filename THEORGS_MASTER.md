@@ -1,50 +1,61 @@
-# TheOrg's Master — binding low-resource development specification
+# TheOrg's Master — v0.11.0-rc1 (review-only)
 
-**Master artifact:** [TheOrg's Master.zip in the project Drive](https://drive.google.com/file/d/1qw6UaQpQHvhWlMK3YPqbbwBr5-vwIb25/view?usp=drivesdk). This ZIP is a compact **source-only v0.10 release-gates baseline**, not a completed Android APK, not a Windows executable, and not yet inclusive of the PR #18 LLM changes. Keep the master filename exactly **TheOrg's Master.zip** for successive reviewed releases.
+**Goal:** Preserve the existing TheOrg architecture with a model-free lightweight source core on constrained devices, optional GGUF intelligence, scoped coding tools, and explicit verification gates. This RC is not an Android APK, Windows EXE, or trained LLM.
 
-**Implementation baseline:** Continue development in the current TheOrg repository. Maintain PR #17 release safeguards and this PR's feature branch. No parallel rewrite, no automatic merging, no production deployment, no paid services.
+## Product layers
+A. Python/SQLite dashboard/task queue/audit/file operations; no model/GPU/network required to start.
+B. Optional GGUF inspection, llama.cpp backend, role behavior prompts and bounded project-context retrieval.
+C. Controlled Code Studio edits, exact SHA/digest approval, isolated tests, local Git evidence, rollback and gated Autopilot.
+D. Existing SQLite task coordinator; interrupted work remains blocked until explicit resubmission. No uncontrolled agent-to-agent chat.
+E. Device capability API now available; optional browser/desktop gateway and native Android adapter **not implemented**.
+F. Reproducible lightweight ZIP, per-file SHA256 manifest, external release receipt and test-derived status.
 
-## Hardware budget and capability levels
+## Device targets vs verified capability
 
-- **Minimum target: 2 GB RAM, ARM64 Android tablets and basic x64 Windows computers, CPU only, no dedicated GPU or NPU.** A model-free core MUST open, persist data, and remain usable. This is not a claim that the user's 5.54 GB GGUF or even a tiny model will be fast on 2 GB.
-- **Preferred minimum for optional small local AI: 4 GB RAM.** Explicit on-device preflight, one loaded model maximum, bounded context and tokens, graceful termination on memory pressure.
-- **6–8 GB:** optional intermediate local models only when actually tested.
-- **16+ GB:** optional larger GGUF. The user's 5.54 GB archive must never be included in the baseline bundle.
-- No Internet, paid API, account, GPU, Docker, training or LLM download may be required to run the minimum app's offline core. Advanced autonomous coding can continue to require the existing secure Docker gate on devices where supported.
+| Tier | RAM target | This release |
+|---|---:|---|
+| Minimum | 2 GB | Model-free core is designed for this; physical target **NOT TESTED**. |
+| Basic | 4 GB | Optional tiny AI only when device/model free-RAM preflight passes. |
+| Enhanced | 6–8 GB | Optional additional context subject to preflight. |
+| Workstation | 16 GB+ | Large GGUF optional; the supplied 5.54 GB archive was not loaded or tested. |
 
-## One codebase, platform-specific runtimes
+No dedicated GPU, Docker, paid API or model is needed for **model-free** local core. Real system RAM should be measured; total RAM is not a substitute for free RAM. If free RAM cannot be determined, built-in model startup fails closed. No claim is made about Windows/Android real-device performance.
 
-1. Preserve the current shared HTML/CSS/JS interface and stable API contract. Do not build competing navigation systems.
-2. Keep the existing Python stdlib engine for desktop. **Android needs a separate minimal ARM64-native service/adapter and safe WebView host** backed by SQLite and approved native operations. Never imply the current Python source is an Android APK.
-3. Native Android GGUF inference must be **optional**, CPU-compatible, and dynamically installed where permitted. The 2 GB model-free experience must not depend on it.
-4. Keep auth, per-project permissions and isolation, approval/digest/rollback, audit, Git evidence, prompt-injection resistance and separate security gates.
-5. Avoid polling-heavy workers; add hardware-aware concurrency, token/context, cache and memory limits. Measure battery/heat and memory using real devices.
+## Compatibility and source reconciliation
 
-## Master packaging and cleanup
+Baseline: existing v0.10 release-gates developer source archive, PR #17. Ported compatible PR #18 capabilities into source-only runtime: versioned role prompts, bounded GGUF header metadata, symbol-aware context, strict structured JSON model proposals. Runtime API and Code Studio remain the same except additional optional endpoints and fields. User documents, SQLite data, Git workspaces and models are stored outside update archives and are never deliberately erased by installation.
 
-- Produce a **single immutable named ZIP** `TheOrg's Master.zip`, containing a small source runtime and readable master spec/manifest. Distribute the 5.54 GB GGUF and other large model files separately, always user-approved.
-- Exclude from the **runtime archive only**: old docs, repository history, Python bytecode, test fixtures, CI workflows, build caches, binaries, unused assets and model weights. Preserve them in GitHub/development releases.
-- Use reproducible ZIP Deflate packaging and per-file SHA-256 manifest; verify before publishing and after extraction.
-- The master ZIP must **not recursively zip itself**, rewrite itself while open, or delete itself after extraction.
-- Future native builds may lazily extract/version only required files and atomically promote validated updates, with rollback.
-- Never delete user documents, memory, SQLite databases, Git projects, audit logs, credentials, custom models, settings or unrecognized files. **Clean only application-owned temporary staging files** based on explicit names and age, with preview/dry-run as the default and a separate apply approval. Do not follow symlinks or use last-opened-time guesses to identify safe deletions.
-- Use SQLite backup APIs for durable backups rather than compressing a live database. No unsafe compression-in-place.
+`models/README.md` references `scripts/get_qwen_tiny.py`; the script is included here, **never invoked automatically**. It requires explicit approval and a separate Internet connection if chosen. Historical files do not become a bundled LLM.
 
-## Acceptance gates (must provide evidence)
+## Security and recovery
 
-- Real 2 GB ARM64 Android and low-end Windows device: base UI, persistence, local search and task queue operate without a model or network.
-- Actual Android APK build and startup on physical 2 GB and 4 GB tablets. No desktop-only acceptance substitute.
-- Record startup time, peak RSS/PSS, installed and temporary bytes, storage quota, thermal/battery, crash/OOM incidents, tests executed, CPU/OS details.
-- Verify every ZIP member with SHA-256 and confirm the runtime bundle contains no model weights, secrets or hidden developer-only files.
-- Cleaner tests: dry run has zero mutations; applied cleanup removes only expired allowlisted staging artifacts; blocked symlinks and protected files remain intact.
-- Verify the current source unit tests on Linux and Windows separately. Never claim real-model, GPU or Windows EXE compatibility from mock unit tests.
-- Changes must remain review-only until passing security and release gates. **Do not downgrade safeguards to meet size targets.**
+- TheOrg binds its API to local trusted hosts and requires the existing bearer token. No unauthenticated tools.
+- Memory notes do not enter developer, QA or security inference prompts; project content remains untrusted data.
+- AI-generated proposals can be reviewed only; model text does not directly apply, run tests, commit or deploy.
+- Existing Autopilot sandbox/release gates from PR #17 remain mandatory, and failed-gate evidence remains a blocker.
+- Restarted tasks are marked `interrupted`; `POST /api/tasks/retry` requires `{ "id": "...", "confirmed": true }` and the existing token.
+- The cleanup script has a dry-run default, age/filename allowlist, protects linked files and never deletes live databases, GGUF, user files or the master ZIP.
+- Archive is immutable and never zips itself. Validate `MASTER_MANIFEST.json` and separate `.sha256` before extraction.
+- Preserve the prior release ZIP and user data directory for rollback. Never overwrite files in place without a separately reviewed upgrade procedure.
 
-## Ordered work
+## Build source package
 
-- **P0:** hardware budget and real-device baseline, packager, manifest, safe temporary cleaner and tests.
-- **P1:** Android native shell + API adapter, persistence isolation, offline/low-memory verification.
-- **P1:** device-aware optional tiny model and feature gating; no mandatory large weights.
-- **P2:** knowledge ingestion, larger GGUF options and specialist fine-tuning only where supported and tested.
+```sh
+cd offline_desktop
+python -m unittest discover -s tests -q
+node --check static/app.js
+python app.py --self-test
+python scripts/build_master.py --output '../TheOrg Master-v0.11.0-rc1.zip' --source-ref 'review-source'
+```
 
-**Current status:** The Drive master ZIP is source-only and intentionally uses the v0.10 release-gates base. PR #18 adds unmerged LLM integration changes; ship them inside a newly verified successor master ZIP only after acceptance.
+The builder runs checks again, lists only approved runtime source, and emits a SHA256 and JSON receipt. It excludes `.git`, tests, caches, workflows, binaries, database, user files, credentials and GGUF weights. Tests and the Windows builder remain in the **developer repository**.
+
+## Verification status
+
+- Source regression: 97 Python tests passed locally on Linux in the initial upgrade; re-run before release.
+- JS syntax and Python self-test: passed locally.
+- Real GGUF loading, structured inference on actual weights, autonomous coding hidden tests: **NOT TESTED**.
+- Windows portable EXE CI and physical 2 GB/4 GB Android APK: **NOT TESTED / BLOCKED**.
+- PR #17/#18 remain draft and unmerged; release publishing requires separate review and acceptance.
+
+All hardware limits are targets. Do not infer success from synthetic fixtures, source checks or metadata parsing.
