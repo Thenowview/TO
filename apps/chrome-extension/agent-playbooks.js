@@ -294,7 +294,7 @@
   function profiles() {
     return Object.values(PROFILES).map(p=>({
       id:p.id,name:p.name,role:p.role,deliverable:p.deliverable,
-      rulesVersion:p.rulesVersion,
+      criteria:[...p.criteria],rulesVersion:p.rulesVersion,
       procedures:p.procedure.length,
       capabilityNote:p.note
     }));
