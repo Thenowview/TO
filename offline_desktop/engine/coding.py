@@ -588,6 +588,26 @@ def _test_count(output):
     return int(matches[-1]) if matches else 0
 
 
+def accepted_test_evidence(result, *, require_sandbox=False):
+    """Reject unverifiable test success and require a pinned offline image for Autopilot."""
+    if not isinstance(result, dict):
+        return False
+    if result.get('passed') is not True or result.get('available') is not True:
+        return False
+    if type(result.get('test_count')) is not int or result['test_count'] < 1:
+        return False
+    if type(result.get('exit_code')) is not int or result['exit_code'] != 0:
+        return False
+    if _test_count(result.get('output','')) != result['test_count']:
+        return False
+    if require_sandbox:
+        return (result.get('mode') == 'sandbox' and
+                result.get('network') == 'none' and
+                result.get('host_project_mount') is False and
+                bool(re.fullmatch(r'sha256:[0-9a-f]{64}', str(result.get('image_id') or ''))))
+    return result.get('mode') in ('sandbox', 'trusted_local')
+
+
 def _run_tests_sandbox(repo):
     status=sandbox_status()
     if not status['available']:
@@ -602,11 +622,14 @@ def _run_tests_sandbox(repo):
         # Pin the exact inspected image rather than a mutable local tag.
         image=status.get('image_id') or status['image']
         container_name='theorg-test-'+secrets.token_hex(10)
+        # Temp snapshots are owner-only on POSIX; run as their non-root owner.
+        container_user=(f'{os.getuid()}:{os.getgid()}' if os.name=='posix' and
+                        hasattr(os,'getuid') and os.getuid()>0 else '65534:65534')
         # --pull=never ensures offline behavior; no network, no writable host
         # mounts, unprivileged user, read-only root filesystem, bounded resources.
         command=[docker,'run','--name',container_name,'--rm','--pull=never','--network=none',
              '--read-only','--cap-drop=ALL','--security-opt=no-new-privileges',
-             '--pids-limit=64','--memory=384m','--cpus=1','--user=65534:65534',
+             '--pids-limit=64','--memory=384m','--cpus=1','--user='+container_user,
              '--tmpfs','/tmp:rw,noexec,nosuid,size=32m',
              '--mount',f'type=bind,source={Path(tmp).resolve()},target=/workspace,readonly',
              '-w','/workspace','-e','PYTHONDONTWRITEBYTECODE=1','-e','PYTHONNOUSERSITE=1',
@@ -720,7 +743,10 @@ def verify(plan_id,run_tests=False,execution_mode="sandbox"):
                 # Unit tests can modify the worktree; detect tampering afterward.
                 _check_worktree(repo,plan)
                 ev['checks']['post_test_integrity']={'passed':True}
-            good=bool(syntax_ok and run_tests and ev['checks']['unit_tests']['passed'])
+            good=bool(syntax_ok and run_tests and accepted_test_evidence(
+                ev['checks']['unit_tests'], require_sandbox=(execution_mode=='sandbox')))
+            ev['checks']['test_evidence_complete']={'passed':accepted_test_evidence(
+                ev['checks']['unit_tests'], require_sandbox=(execution_mode=='sandbox'))}
             ev['summary']='All required checks passed' if good else 'Not fully verified: check details'
             _save_status(plan_id,'verified' if good else 'checks_failed',ev)
         except Exception as exc:
