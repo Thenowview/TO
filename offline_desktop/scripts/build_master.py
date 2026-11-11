@@ -15,7 +15,7 @@ PREFIX='TheOrg/'
 RUNTIME=['app.py','Start-TheOrg-Windows.cmd','start-theorg.sh',
          'engine/__init__.py','engine/autopilot.py','engine/coding.py',
          'engine/core.py','engine/model_behavior.py','engine/gguf_diagnostics.py',
-         'engine/device_capabilities.py',
+         'engine/device_capabilities.py','engine/orchestration.py',
          'scripts/master_compact_clean.py','scripts/get_qwen_tiny.py',
          'models/README.md','static/index.html','static/style.css','static/app.js',
          'static/icon.svg','static/sw.js','static/manifest.webmanifest',

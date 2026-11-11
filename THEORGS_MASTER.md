@@ -6,7 +6,7 @@
 A. Python/SQLite dashboard/task queue/audit/file operations; no model/GPU/network required to start.
 B. Optional GGUF inspection, llama.cpp backend, role behavior prompts and bounded project-context retrieval.
 C. Controlled Code Studio edits, exact SHA/digest approval, isolated tests, local Git evidence, rollback and gated Autopilot.
-D. Existing SQLite task coordinator; interrupted work remains blocked until explicit resubmission. No uncontrolled agent-to-agent chat.
+D. Existing SQLite task queue plus a persistent structured workflow coordinator. Step authorizations expire, recovery does not silently renew them, and actions require explicit API approval; no uncontrolled agent-to-agent chat or model-launched tools.
 E. Device capability API now available; optional browser/desktop gateway and native Android adapter **not implemented**.
 F. Reproducible lightweight ZIP, per-file SHA256 manifest, external release receipt and test-derived status.
 
