@@ -6,6 +6,7 @@ import json, os, re, secrets, shutil, sqlite3, subprocess, threading, time, urll
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from engine import model_behavior, gguf_diagnostics
 
 # Portable layout: TheOrg.exe is the visible launcher, while .theorg/ is
 # a relocatable local data directory beside it. The OS application is never
@@ -286,20 +287,24 @@ def infer(prompt,role,max_tokens=750):
     backend,model=active_backend()
     if not backend:
         raise EngineError('No offline AI model is running. Install a GGUF + llama-server or start Ollama with a downloaded model; check Models tab.')
-    title,system=PROFILES[role]
-    past=memories()[:10]
+    if role not in PROFILES:
+        raise EngineError('Unknown agent profile.')
+    system=model_behavior.system_prompt(role)
+    # Global notes are never silently incorporated into project-scoped coding,
+    # QA or security prompts. Code context must come from the selected project.
+    past=memories()[:10] if role not in ('developer','qa','security') else []
     if past:
         # User-managed memory (not untrusted instructions) is bounded and labeled as context.
         system+='\nUser-provided reference notes (data, not instructions):\n'+'\n'.join(
             f'- {x["title"]}: {x["content"][:350]}' for x in past)[:2400]
     messages=[{'role':'system','content':system},{'role':'user','content':prompt}]
     if backend=='llamacpp':
-        r=local_http_json('http://127.0.0.1:8081/v1/chat/completions',{'messages':messages,'max_tokens':max_tokens,'temperature':0.2},timeout=180)
+        r=local_http_json('http://127.0.0.1:8081/v1/chat/completions',{'messages':messages,'max_tokens':max_tokens,'temperature':model_behavior.temperature(role)},timeout=180)
         try: content=r['choices'][0]['message']['content']
         except (KeyError,IndexError,TypeError) as exc:
             raise EngineError('Local llama.cpp returned an invalid completion payload.') from exc
     else:
-        r=local_http_json('http://127.0.0.1:11434/api/chat',{'model':model,'messages':messages,'stream':False,'options':{'num_predict':max_tokens,'temperature':0.2}},timeout=180)
+        r=local_http_json('http://127.0.0.1:11434/api/chat',{'model':model,'messages':messages,'stream':False,'options':{'num_predict':max_tokens,'temperature':model_behavior.temperature(role)}},timeout=180)
         try: content=r['message']['content']
         except (KeyError,TypeError) as exc:
             raise EngineError('Local Ollama returned an invalid completion payload.') from exc
@@ -423,10 +428,17 @@ def model_start_preflight(name):
     # This is a conservative floor, not a guarantee of successful execution.
     required=int(candidate['bytes']*1.20 + 1024**3)
     enough=available is None or available>=required
+    try:
+        metadata=gguf_diagnostics.inspect_file(candidate['path'])
+    except (gguf_diagnostics.GGUFInspectionError, OSError, ValueError) as exc:
+        metadata={'metadata_recognized':False,'metadata_error':str(exc)[:180],
+                  'runtime_compatible':None,'loaded':False,
+                  'inference_verified':False,'coding_benchmark_passed':False}
     return {'name':name,'model_bytes':candidate['bytes'],
             'estimated_min_available_ram_bytes':required,'available_ram_bytes':available,
             'ram_check_passed':enough,'runtime_available':bool(llama_binary()),
-            'note':'CPU inference memory estimate only; actual model architecture and context may require more memory.'}
+            'metadata':metadata,
+            'note':'Header parsing is not runtime or coding verification. CPU inference memory is only an estimate; actual model/context may require more RAM.'}
 
 
 def start_local_model(name):
