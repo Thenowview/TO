@@ -26,12 +26,18 @@ jobs:
           node --check apps/chrome-extension/background.js
           node --check apps/chrome-extension/home.js
           node --check apps/chrome-extension/supervisor-starters.js
+          node --check apps/chrome-extension/company-agent-directory.js
+          node --check apps/chrome-extension/supervisor-job-intake.js
+          node --check apps/chrome-extension/provider-auto-handoff.js
+          node --check apps/chrome-extension/provider-page-agent.js
       - name: Test Supervisor handoff and artifact gates with simulated Chrome
         run: node --test tests/task-manager.test.cjs
       - name: Audit Supervisor UI to background contracts
         run: node --test tests/ui-contract.test.cjs
       - name: Test guided prompt starters and AI adviser handoff
         run: node --test tests/supervisor-starters.test.cjs
+      - name: Test named agent directory and company isolation
+        run: node --test tests/company-agent-directory.test.cjs
       - name: Audit fail-closed production release gates
         run: |
           node --test tests/release-gates.test.cjs
