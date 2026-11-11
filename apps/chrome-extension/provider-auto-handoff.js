@@ -125,6 +125,53 @@
         await this.manager.saveOrders(all);
       }
     }
+    async onFileEvent(message,sender){
+      const current=await this.state();
+      if(!current || message.nonce!==current.nonce ||
+         sender?.tab?.id!==current.tabId ||
+         !isAllowedProvider(sender.tab.url||"",current.actualProvider) ||
+         !["saved","waiting_response","starting"].includes(current.status) ||
+         Date.now()>current.expiresAt)
+        throw new Error("Unauthorized or expired AI file capture");
+      const taskId=current.taskId;
+      const sourceUrl=ALLOWED[current.actualProvider];
+      current.transfers=current.transfers||{};
+      if(message.command==="theorg.provider.file.start"){
+        if(Object.keys(current.transfers).length>=2)
+          throw new Error("Maximum of two AI-generated files per work order");
+        const transfer=await this.manager.beginAutomaticFile(taskId,current.actualProvider,
+            message.fileName,message.bytes,message.sha256,sourceUrl);
+        current.transfers[transfer.uploadId]={
+          accessToken:transfer.accessToken,fileName:message.fileName,bytes:message.bytes
+        };
+        await this.saveState(current);
+        return {transfer};
+      }
+      const upload=current.transfers[message.uploadId];
+      if(!upload || upload.accessToken!==message.accessToken)
+        throw new Error("Unknown AI file upload token");
+      if(message.command==="theorg.provider.file.chunk"){
+        if(!Number.isInteger(message.index)||message.index<0 ||
+           typeof message.dataBase64!=="string"||message.dataBase64.length>185000)
+          throw new Error("Invalid AI file chunk");
+        const result=await this.manager.artifactTransfer(taskId,"append_artifact_chunk",
+            message.uploadId,message.accessToken,{index:message.index,
+              dataBase64:message.dataBase64});
+        return {result};
+      }
+      if(message.command==="theorg.provider.file.finish"){
+        const result=await this.manager.completeAutomaticFile(
+            taskId,message.uploadId,message.accessToken);
+        // Do not persist upload access tokens once a file completes.
+        const latest=await this.state();
+        if(latest?.nonce===current.nonce){
+          delete latest.transfers?.[message.uploadId];
+          await this.saveState(latest);
+        }
+        return {result};
+      }
+      throw new Error("Unsupported file automation event");
+    }
     async onPageEvent(message,sender){
       const current=await this.state();
       if(!current || !message || message.nonce!==current.nonce ||
