@@ -8,7 +8,13 @@ chrome.action.onClicked.addListener(async () => {
   try { await chrome.tabs.create({url: chrome.runtime.getURL("home.html"),active:true}); }
   catch(e){ console.warn("TheOrg home could not open",String(e)); }
 });
-chrome.tabs.onRemoved.addListener(id=>manager.handleRemoved(id).catch(()=>undefined));
+chrome.tabs.onRemoved.addListener(id=>{
+  void autoHandoff.forgetTab(id).catch(()=>undefined);
+  void manager.handleRemoved(id).catch(()=>undefined);
+});
+chrome.tabs.onCreated.addListener(tab=>{
+  void autoHandoff.noteTab(tab).catch(()=>undefined);
+});
 chrome.tabs.onUpdated.addListener((tabId,info,tab)=>{
   if(info.status==="complete" && tab?.active)
     void autoHandoff.maybeStart(tab).catch(e=>console.warn("Auto handoff blocked",String(e)));
@@ -25,18 +31,24 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     switch(message.command){
       case "ping": return await manager.checkEngine();
       case "providers": return {ok:true,providers:manager.providers()};
-      case "automation_arm": return {ok:true,...await autoHandoff.arm(
+      case "automation_arm": return {ok:true,job:await autoHandoff.arm(
         message.taskId,message.providerId,message.approved)};
+      case "automation_queue_agent": return {ok:true,job:await autoHandoff.create(
+        message.taskId,message.providerId,message.agentId,message.approved)};
+      case "automation_bulk_agents": return {ok:true,...await autoHandoff.bulk(
+        message.taskId,message.approved)};
+      case "automation_list": return {ok:true,...await autoHandoff.list()};
       case "automation_status": return {ok:true,automation:await autoHandoff.status(message.taskId)};
-      case "automation_cancel": return {ok:true,...await autoHandoff.cancel(message.taskId)};
+      case "automation_cancel": return {ok:true,...await autoHandoff.cancel(
+        message.taskId,message.jobId)};
       case "theorg.provider.event":
         if(!sender.tab)throw new Error("Provider message must originate in an allowlisted tab");
-        return {ok:true,...await autoHandoff.onPageEvent(message,sender)};
+        return {ok:true,...await autoHandoff.event(message,sender)};
       case "theorg.provider.file.start":
       case "theorg.provider.file.chunk":
       case "theorg.provider.file.finish":
         if(!sender.tab)throw new Error("Automatic files must originate in an allowlisted provider tab");
-        return {ok:true,...await autoHandoff.onFileEvent(message,sender)};
+        return {ok:true,...await autoHandoff.fileEvent(message,sender)};
       case "agent_skills": return {ok:true,version:globalThis.TheOrgSkills.version,profiles:globalThis.TheOrgSkills.profiles(),rubric:globalThis.TheOrgSkills.qualityRubric()};
       case "orders": return {ok:true,orders:await manager.listOrders()};
       case "execution_queue": return {ok:true,...await manager.executionQueue(message.taskId)};
