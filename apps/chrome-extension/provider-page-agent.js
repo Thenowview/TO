@@ -212,9 +212,12 @@
       const saved=await safeStatus(msg.nonce,"captured",{
         content:answer.content,truncated:answer.truncated
       });
-      if(saved?.ok!==true || saved.status!=="saved")
+      if(saved?.ok!==true || saved.status!=="capturing_files")
         throw new Error("TheOrg could not verify and store the AI response: "+String(saved?.error||"unknown"));
       await captureFiles(msg.nonce,answer.container);
+      const finished=await safeStatus(msg.nonce,"files_complete");
+      if(finished?.ok!==true||finished.status!=="saved")
+        throw new Error("TheOrg could not complete the AI job: "+String(finished?.error||"unknown"));
     }catch(error){
       await safeStatus(msg.nonce,"blocked",{error:String(error?.message||error).slice(0,230)});
     }finally{active=false;}
