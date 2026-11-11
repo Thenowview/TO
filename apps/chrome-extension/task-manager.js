@@ -594,6 +594,47 @@
         contentApproved:false};
     }
 
+    async beginAutomaticFile(taskId,providerId,fileName,size,sha256,sourceReference){
+      if(!TASK_ID.test(taskId)||!["chatgpt","claude"].includes(providerId) ||
+         typeof fileName!=="string" ||
+         !/^[\w][\w .()-]{0,110}\.(pdf|docx|xlsx|pptx|csv|txt|md|zip|png|jpg|jpeg|webp)$/i.test(fileName) ||
+         !Number.isSafeInteger(size)||size<1||size>16*1024*1024||
+         !/^[0-9a-fA-F]{64}$/.test(sha256))
+        throw new Error("Invalid or unsupported automatic AI file");
+      const orders=await this.orders(),o=orders[taskId];
+      if(!o||o.autoHandoff?.providerId!==providerId||
+         !["in_progress","saved"].includes(o.autoHandoff.status))
+        throw new Error("No matching approved provider file transfer");
+      const result=await this.native({
+        command:"begin_artifact_upload",companyId:o.companyId,orderId:taskId,
+        agentId:"supervisor",fileName,totalBytes:size,sha256,
+        sourceProvider:providerId,sourceReference:sourceReference.slice(0,500)
+      });
+      return result.transfer;
+    }
+    async completeAutomaticFile(taskId,uploadId,accessToken){
+      const completed=await this.artifactTransfer(taskId,"complete_artifact_upload",uploadId,accessToken);
+      const artifactId=completed?.artifact?.artifactId;
+      if(!artifactId)throw new Error("Completed AI file upload did not return an artifact");
+      const all=await this.orders(),order=all[taskId];
+      const checked=await this.native({command:"verify_artifact",companyId:order.companyId,
+        orderId:taskId,artifactId});
+      if(checked.artifact?.integrityValid!==true)
+        throw new Error("AI-generated file bytes failed SHA-256 verification");
+      const exp=await this.native({command:"export_artifact_file",companyId:order.companyId,
+        orderId:taskId,artifactId});
+      if(!exp.export?.path)throw new Error("Readable file export did not return a path");
+      await this.serialize(async()=>{
+        const all2=await this.orders(),live=all2[taskId];
+        if(!live?.autoHandoff)throw new Error("Work order no longer exists");
+        live.autoHandoff.files=live.autoHandoff.files||[];
+        live.autoHandoff.files.push({artifactId,path:exp.export.path,fileName:exp.export.fileName,
+          integrityVerified:true,contentApproved:false});
+        await this.saveOrders(all2);
+      });
+      return exp.export;
+    }
+
     async beginArtifactUpload(taskId, agentId, fileName, totalBytes, sha256, provider, sourceReference) {
       if (!TASK_ID.test(taskId) || !AGENT.test(agentId) ||
           !Number.isSafeInteger(totalBytes) || totalBytes < 1 || totalBytes > 32*1024*1024 ||
