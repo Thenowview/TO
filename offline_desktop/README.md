@@ -51,3 +51,16 @@ python app.py --self-test
 ```
 
 See `docs/V0_10_VERIFICATION.md` for exact evidence. **Do not promote this package to a 9.6/10 Codex-equivalent until real-device, model, GitHub, and adversarial benchmarks are passed.**
+
+
+## Acceptance gates for the portable Windows release
+
+The source test suite is **not** proof of a functioning Windows executable or real autonomous coding.
+
+1. Run \`python -m unittest discover -s tests -v\` and \`node --check static/app.js\`.
+2. Windows CI must build the actual \`TheOrg.exe\`, execute its \`--self-test\`, serve the localhost dashboard, reject an unauthenticated API call with HTTP 401, verify packaged Git and llama-server, and create a local Git project.
+3. \`python scripts/check_release.py dist --report dist/RELEASE-ACCEPTANCE.json\` requires an AMD64 PE header, matching SHA-256 manifest, pinned upstream dependency digests, and a matching Windows runtime receipt. It fails closed on missing evidence. CI publishes the executable only after this gate passes.
+4. On a device with a running **real** GGUF via llama.cpp at \`127.0.0.1:8081\` and a locally cached Docker sandbox image, run \`python scripts/acceptance_real_autopilot.py --report acceptance-real.json\`. This uses a disposable synthetic Git project and checks genuine inference, a verified local commit, nonempty sandbox tests and independent hidden tests. It does not push changes to any remote.
+5. A missing local model, Windows runner, Docker image or passing independent test means **NOT VERIFIED**, not a simulated pass.
+
+The Windows CI pipeline cannot prove coding-model quality when model weights are unavailable. The real-model acceptance report must be retained separately before any parity rating is increased. No source or artifact should be deployed or merged merely because source tests pass.
