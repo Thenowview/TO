@@ -45,8 +45,8 @@
   const editorText=el=>el?.value!==undefined?el.value:el?.innerText||el?.textContent||"";
   const normalize=str=>String(str||"").replace(/\u00a0/g," ").replace(/\r\n?/g,"\n").trim();
   const safeStatus=async(nonce,status,rest={})=>{
-    try{await chrome.runtime.sendMessage({command:"theorg.provider.event",nonce,status,...rest});}
-    catch{} // The status is also visible in the local work-order record if the bridge responds.
+    try{return await chrome.runtime.sendMessage({command:"theorg.provider.event",nonce,status,...rest});}
+    catch(e){return {ok:false,error:String(e?.message||e)};}
   };
   async function waitForEditor(config,limit=30000){
     const until=Date.now()+limit;
@@ -209,9 +209,11 @@
       if(!actuallySent)throw new Error("The provider did not confirm that the prompt was submitted.");
       await safeStatus(msg.nonce,"submitted");
       const answer=await waitForResponse(config,previous);
-      await safeStatus(msg.nonce,"captured",{
+      const saved=await safeStatus(msg.nonce,"captured",{
         content:answer.content,truncated:answer.truncated
       });
+      if(saved?.ok!==true || saved.status!=="saved")
+        throw new Error("TheOrg could not verify and store the AI response: "+String(saved?.error||"unknown"));
       await captureFiles(msg.nonce,answer.container);
     }catch(error){
       await safeStatus(msg.nonce,"blocked",{error:String(error?.message||error).slice(0,230)});
