@@ -46,17 +46,19 @@ class ProviderAutoHandoff {
     return {...exposed,hasPendingPrompt:Boolean(prompt)};
   }
   async sync(job){
-    const data=await this.manager.orders(),order=data[job.taskId];
-    if(!order)return;
-    order.automationJobs=order.automationJobs||{};
-    const old=order.automationJobs[job.id]||{};
-    order.automationJobs[job.id]={
-      ...old,jobId:job.id,agentId:job.agentId,
-      providerId:job.actualProvider||job.providerId,status:job.status,
-      createdUtc:job.createdUtc,updatedUtc:new Date().toISOString(),
-      expiresAt:job.expiresAt,tabId:job.tabId,error:job.error||""
-    };
-    await this.manager.saveOrders(data);
+    return this.manager.serialize(async()=>{
+      const data=await this.manager.orders(),order=data[job.taskId];
+      if(!order)return;
+      order.automationJobs=order.automationJobs||{};
+      const old=order.automationJobs[job.id]||{};
+      order.automationJobs[job.id]={
+        ...old,jobId:job.id,agentId:job.agentId,
+        providerId:job.actualProvider||job.providerId,status:job.status,
+        createdUtc:job.createdUtc,updatedUtc:new Date().toISOString(),
+        expiresAt:job.expiresAt,tabId:job.tabId,error:job.error||""
+      };
+      await this.manager.saveOrders(data);
+    });
   }
   async expire(jobs){
     let changed=false;
@@ -217,6 +219,7 @@ class ProviderAutoHandoff {
     });
   }
   async event(message,sender){
+    return this.lock(async()=>{
     const jobs=await this.load(),j=jobs.find(x=>x.nonce===message.nonce);
     if(!j||sender?.tab?.id!==j.tabId||!validHost(sender.tab.url,j.actualProvider))
       throw new Error("Invalid provider tab, job or response authorization.");
@@ -238,7 +241,10 @@ class ProviderAutoHandoff {
       return {status:"file_warning"};
     }
     if(message.status==="blocked"){
-      await this.failJob(j.nonce,fail(message.error));
+      if(!ACTIVE.has(j.status))throw new Error("Provider job is no longer active.");
+      j.status="blocked";j.prompt="";j.transfers={};j.error=fail(message.error);
+      await this.save(jobs);await this.sync(j);
+      void this.dispatchWaiting().catch(()=>undefined);
       return {status:"blocked",jobId:j.id};
     }
     if(message.status==="files_complete"){
@@ -269,6 +275,7 @@ class ProviderAutoHandoff {
       if(record){record.truncated=true;await this.manager.saveOrders(data);}
     }
     return {status:"capturing_files",jobId:j.id,result:output};
+    });
   }
   async fileEvent(message,sender){
     const jobs=await this.load(),j=jobs.find(x=>x.nonce===message.nonce);
