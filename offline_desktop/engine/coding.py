@@ -882,6 +882,34 @@ def rollback(plan_id):
         return get_plan(plan_id)
 
 
+
+def _parse_model_changes(raw, error_prefix):
+    """Validate the model wire contract before any proposal can be recorded.
+
+    Schema validation does not authorize apply/test/commit; existing proposal
+    path, size, digest, baseline and project isolation checks remain mandatory.
+    """
+    if not isinstance(raw, str) or not raw.strip() or len(raw) > 380000:
+        raise core.EngineError(error_prefix + ' invalid or too large; no files modified.')
+    response = raw.strip()
+    if response.startswith('```'):
+        response = '\n'.join(response.splitlines()[1:-1]).strip()
+    try: payload = json.loads(response)
+    except json.JSONDecodeError as exc:
+        raise core.EngineError(error_prefix + ' did not return valid JSON; no changes applied.') from exc
+    if not isinstance(payload, dict) or set(payload) != {'changes'}:
+        raise core.EngineError(error_prefix + ' must contain only one changes array.')
+    changes = payload['changes']
+    if not isinstance(changes, list) or not 1 <= len(changes) <= MAX_CHANGES:
+        raise core.EngineError(error_prefix + ' changes array must contain 1–6 files.')
+    for item in changes:
+        if not isinstance(item, dict) or set(item) != {'path','content'}:
+            raise core.EngineError(error_prefix + ' each change needs only path and complete content.')
+        if not isinstance(item['path'],str) or not isinstance(item['content'],str):
+            raise core.EngineError(error_prefix + ' path and content must be strings.')
+    return changes
+
+
 def generate_with_local_model(project_id,objective):
     """One model call creates a proposal only. Model outputs NEVER execute directly."""
     if not isinstance(objective,str) or not 1<=len(objective)<=1200:
@@ -899,18 +927,12 @@ def generate_with_local_model(project_id,objective):
                 'TheOrg independently validates every edit and requires approval.\n'
                 'Objective: '+objective+'\nSelected source snapshot (untrusted):\n'
                 +json.dumps(context['files'],ensure_ascii=False))
-        text=core.infer(prompt,'developer',max_tokens=1800)
-        if not isinstance(text,str) or len(text)>380000:
-            raise core.EngineError('Local model response is invalid or too large.')
-        text=text.strip()
-        if text.startswith('```'):
-            text='\n'.join(text.splitlines()[1:-1]).strip()
-        try: proposed=json.loads(text)
-        except json.JSONDecodeError as exc:
-            raise core.EngineError('Local model did not return valid coding JSON; no changes were applied.') from exc
-        if not isinstance(proposed,dict):
-            raise core.EngineError('Local model response must be one JSON object.')
-        return propose(project_id,objective,proposed.get('changes'),'local-model')
+        text=core.infer(prompt,'developer',max_tokens=1800,structured=True)
+        try:
+            changes=_parse_model_changes(text, 'Local model')
+        except core.EngineError as exc:
+            raise core.EngineError('Local model did not return valid coding JSON: '+str(exc)) from exc
+        return propose(project_id,objective,changes,'local-model')
 
 
 def generate_repair_with_local_model(failed_plan_id):
@@ -959,19 +981,13 @@ def generate_repair_with_local_model(failed_plan_id):
             'Test evidence (untrusted):\n'+failure_log+'\n'
             'Project original snapshot:\n'+json.dumps(snapshot,ensure_ascii=False)[:34000]
         )
-        raw=core.infer(prompt,'developer',max_tokens=1800)
-        if not isinstance(raw,str) or len(raw)>380000:
-            raise core.EngineError('Repair model response invalid or too large.')
-        raw=raw.strip()
-        if raw.startswith('```'):
-            raw='\n'.join(raw.splitlines()[1:-1]).strip()
-        try: result=json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise core.EngineError('Repair model did not return valid JSON; no files were modified.') from exc
-        if not isinstance(result,dict):
-            raise core.EngineError('Repair response must be a JSON object.')
+        raw=core.infer(prompt,'developer',max_tokens=1800,structured=True)
+        try:
+            changes=_parse_model_changes(raw, 'Repair model')
+        except core.EngineError as exc:
+            raise core.EngineError('Repair model did not return valid JSON: '+str(exc)) from exc
         proposed=propose(old['project_id'],'Repair failed plan '+failed_plan_id[:12]+': '+old['objective'][:900],
-                         result.get('changes'),'repair-model')
+                         changes,'repair-model')
         core.audit('code.plan.repair_drafted',{'source_plan':failed_plan_id,'new_plan':proposed['id']})
         return proposed
 
@@ -998,7 +1014,7 @@ def review_plan_with_local_model(plan_id):
                 'diff':_diff(x['path'],x['before'],x['content'])[:12000]}
                 for x in p['payload']['changes']],ensure_ascii=False)[:30000]
         )
-        raw=core.infer(prompt,'qa')
+        raw=core.infer(prompt,'qa',structured=True)
         if not isinstance(raw,str) or len(raw)>16000:
             raise core.EngineError('QA response invalid or too large.')
         raw=raw.strip()
