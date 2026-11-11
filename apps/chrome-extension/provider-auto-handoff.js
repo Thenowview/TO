@@ -105,9 +105,12 @@
         });
         if(!response || response.accepted!==true)
           throw new Error("Provider page could not accept the instruction.");
-        // Never send the same prompt twice if the content script is interrupted.
-        state.prompt="";
-        await this.saveState(state);
+        // Never overwrite a newer submitted/captured status from the page script.
+        const latest=await this.state();
+        if(latest?.nonce===state.nonce && latest.status==="starting"){
+          latest.prompt="";
+          await this.saveState(latest);
+        }
       }catch(error){
         await this.setBlocked(state,"Page integration failed: "+String(error?.message||error));
       }finally{this.attaching.delete(tab.id);}
@@ -135,6 +138,7 @@
       }
       if(message.status==="submitted"){
         current.status="waiting_response";
+        current.prompt="";
         await this.saveState(current);
         return {status:current.status};
       }
