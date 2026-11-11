@@ -1,0 +1,37 @@
+name: TheOrg Supervisor Source Candidate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test named company agents, prompt starters and Supervisor contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/company-agent-directory.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs
+          node --check apps/chrome-extension/company-agent-directory.js
+          node --check apps/chrome-extension/provider-auto-handoff.js
+          node --check apps/chrome-extension/provider-page-agent.js
+          node --check apps/chrome-extension/background.js
+          node --check apps/chrome-extension/home.js
+      - name: Build hash-verified source-only candidate
+        shell: bash
+        run: python3 tools/package-supervisor-source.py
+      - name: Upload review-only full source candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-Supervisor-CompanyAgents-SourceOnly
+          path: out/source-preview/*
+          if-no-files-found: error
+          retention-days: 30
