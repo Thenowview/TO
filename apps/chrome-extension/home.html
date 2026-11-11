@@ -73,11 +73,11 @@
               <small>After you open a fresh ChatGPT or Claude chat. Your approved instruction is shared with that provider once; do not include confidential information.</small></span>
           </label>
           <label for="autoProviderChoice">When I open <select id="autoProviderChoice">
-            <option value="auto">ChatGPT or Claude — detect automatically</option>
-            <option value="chatgpt">ChatGPT only</option>
-            <option value="claude">Claude only</option>
+            <option value="chatgpt">ChatGPT — asks questions and prepares job plan</option>
+            <option value="auto">ChatGPT or Claude — detect opened page</option>
+            <option value="claude">Claude — planning adviser</option>
           </select></label>
-          <p class="muted">Only supported new-chat pages. TheOrg saves detected text to a separate company/order results folder. Files and outputs remain untrusted pending review. No logins or security checks are bypassed.</p>
+          <p class="muted">Opening the provider is your only browser step. TheOrg tries to send the approved instruction, capture the reply and save results under the exact work order. ChatGPT may ask clarifying questions; its plan still needs your review. Browser login/security checks stay manual.</p>
         </div>
         <div class="composer-bottom"><span class="subtle">Saved locally first. Specialist tabs and outside services require separate actions and review.</span><div class="composer-actions"><button id="copyReadyInstruction" class="secondary" type="button">Copy instruction</button><button class="primary" type="submit">Create work order <span aria-hidden="true">↗</span></button></div></div>
       </form>
@@ -104,7 +104,12 @@
     </section>
 
     <section id="work" class="section-block" aria-labelledby="workHeading">
-      <div class="section-head"><div><span class="section-kicker">04 / DELEGATION</span><h2 id="workHeading">Supervisor & specialist agents</h2></div><button type="button" class="tiny-btn" id="refreshOrders">Refresh orders</button></div>
+      <div class="section-head"><div><span class="section-kicker">04 / DELEGATION</span><h2 id="workHeading">Supervisor order tracker</h2></div><button type="button" class="tiny-btn" id="refreshOrders">Refresh orders</button></div>
+      <div class="supervisor-queue-banner" role="status" aria-live="polite">
+        <span id="automationCapacity">0 / 4 active agents</span>
+        <span id="automationPending">0 queued requests</span>
+        <small>Four jobs run at most; later approved requests wait for a free slot.</small>
+      </div>
       <div class="work-layout">
         <div class="work-left panel">
           <h3>Work orders <span id="orderCount" class="counter">0</span></h3>
@@ -116,7 +121,7 @@
             <div class="panel detail-panel">
               <div class="order-header"><div><span class="section-kicker">SUPERVISOR WORK ORDER</span><h3 id="activeOrderTitle"></h3><span id="activeOrderId" class="mono"></span></div><span id="orderPhase" class="phase">Pending</span></div>
               <div class="step-line"><span class="step-index">1</span><b>Supervisor proposes specialist orders</b><span class="step-helper">Locally drafted automatically • AI consultation optional</span></div>
-              <div id="autoCaptureStatus" class="auto-capture-status" role="status" aria-live="polite">Automatic AI handoff is not enabled for this work order.</div>
+              <div id="autoCaptureStatus" class="auto-capture-status" role="status" aria-live="polite">No AI provider requests queued for this work order.</div>
               <div id="planSummary" class="review-result">Submit one instruction to generate an SOP-based local plan. The plan needs review before the agents start.</div>
               <p class="form-note">Agent playbooks define how specialists work: procedure, output format, evidence checks and escalation rules. No AI website is contacted automatically.</p>
               <div class="inline-controls"><label for="plannerProvider" class="sr-only">Planning provider</label><select id="plannerProvider"></select><button id="copyPlannerPrompt" type="button" class="secondary">Copy planning prompt</button><button id="openPlanner" type="button" class="primary">Copy prompt &amp; open AI chat ↗</button></div>
@@ -126,10 +131,11 @@
               <p class="form-note">AI text is untrusted until the Supervisor has interpreted it and you approve the proposed assignments. Do not paste confidential data into an external AI chat without authorization.</p>
               <div class="step-line"><span class="step-index">2</span><b>Specialist agent assignments</b><span class="step-helper">A separate Chrome task group</span></div>
               <div class="action-row">
-                <button id="dispatchNext" type="button" class="primary">Open next eligible agent <span aria-hidden="true">↗</span></button>
+                <button id="dispatchNext" type="button" class="secondary">Open next agent manually <span aria-hidden="true">↗</span></button>
+                <button id="queueReadyAgents" type="button" class="primary">Queue approved AI agents</button>
                 <button id="refreshQueue" type="button" class="secondary">Refresh task queue</button>
               </div>
-              <p class="form-note">One click opens the next available task-owned AI tab and copies its SOP instructions. The user controls the external chat; dependencies and QA gates remain enforced.</p>
+              <p class="form-note">Queue specialist requests from an approved plan. At most four run simultaneously; additional requests remain queued. Open a fresh ChatGPT or Claude tab to supply a slot. For other providers, use the manual handoff. Approvals, dependencies and QA gates remain enforced.</p>
               <div id="executionQueue" class="review-result" role="status">Task queue not yet loaded.</div>
               <div id="agentsList" class="agents-list"><p class="muted">No specialist tasks defined yet.</p></div>
               <div class="step-line"><span class="step-index">3</span><b>Supervisor outcome audit</b><span class="step-helper">Evidence before completion</span></div>
