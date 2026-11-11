@@ -773,7 +773,10 @@ def _run_tests(repo,mode='sandbox'):
     raise core.EngineError('Execution mode must be sandbox or trusted_local.')
 
 
-def verify(plan_id,run_tests=False,execution_mode="sandbox"):
+def verify(plan_id,run_tests=False,execution_mode="sandbox",minimum_test_count=1):
+    # Require at least as many tests after AI edits as ran at baseline.
+    if type(minimum_test_count) is not int or not 1 <= minimum_test_count <= 10000:
+        raise core.EngineError('Minimum executed test count must be an integer 1–10000.')
     plan=_plan(plan_id)
     with lock(plan['project_id']):
         plan=_plan(plan_id)
@@ -793,6 +796,12 @@ def verify(plan_id,run_tests=False,execution_mode="sandbox"):
             else:
                 ev['checks']['unit_tests']={'passed':False,'available':False,'output':'Not executed — explicit test execution approval required'}
             if run_tests:
+                test_info=ev['checks']['unit_tests']
+                observed=test_info.get('test_count',0)
+                if type(observed) is not int or observed < minimum_test_count:
+                    test_info['passed']=False
+                    test_info['minimum_required']=minimum_test_count
+                    test_info['output']=str(test_info.get('output',''))+'\nTheOrg: executed test count regressed below approved baseline.'
                 # Unit tests can modify the worktree; detect tampering afterward.
                 _check_worktree(repo,plan)
                 ev['checks']['post_test_integrity']={'passed':True}
