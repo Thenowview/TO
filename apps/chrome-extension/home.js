@@ -627,8 +627,93 @@ function registerSupervisorStarters(){
   renderSupervisorStarters();
 }
 
+/* Company-scoped editable agent roster. No permission or execution-policy edits. */
+async function loadCompanyAgents(){
+  const companyId=$("companyId").value.trim();
+  if(!/^[a-z0-9_-]{1,40}$/.test(companyId))
+    throw new Error("Enter a valid company ID before loading its team.");
+  const response=await rpc("company_agents",{companyId});
+  app.companyProfiles=response.agents||[];
+  const list=clear($("companyAgentCards"));
+  const picker=clear($("companyAgentSelect"));
+  picker.append(new Option("Select a profile",""));
+  for(const agent of app.companyProfiles){
+    const card=node("button",undefined,"company-agent-card");
+    card.type="button";
+    card.append(node("strong",agent.name+" · "+agent.title));
+    card.append(node("small",agent.department+" · "+agent.expertise.join(", ")));
+    if(!agent.enabled)card.append(node("small","Disabled for new tasks"));
+    card.addEventListener("click",() => {
+      picker.value=agent.id;chooseCompanyAgentProfile();
+    });
+    list.append(card);
+    picker.append(new Option(agent.name+" — "+agent.title+" ("+agent.id+")",agent.id));
+  }
+  $("companyAgentRecommendations").textContent =
+    app.companyProfiles.length+" configured profiles for "+companyId+
+    ". Choose Suggest agents to route a new request. Changes remain company-specific.";
+  return app.companyProfiles;
+}
+function chooseCompanyAgentProfile(){
+  const agent=(app.companyProfiles||[]).find(x=>x.id===$("companyAgentSelect").value);
+  for(const [id,value] of [
+    ["companyAgentName",agent?.name||""],["companyAgentTitle",agent?.title||""],
+    ["companyAgentDepartment",agent?.department||""],
+    ["companyAgentExpertise",agent?.expertise?.join(", ")||""],
+    ["companyAgentResponsibilities",agent?.responsibilities||""],
+    ["companyAgentInstructions",agent?.instructions||""]])
+    $(id).value=value;
+  $("companyAgentEnabled").checked=agent?.enabled!==false;
+}
+async function updateCompanyAgent(reset=false){
+  const companyId=$("companyId").value.trim(),agentId=$("companyAgentSelect").value;
+  if(!agentId)throw new Error("Choose an agent profile first.");
+  if(!confirm(reset?"Restore this company's default agent profile?":
+    "Save the agent's display profile and instructions? This does not grant extra permissions."))return;
+  if(reset){
+    await rpc("company_agent_reset",{companyId,agentId});
+  }else{
+    const expertise=$("companyAgentExpertise").value.split(",").map(x=>x.trim()).filter(Boolean);
+    await rpc("company_agent_update",{companyId,agentId,changes:{
+      name:$("companyAgentName").value.trim(),
+      title:$("companyAgentTitle").value.trim(),
+      department:$("companyAgentDepartment").value.trim(),
+      expertise,responsibilities:$("companyAgentResponsibilities").value.trim(),
+      instructions:$("companyAgentInstructions").value.trim(),
+      enabled:$("companyAgentEnabled").checked
+    }});
+  }
+  await loadCompanyAgents();
+  $("companyAgentSelect").value=agentId;chooseCompanyAgentProfile();
+  toast(reset?"Default agent profile restored.":"Agent profile saved for this company.");
+}
+async function recommendCompanyAgents(){
+  const companyId=$("companyId").value.trim(),instruction=$("ownerInstruction").value.trim();
+  if(instruction.length<5)throw new Error("Describe the job first (at least five characters).");
+  const result=await rpc("company_agent_recommend",{companyId,instruction});
+  const box=clear($("companyAgentRecommendations"));
+  if(!result.recommended?.length){
+    box.append(node("p","No enabled agent matches this request. Review available profiles or ask the Planner.","muted"));
+    return;
+  }
+  box.append(node("strong","Suggested agent assignments — for review only"));
+  for(const agent of result.recommended){
+    const line=node("p",undefined,"agent-recommendation");
+    line.append(node("strong",agent.name+" · "+agent.title+" ("+agent.department+")"));
+    line.append(node("small"," — "+agent.reason));
+    box.append(line);
+  }
+  box.append(node("small","TheOrg's permissions, approved plan and four-active-agent limit remain unchanged."));
+}
+
 function registerEvents() {
   $("recheck").addEventListener("click",()=>action(checkEngine));
+  $("loadCompanyAgents").addEventListener("click",()=>action(loadCompanyAgents));
+  $("companyId").addEventListener("change",()=>action(loadCompanyAgents));
+  $("companyAgentSelect").addEventListener("change",chooseCompanyAgentProfile);
+  $("recommendCompanyAgents").addEventListener("click",()=>action(recommendCompanyAgents));
+  $("saveCompanyAgent").addEventListener("click",()=>action(()=>updateCompanyAgent(false)));
+  $("resetCompanyAgent").addEventListener("click",()=>action(()=>updateCompanyAgent(true)));
   $("refreshOrders").addEventListener("click",()=>action(()=>refreshOrders()));
   $("refreshQueue").addEventListener("click",()=>action(async()=>{
     const o=selectedOrder();
@@ -956,6 +1041,8 @@ function registerLocalAgentEvents() {
   registerEvents();
   registerLocalAgentEvents();
   await checkEngine();
+  try { await loadCompanyAgents(); }
+  catch(error){toast("Company profiles unavailable: "+error.message,true);}
   try {
     const r=await rpc("providers");
     app.providers=r.providers||{};
