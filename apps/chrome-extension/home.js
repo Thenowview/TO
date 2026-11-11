@@ -187,48 +187,88 @@ async function showSelected() {
   $("activeOrderId").textContent = "Order ID: " + order.taskId + " · Company: " + order.companyId;
   $("orderPhase").textContent = (order.phase || "pending").replaceAll("_"," ");
   $("planResponse").value = "";
-  const auto=order.autoHandoff;
   const capture=$("autoCaptureStatus");
   capture.replaceChildren();
-  if(!auto){
-    capture.append(node("p","Automatic AI handoff is not enabled for this work order."));
-  }else{
-    const statuses={
-      armed:"Ready: open a NEW ChatGPT or Claude chat in Chrome. TheOrg will send the authorized prompt once.",
-      in_progress:"Provider detected. TheOrg is attempting to send, capture and save the answer.",
-      saved:"AI output received and stored locally. The content is untrusted until reviewed.",
-      blocked:"Automation blocked. No result was certified; inspect the provider page.",
-      cancelled:"Automatic provider transfer cancelled."
+  const entries=Object.values(order.automationJobs||{})
+    .sort((a,b)=>String(b.createdUtc||"").localeCompare(String(a.createdUtc||"")));
+  if(!entries.length){
+    capture.append(node("p","No automatic provider requests for this order. Enable ChatGPT planning above, or queue agents after approving the task breakdown.","muted"));
+  }
+  for(const job of entries){
+    const row=node("div",undefined,"auto-job-entry");
+    const description=node("div",undefined,"auto-job-heading");
+    append(description,node("strong",job.agentId+" · "+job.providerId),
+      node("small",(job.status||"unknown").replaceAll("_"," ")+" · "+String(job.jobId||"").slice(0,8)));
+    row.append(description);
+    const states={
+      queued:"Queued: waiting for a free agent slot and a new authorized provider tab.",
+      starting:"Started: preparing the approved instruction in the provider tab.",
+      waiting_response:"Running: waiting for the AI answer.",
+      capturing_files:"Saving response and generated files.",
+      saved:"AI reply saved. Independent QA and plan approval are still required.",
+      blocked:"Blocked: no verified completion.",
+      cancelled:"Cancelled by Supervisor.",
+      interrupted:"Interrupted/expired. Review and queue again with fresh approval."
     };
-    capture.append(node("strong",statuses[auto.status]||"Automation status: "+auto.status));
-    if(auto.error)capture.append(node("p",auto.error,"muted"));
-    if(auto.resultPath){
-      capture.append(node("p","Saved file: "+auto.resultPath,"mono"));
-      capture.append(node("p","File integrity checked. Response quality and completeness still need review.","muted"));
+    row.append(node("p",states[job.status]||"Job status: "+job.status,"muted"));
+    if(job.error)row.append(node("p",job.error,"note"));
+    if(job.resultPath)row.append(node("p","Saved result: "+job.resultPath,"mono"));
+    if(job.truncated)row.append(node("p","Partial capture: response exceeded the size limit.","note"));
+    for(const file of (job.files||[]))
+      row.append(node("p","Generated file: "+file.path,"mono"));
+    for(const warning of (job.fileWarnings||[]))
+      row.append(node("p","File warning: "+warning,"note"));
+    if(job.status==="saved" && job.preview){
+      const details=node("details",undefined,"auto-result-preview");
+      const label=node("summary","Preview captured text");
+      append(details,label,node("pre",job.preview.slice(0,15000),"artifact-preview"));
+      row.append(details);
     }
-    if(auto.truncated===true)capture.append(node("p","Response exceeded the capture limit. Saved content is partial, not a complete answer.","note"));
-    for(const warning of (auto.fileWarnings||[]))
-      capture.append(node("p","File capture: "+warning,"note"));
-    for(const file of (auto.files||[])){
-      capture.append(node("p","Saved generated file: "+file.path,"mono"));
+    if(job.status==="saved" && job.intake?.kind==="clarification"){
+      const questions=job.intake.questions||[];
+      row.append(node("p","ChatGPT needs these details before creating the job:","muted"));
+      for(const [i,q] of questions.entries())row.append(node("p",(i+1)+". "+q,"intake-question"));
+      const answers=node("textarea",undefined,"intake-answer");
+      answers.rows=3;
+      answers.maxLength=2500;
+      answers.placeholder="Answer the questions here. TheOrg will prepare a follow-up ChatGPT request.";
+      const answerBtn=node("button","Queue clarified ChatGPT request","secondary");
+      answerBtn.type="button";
+      answerBtn.addEventListener("click",()=>action(async()=>{
+        const value=answers.value.trim();
+        if(value.length<5)throw new Error("Answer the essential questions before continuing.");
+        if(!confirm("Send these clarification answers to ChatGPT in a new approved request?"))return;
+        await rpc("automation_answer",{taskId:order.taskId,answers:value,approved:true});
+        toast("Clarified job queued. Open a new ChatGPT tab for the next request.");
+        await refreshOrders(order.taskId);
+      }));
+      append(row,answers,answerBtn);
     }
-    if(auto.status==="saved" && auto.preview){
-      const preview=node("pre",auto.preview.slice(0,15000),"artifact-preview");
-      preview.setAttribute("aria-label","Captured AI response (untrusted)");
-      capture.append(preview);
-      if(auto.preview.trim().startsWith("{"))
-        $("planResponse").value=auto.preview;
+    if(job.status==="saved" && job.intake?.kind==="job_request" &&
+       typeof job.intake.planJson==="string"){
+      row.append(node("p","ChatGPT proposed "+job.intake.taskCount+" specialist task(s). Review before saving and approving.","muted"));
+      const importPlan=node("button","Review ChatGPT plan in Supervisor","secondary");
+      importPlan.type="button";
+      importPlan.addEventListener("click",()=>action(async()=>{
+        if(order.plan?.reviewed)throw new Error("Current task plan is already approved; create a new order to replace it.");
+        if(!confirm("Replace the unapproved local plan with this ChatGPT proposal for review?"))return;
+        await rpc("save_supervisor_plan",{taskId:order.taskId,response:job.intake.planJson});
+        toast("ChatGPT proposal saved as an unapproved plan. Review tasks and choose Approve task breakdown.");
+        await refreshOrders(order.taskId);
+      }));
+      row.append(importPlan);
     }
-    if(["armed","in_progress"].includes(auto.status)){
-      const stop=node("button","Cancel automatic handoff","secondary");
+    if(["queued","starting","waiting_response","capturing_files"].includes(job.status)){
+      const stop=node("button","Cancel request","secondary");
       stop.type="button";
       stop.addEventListener("click",()=>action(async()=>{
-        await rpc("automation_cancel",{taskId:order.taskId});
+        if(!confirm("Stop tracking this request? Already submitted provider text cannot be recalled."))return;
+        await rpc("automation_cancel",{taskId:order.taskId,jobId:job.jobId});
         await refreshOrders(order.taskId);
-        toast("Automatic provider handoff cancelled.");
       }));
-      capture.append(stop);
+      row.append(stop);
     }
+    capture.append(row);
   }
   const approved = Boolean(order.plan && order.plan.reviewed);
   const plan = order.plan;
