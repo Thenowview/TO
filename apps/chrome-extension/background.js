@@ -32,6 +32,11 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "theorg.provider.event":
         if(!sender.tab)throw new Error("Provider message must originate in an allowlisted tab");
         return {ok:true,...await autoHandoff.onPageEvent(message,sender)};
+      case "theorg.provider.file.start":
+      case "theorg.provider.file.chunk":
+      case "theorg.provider.file.finish":
+        if(!sender.tab)throw new Error("Automatic files must originate in an allowlisted provider tab");
+        return {ok:true,...await autoHandoff.onFileEvent(message,sender)};
       case "agent_skills": return {ok:true,version:globalThis.TheOrgSkills.version,profiles:globalThis.TheOrgSkills.profiles(),rubric:globalThis.TheOrgSkills.qualityRubric()};
       case "orders": return {ok:true,orders:await manager.listOrders()};
       case "execution_queue": return {ok:true,...await manager.executionQueue(message.taskId)};
