@@ -113,3 +113,26 @@ textarea::placeholder,input::placeholder{color:#667e9e}.composer-bottom{display:
   background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;
 }
 .artifact-preview[hidden]{display:none}
+
+
+/* AI Supervisor quick-start (does not submit or contact any provider automatically). */
+.supervisor-how-it-works{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 13px}
+.supervisor-how-it-works span{display:inline-flex;align-items:center;gap:8px;background:#12263b;border:1px solid #2b425c;border-radius:9px;padding:9px 11px;font-size:11px;color:#c0d3e7}
+.supervisor-how-it-works b{display:grid;place-items:center;width:20px;height:20px;flex:0 0 20px;border-radius:7px;background:#1f5957;color:#a9f7e5}
+.starter-panel{border:1px solid #2d485b;background:#111e30;border-radius:14px;padding:17px 18px;margin-bottom:13px}
+.starter-title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
+.starter-title h3{font-size:17px;margin:0 0 5px}.starter-title p{margin:0}
+.starter-filters{display:grid;grid-template-columns:150px minmax(150px,1fr) minmax(180px,1fr);gap:10px;align-items:end;margin-bottom:14px}
+.starter-filters label{font-size:11px;color:#acbfd7;display:flex;flex-direction:column;gap:6px}
+.starter-filters input,.starter-filters select{min-height:39px;width:100%}
+.starter-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.starter-item{display:flex;flex-direction:column;gap:10px;justify-content:space-between;min-width:0;background:#0c192c;border:1px solid #2c4159;border-radius:11px;padding:13px}
+.starter-item-copy{display:grid;gap:5px}
+.starter-item strong{font-size:13px;line-height:1.35;color:#eaf6ff}
+.starter-item small{font-size:11px;line-height:1.55;color:#9bafc8}
+.starter-use{align-self:start;background:#193b41;color:#9df2d9;border:1px solid #32786c;border-radius:8px;padding:8px 12px;font-size:11px;font-weight:700}
+.starter-use:hover{background:#245052}
+.starter-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:13px;flex-wrap:wrap}
+.composer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media(max-width:1000px){.starter-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.starter-filters{grid-template-columns:1fr}.starter-list{grid-template-columns:1fr}.starter-title{align-items:start;flex-wrap:wrap}}
