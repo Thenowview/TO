@@ -59,3 +59,17 @@ The builder runs checks again, lists only approved runtime source, and emits a S
 - PR #17/#18 remain draft and unmerged; release publishing requires separate review and acceptance.
 
 All hardware limits are targets. Do not infer success from synthetic fixtures, source checks or metadata parsing.
+
+## 2026-11-11 — Bulk integration checkpoint (review-only)
+
+This integrated development branch contains the v0.10 offline engine history from PRs #16–#18 and adds:
+- Autopilot test-count anti-regression: changed tests must meet the verified pre-edit count.
+- Persistent five-role advisory coordinator, project Git SHA binding, fresh approval after restart, cancellation and audited SQLite history.
+- Disabled-by-default, single-use capability approvals with local HTML-only Playwright inspection and restricted Windows workspace opening.
+- Code Studio advisory review panel with explicit scope acknowledgment.
+- Deterministic source-only packager excluding GGUF weights, SQLite databases, access tokens and real user workspaces.
+- Fail-closed readiness report requiring separate source, Windows, real coding-model, browser and agent acceptance.
+
+**Architecture boundary:** GitHub main's Chrome MV3/.NET Native Messaging preview and this Python offline engine are still distinct runtime tracks. This change does not provide a verified Chrome-to-engine adapter. No unauthenticated browser-to-engine calls.
+
+**Verification boundary:** Mocked/source tests cannot prove real GGUF inference, Docker Autopilot, Windows EXE usability or full browser/desktop automation. Keep the candidate review-only until independent acceptance receipts pass.

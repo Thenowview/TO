@@ -326,6 +326,7 @@
     }
     if(chosenCodePlan)await loadCodePlan(chosenCodePlan.id);
     await loadAutopilotRuns();
+    await loadAgentReviews();
   }
   async function loadAutopilotRuns(){
     const list=$('autopilotRuns'); if(!list)return;
@@ -368,6 +369,51 @@
       $('autopilotScope').checked=false;
       showToast('Authorized run '+result.run.id.slice(0,10)+' queued');await loadAutopilotRuns();
     }catch(e){showToast(e.message,true);}finally{btn.disabled=false;}
+  }
+  async function loadAgentReviews(){
+    const panel=$('agentReviewList');if(!panel)return;
+    const data=await request('agents/reviews');panel.replaceChildren();
+    if(!(data.reviews||[]).length){appendEmpty(panel,'No advisory agent reviews yet.');return;}
+    for(const review of data.reviews){
+      const item=element('div','task-item');
+      item.append(element('strong','',review.objective.slice(0,100)),pill(review.status));
+      item.append(element('small','',review.steps.length+' / 5 roles · Git '+review.git_head.slice(0,9)));
+      for(const step of review.steps){
+        const note=element('div','inline-note');
+        note.append(element('strong','',step.role+': '),document.createTextNode(step.output.slice(0,1200)));
+        item.append(note);
+      }
+      if(review.error)item.append(element('p','note',review.error));
+      if(review.status==='interrupted'){
+        const resume=element('button','btn secondary','Reauthorize unfinished review');
+        resume.addEventListener('click',async()=>{
+          if(!confirm('Resume only the remaining advisory roles for the same Git revision?'))return;
+          try{await request('agents/reviews/resume',{method:'POST',body:{id:review.id,confirmed:true}});
+              await loadAgentReviews();}catch(e){showToast(e.message,true);}
+        });item.append(resume);
+      }
+      if(['queued','running','interrupted'].includes(review.status) && !review.cancel_requested){
+        const stop=element('button','btn secondary','Request cancellation');
+        stop.addEventListener('click',async()=>{
+          if(!confirm('Cancel this advisory review?'))return;
+          try{await request('agents/reviews/cancel',{method:'POST',body:{id:review.id,confirmed:true}});
+              await loadAgentReviews();}catch(e){showToast(e.message,true);}
+        });item.append(stop);
+      }
+      panel.append(item);
+    }
+  }
+  async function startAgentReview(){
+    if(!chosenCodeProject)return showToast('Select a local Git project first.',true);
+    const objective=$('agentObjective').value.trim();
+    if(objective.length<5 || objective.length>1200)return showToast('Enter a review objective (5–1200 characters).',true);
+    if(!$('agentScope').checked)return showToast('Authorize this advisory-only scope first.',true);
+    if(!confirm('Run five local advisory roles on this selected project, without executing tools?'))return;
+    try{
+      await request('agents/reviews',{method:'POST',body:{project_id:chosenCodeProject,
+            objective,scope:'local-advisory-agent-review',confirmed:true}});
+      $('agentScope').checked=false;await loadAgentReviews();showToast('Advisory review queued.');
+    }catch(e){showToast(e.message,true);}
   }
   async function loadCodeFiles(){
     const data=await request('code/files?project_id='+encodeURIComponent(chosenCodeProject)),list=$('codeFileList');
@@ -470,6 +516,8 @@
     }catch(e){showToast(e.message,true)}
   }
   $('autopilotStart').addEventListener('click',startAutopilot);
+  $('agentStart').addEventListener('click',startAgentReview);
+  $('agentRefresh').addEventListener('click',()=>loadAgentReviews().catch(e=>showToast(e.message,true)));
   $('autopilotRefresh').addEventListener('click',()=>loadAutopilotRuns().catch(e=>showToast(e.message,true)));
   $('codeContextBtn').addEventListener('click',async()=>{
     const objective=$('codeObjective').value.trim()||$('autopilotObjective').value.trim();

@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -59,6 +59,9 @@ class Handler(BaseHTTPRequestHandler):
                        'ollama_model':core.setting('ollama_model',''),
                        'llama_binary':core.llama_binary() is not None,'model_directory':str(core.MODELS)})
                 elif path=='/api/workflows':self._json({'workflows':orchestration.list_workflows()})
+                elif path=='/api/agents/reviews':self._json({'reviews':coordination.list_reviews()})
+                elif path=='/api/capabilities':self._json({'capabilities':capabilities.catalog()})
+                elif path=='/api/capabilities/history':self._json({'requests':capabilities.history()})
                 elif path=='/api/tasks':self._json({'tasks':core.tasks()})
                 elif path=='/api/memories':self._json({'memories':core.memories()})
                 elif path=='/api/files':self._json({'files':core.list_files()})
@@ -136,6 +139,18 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/tasks/retry':
                 if payload.get('confirmed') is not True:raise core.EngineError('Explicit restart confirmation required.')
                 core.retry_interrupted_task(payload.get('id'));self._json({'ok':True})
+            elif path=='/api/agents/reviews':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit advisory review approval required.')
+                self._json({'review':coordination.create(payload.get('project_id'),payload.get('objective'),payload.get('scope'))},202)
+            elif path=='/api/agents/reviews/resume':
+                self._json({'review':coordination.resume(payload.get('id'),payload.get('confirmed'))})
+            elif path=='/api/capabilities/prepare':
+                self._json({'request':capabilities.prepare(payload.get('capability'),payload.get('arguments',{}))},201)
+            elif path=='/api/capabilities/execute':
+                self._json(capabilities.approve_and_execute(payload.get('id'),payload.get('digest'),payload.get('confirmed')))
+            elif path=='/api/agents/reviews/cancel':
+                if payload.get('confirmed') is not True:raise core.EngineError('Explicit cancellation confirmation required.')
+                self._json(coordination.cancel(payload.get('id')))
             elif path=='/api/tasks/cancel':
                 core.cancel_task(payload.get('id'));self._json({'ok':True})
             elif path=='/api/memories':
@@ -306,6 +321,8 @@ def main():
         coding.init_schema()
         autopilot.init_schema()
         orchestration.init_schema()
+        coordination.init_schema()
+        capabilities.init_schema()
         try:
             outcome=core.benchmark_local_model()
             print(json.dumps(outcome,ensure_ascii=False))
@@ -323,11 +340,15 @@ def main():
         coding.init_schema()
         autopilot.init_schema()
         orchestration.init_schema()
+        coordination.init_schema()
+        capabilities.init_schema()
         print('PASS bundled dashboard, engine, SQLite and role registry')
         return 0
     TOKEN=core.init()
     coding.init_schema()
     autopilot.init_schema()
+    coordination.init_schema()
+    capabilities.init_schema()
     _create_desktop_shortcut_if_needed()
     if args.host not in ('127.0.0.1','::1','localhost'):
         if os.environ.get('THEORG_ALLOW_LAN_HTTP')!='1':

@@ -137,7 +137,8 @@ def _execute(ident, project_id, objective, max_attempts):
             coding.apply(plan['id'])
             entry['status']='applied';_save(ident,'running',history)
             _checkpoint(ident)
-            result=coding.verify(plan['id'],run_tests=True,execution_mode='sandbox')
+            result=coding.verify(plan['id'],run_tests=True,execution_mode='sandbox',
+                                 minimum_test_count=baseline['test_count'])
             entry['status']=result['status']
             entry['test_evidence']=result.get('evidence',{}).get('checks',{})
             _save(ident,'running',history)
