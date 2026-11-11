@@ -86,7 +86,7 @@
 
     <section id="providers" class="section-block" aria-labelledby="providersHeading">
       <div class="section-head"><div><span class="section-kicker">03 / INTELLIGENCE</span><h2 id="providersHeading">Select your AI adviser</h2></div><span class="hint-pill">Manual web handoff • no API keys required</span></div>
-      <p class="section-description">The Supervisor prepares an initial plan locally. You can optionally consult an AI adviser to refine it. Chat access, quotas and terms depend on your account; no AI provider is connected automatically. Cloudflare is a developer platform, not a chat service.</p>
+      <p class="section-description">The Supervisor creates a local plan first. For ChatGPT, Claude or another AI chat, choose a provider, then use Copy prompt &amp; open AI chat. Paste and submit manually; return the structured response for review. No provider is connected automatically. Cloudflare is a developer dashboard, not a chat service.</p>
       <div id="providerGrid" class="provider-grid"><span class="muted">Loading provider directory…</span></div>
     </section>
 
@@ -105,7 +105,7 @@
               <div class="step-line"><span class="step-index">1</span><b>Supervisor proposes specialist orders</b><span class="step-helper">Locally drafted automatically • AI consultation optional</span></div>
               <div id="planSummary" class="review-result">Submit one instruction to generate an SOP-based local plan. The plan needs review before the agents start.</div>
               <p class="form-note">Agent playbooks define how specialists work: procedure, output format, evidence checks and escalation rules. No AI website is contacted automatically.</p>
-              <div class="inline-controls"><label for="plannerProvider" class="sr-only">Planning provider</label><select id="plannerProvider"></select><button id="copyPlannerPrompt" type="button" class="secondary">Copy planning prompt</button><button id="openPlanner" type="button" class="secondary">Open planner chat ↗</button></div>
+              <div class="inline-controls"><label for="plannerProvider" class="sr-only">Planning provider</label><select id="plannerProvider"></select><button id="copyPlannerPrompt" type="button" class="secondary">Copy planning prompt</button><button id="openPlanner" type="button" class="primary">Copy prompt &amp; open AI chat ↗</button></div>
               <label class="field-label" for="planResponse">Optional: replace the local plan with structured JSON from an AI adviser</label>
               <textarea id="planResponse" rows="5" placeholder='{"summary":"…","tasks":[{"id":"research1","role":"researcher","objective":"…","provider":"chatgpt","acceptanceCriteria":["…"],"dependencies":[]}]}…'></textarea>
               <div class="action-row"><button id="interpretPlan" class="secondary" type="button">Interpret & save plan</button><button id="approvePlan" class="primary" type="button">Approve task breakdown</button></div>
