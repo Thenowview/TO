@@ -131,7 +131,7 @@ internal sealed class Controller
                 {
                     ok = true,
                     commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
-                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact",
+                        "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact", "export_artifact_file",
                         "begin_artifact_upload", "append_artifact_chunk", "upload_status",
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk",
                         "agent_create", "agent_get", "agent_list", "agent_approve", "agent_run_next", "agent_run_safe_batch",
@@ -152,6 +152,7 @@ internal sealed class Controller
                 "get_order" => Get(request),
                 "list_orders" => List(request),
                 "import_artifact" => ImportArtifact(request),
+                "export_artifact_file" => ExportArtifactFile(request),
                 "list_artifacts" => ListArtifacts(request),
                 "verify_artifact" => VerifyArtifact(request),
                 "read_artifact" => ReadArtifact(request),
@@ -181,6 +182,15 @@ internal sealed class Controller
             Text(request, "fileName"), Text(request, "dataBase64"),
             Text(request, "sourceProvider"), Text(request, "sourceReference"));
         return new { ok = true, artifact = record };
+    }
+
+    private object ExportArtifactFile(JsonElement request)
+    {
+        string companyId = RequireCompany(Text(request, "companyId"));
+        string orderId = RequireOrder(Text(request, "orderId"));
+        var result = _artifactStore.ExportReadable(companyId, orderId,
+            Text(request, "artifactId"));
+        return new { ok = true, export = result };
     }
 
     private object ListArtifacts(JsonElement request)
