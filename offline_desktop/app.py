@@ -347,6 +347,7 @@ def main():
     TOKEN=core.init()
     coding.init_schema()
     autopilot.init_schema()
+    orchestration.init_schema()
     coordination.init_schema()
     capabilities.init_schema()
     _create_desktop_shortcut_if_needed()
