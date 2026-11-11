@@ -61,9 +61,12 @@ function renderProviders() {
   const select = $("plannerProvider");
   clear(select);
   Object.entries(app.providers).forEach(([key, p]) => {
-    const choice = node("option", p.title);
-    choice.value = key;
-    select.append(choice);
+    // Only interactive AI chats can receive a planning prompt. Cloudflare is a dashboard.
+    if (p.kind === "ai-chat") {
+      const choice = node("option", p.title);
+      choice.value = key;
+      select.append(choice);
+    }
     const card = node("button", undefined, "provider");
     card.type = "button";
     const mark = node("span", p.title.substring(0, 2).toUpperCase(), "provider-mark");
@@ -72,9 +75,13 @@ function renderProviders() {
       p.kind === "developer-platform" ? "Developer platform • dashboard" : "AI chat • manual consultation"));
     append(card, mark, txt);
     card.addEventListener("click", () => {
+      if (p.kind !== "ai-chat") {
+        toast(p.title + " is a developer dashboard, not an AI chat. Choose ChatGPT or Claude for AI planning.");
+        return;
+      }
       select.value = key;
       $("work").scrollIntoView({behavior:"smooth"});
-      toast(p.title + " selected as planning adviser.");
+      toast(p.title + " selected. Create a work order and use Copy prompt & open chat.");
     });
     grid.append(card);
   });
@@ -585,8 +592,22 @@ function registerEvents() {
   $("openPlanner").addEventListener("click",()=>action(async()=>{
     const o=selectedOrder();
     if(!o)throw new Error("Create a work order first");
-    await rpc("open_supervisor_tab",{taskId:o.taskId,providerId:$("plannerProvider").value});
-    toast("Supervisor adviser opened. Paste the planning prompt manually.");
+    const providerId=$("plannerProvider").value;
+    if (app.providers[providerId]?.kind !== "ai-chat")
+      throw new Error("Select a supported AI chat such as ChatGPT or Claude.");
+    const prepared=await rpc("get_plan_prompt",{instruction:o.instruction || o.title});
+    // Clipboard copying happens locally. No prompt is submitted to the website.
+    let copied=false;
+    try {
+      await navigator.clipboard.writeText(prepared.prompt);
+      copied=true;
+    } catch {
+      // The existing Copy planning prompt control remains available.
+    }
+    await rpc("open_supervisor_tab",{taskId:o.taskId,providerId});
+    toast(copied
+      ? "AI chat opened and planning prompt copied. Paste, submit, and bring its JSON response back for review."
+      : "AI chat opened. Clipboard access was blocked; return and use Copy planning prompt before pasting.");
   }));
   $("interpretPlan").addEventListener("click",()=>action(async()=>{
     const o=selectedOrder();
