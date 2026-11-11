@@ -8,7 +8,7 @@ const QUEUE_KEY="theorgAutoProviderQueueV2";
 const TAB_KEY="theorgNewProviderTabsV2";
 const LIMIT=4, MAX_JOBS=120;
 const WAIT_TTL=24*60*60*1000, ACTIVE_TTL=8*60*1000;
-const ACTIVE=new Set(["starting","waiting_response"]);
+const ACTIVE=new Set(["starting","waiting_response","capturing_files"]);
 const PENDING=new Set(["queued",...ACTIVE]);
 const HOSTS=Object.freeze({chatgpt:"https://chatgpt.com",claude:"https://claude.ai"});
 const TASK=/^[a-f0-9]{32}$/, AGENT=/^[a-z][a-z0-9_-]{0,39}$/;
@@ -79,7 +79,7 @@ class ProviderAutoHandoff {
     let prompt;
     if(agentId==="supervisor"){
       prompt=typeof customInstruction==="string"?customInstruction:
-        this.planner.supervisorPrompt(order.instruction);
+        globalThis.TheOrgJobIntake.prompt(order.instruction);
     }else{
       if(!order.plan?.reviewed)throw new Error("Approve the Supervisor plan first.");
       const q=await this.manager.executionQueue(taskId);
@@ -114,6 +114,19 @@ class ProviderAutoHandoff {
     });
   }
   async arm(taskId,providerId,approved){return this.create(taskId,providerId,"supervisor",approved);}
+  async answer(taskId,answers,approved){
+    if(approved!==true || !TASK.test(taskId) || typeof answers!=="string" ||
+       answers.trim().length<5 || answers.length>2500)
+      throw new Error("Review and approve the clarification answers (5–2500 characters).");
+    const all=await this.manager.orders(),order=all[taskId];
+    if(!order)throw new Error("Unknown order.");
+    const prior=Object.values(order.automationJobs||{}).filter(j=>
+      j.agentId==="supervisor" && j.intake?.kind==="clarification" &&
+      j.status==="saved");
+    if(!prior.length)throw new Error("No ChatGPT clarification request exists.");
+    const prompt=globalThis.TheOrgJobIntake.prompt(order.instruction,answers);
+    return this.create(taskId,"chatgpt","supervisor",true,prompt);
+  }
   async bulk(taskId,approved){
     if(approved!==true)throw new Error("Bulk agent scheduling requires approval.");
     const q=await this.manager.executionQueue(taskId);
@@ -153,7 +166,7 @@ class ProviderAutoHandoff {
     });
   }
   async maybeStart(tab){
-    if(!Number.isInteger(tab?.id)||!tab.active)return null;
+    if(!Number.isInteger(tab?.id))return null;
     const provider=providerFor(tab.url||"");if(!provider)return null;
     const candidate=(await this.tabCandidates())[tab.id];
     if(!candidate)return null; // Never repurpose a personal tab opened before authorization.
@@ -190,7 +203,7 @@ class ProviderAutoHandoff {
       if((await this.list()).availableSlots===0)break;
       try{
         const tab=await this.api.tabs.get(id);
-        if(tab?.active)await this.maybeStart(tab);
+        if(tab)await this.maybeStart(tab);
       }catch{await this.forgetTab(id);}
     }
   }
@@ -214,7 +227,7 @@ class ProviderAutoHandoff {
       return {status:j.status,jobId:j.id};
     }
     if(message.status==="file_warning"){
-      if(j.status!=="saved")throw new Error("File warning before response capture.");
+      if(j.status!=="capturing_files")throw new Error("File warning before response capture.");
       const data=await this.manager.orders(),o=data[j.taskId];
       const record=o?.automationJobs?.[j.id];
       if(record){
@@ -228,6 +241,13 @@ class ProviderAutoHandoff {
       await this.failJob(j.nonce,fail(message.error));
       return {status:"blocked",jobId:j.id};
     }
+    if(message.status==="files_complete"){
+      if(j.status!=="capturing_files")throw new Error("Job not awaiting file completion.");
+      j.status="saved";j.prompt="";j.transfers={};
+      await this.save(jobs);await this.sync(j);
+      void this.dispatchWaiting().catch(()=>undefined);
+      return {status:"saved",jobId:j.id};
+    }
     if(message.status!=="captured"||j.status!=="waiting_response"||
        typeof message.content!=="string"||message.content.length>90000||
        message.content.trim().length<10)
@@ -235,18 +255,24 @@ class ProviderAutoHandoff {
     const url=new URL(sender.tab.url),source=url.origin+url.pathname.slice(0,400);
     const output=await this.manager.saveAutomaticResult(j.taskId,j.actualProvider,
       message.content,source,j.agentId,j.id);
-    j.status="saved";j.prompt="";j.result=output;
+    j.status="capturing_files";j.prompt="";j.result=output;
     await this.save(jobs);await this.sync(j);
+    if(j.agentId==="supervisor"){
+      const data=await this.manager.orders(),record=data[j.taskId]?.automationJobs?.[j.id];
+      if(record){
+        record.intake=globalThis.TheOrgJobIntake.parse(message.content);
+        await this.manager.saveOrders(data);
+      }
+    }
     if(message.truncated===true){
       const data=await this.manager.orders(),record=data[j.taskId]?.automationJobs?.[j.id];
       if(record){record.truncated=true;await this.manager.saveOrders(data);}
     }
-    void this.dispatchWaiting().catch(()=>undefined);
-    return {status:"saved",jobId:j.id,result:output};
+    return {status:"capturing_files",jobId:j.id,result:output};
   }
   async fileEvent(message,sender){
     const jobs=await this.load(),j=jobs.find(x=>x.nonce===message.nonce);
-    if(!j||j.status!=="saved"||sender?.tab?.id!==j.tabId||
+    if(!j||j.status!=="capturing_files"||sender?.tab?.id!==j.tabId||
        !validHost(sender.tab.url,j.actualProvider)||
        Date.now()>j.expiresAt)throw new Error("File transfer not authorized for this saved job.");
     j.transfers=j.transfers||{};
