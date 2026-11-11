@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Fail-closed release readiness from independent receipts, not self-reported claims."""
 from __future__ import annotations
-import argparse,json,re
+import argparse,json,re,sys
 from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from scripts.check_release import validate_release
 
 STAGES=('source','windows','model','coding','browser','multi_agent')
