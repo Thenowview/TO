@@ -1,8 +1,10 @@
-name: TheOrg v0.10 portable Windows EXE
+name: TheOrg portable Windows release acceptance
+
 on:
   push:
     branches:
       - feat/theorg-v010-offline-portable
+      - feat/theorg-release-gates
     paths:
       - 'offline_desktop/**'
       - '.github/workflows/theorg-v010-portable-exe.yml'
@@ -11,15 +13,50 @@ on:
       - 'offline_desktop/**'
       - '.github/workflows/theorg-v010-portable-exe.yml'
   workflow_dispatch:
+
 permissions:
   contents: read
+
 concurrency:
-  group: theorg-v010-${{ github.ref }}
+  group: theorg-release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
+  source-acceptance:
+    name: Source tests and fail-closed evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: offline_desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Python, JavaScript, and offline engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -v
+          python -m compileall -q app.py engine scripts
+          node --check static/app.js
+          python app.py --self-test
+      - name: Explain real-model acceptance gate
+        shell: bash
+        run: |
+          echo 'Real-model Autopilot acceptance requires llama.cpp and an offline Docker image.'
+          echo 'Source CI does NOT mock or claim real GGUF inference.'
+          echo 'On a suitable device: python scripts/acceptance_real_autopilot.py --report acceptance-real.json'
+
   portable-windows:
+    name: Build and execute Windows EXE
+    needs: source-acceptance
     runs-on: windows-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: offline_desktop
@@ -29,35 +66,41 @@ jobs:
         with:
           python-version: '3.12'
           architecture: 'x64'
-      - name: Run Python tests and static validation
+      - name: Re-run source unit tests on Windows
         shell: pwsh
         run: |
           python -m unittest discover -s tests -q
-          if ($LASTEXITCODE -ne 0) { throw 'Unit tests failed' }
-          node --check static/app.js
-          if ($LASTEXITCODE -ne 0) { throw 'Frontend JavaScript syntax failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'Windows source test failure' }
           python app.py --self-test
-          if ($LASTEXITCODE -ne 0) { throw 'Engine source self-test failed' }
-      - name: Build one-file portable EXE with bundled llama.cpp and Git
+          if ($LASTEXITCODE -ne 0) { throw 'Windows source self-test failure' }
+      - name: Build and smoke-test actual portable EXE
         shell: pwsh
         run: |
           ./Build-TheOrg-Portable-Windows.ps1 -SkipTests
-      - name: Verify executable and hash
+          if ($LASTEXITCODE -ne 0) { throw 'Windows EXE builder failed' }
+      - name: Independently validate release receipts
         shell: pwsh
         run: |
-          if (!(Test-Path dist/TheOrg.exe)) { throw 'Missing TheOrg.exe' }
-          if (!(Test-Path dist/SHA256SUMS.txt)) { throw 'Missing SHA256SUMS.txt' }
-          $line=(Get-Content dist/SHA256SUMS.txt | Select-Object -First 1)
-          $expected=($line -split '\s+')[0].ToLowerInvariant()
-          $actual=(Get-FileHash dist/TheOrg.exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $expected) { throw 'EXE checksum mismatch' }
-          Write-Host "PASS TheOrg.exe SHA256 $actual"
-      - uses: actions/upload-artifact@v4
+          python scripts/check_release.py dist --report dist/RELEASE-ACCEPTANCE.json
+          if ($LASTEXITCODE -ne 0) { throw 'Release acceptance failed' }
+      - name: Upload verified release only
+        if: success()
+        uses: actions/upload-artifact@v4
         with:
           name: TheOrg-v0.10-Portable-Windows-EXE
           path: |
             offline_desktop/dist/TheOrg.exe
             offline_desktop/dist/SHA256SUMS.txt
             offline_desktop/dist/UPSTREAM-DIGESTS.txt
+            offline_desktop/dist/WINDOWS-SMOKE.json
+            offline_desktop/dist/RELEASE-ACCEPTANCE.json
           retention-days: 30
           if-no-files-found: error
+      - name: Record failure state without publishing an unverified EXE
+        if: failure()
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'Windows release NOT VERIFIED. Do not distribute a binary from this run.'
+          if (Test-Path dist/RELEASE-ACCEPTANCE.json) {
+            Get-Content dist/RELEASE-ACCEPTANCE.json | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          }
