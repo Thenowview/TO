@@ -100,8 +100,12 @@ async function refreshOrders(selectId = null) {
   for (const order of app.orders) {
     const btn = node("button", undefined, "order-entry" + (order.taskId === app.activeId ? " active" : ""));
     btn.type = "button";
+    const jobs=Object.values(order.automationJobs||{});
+    const running=jobs.filter(x=>["starting","waiting_response","capturing_files"].includes(x.status)).length;
+    const pending=jobs.filter(x=>x.status==="queued").length;
     append(btn, node("b", order.title || "Untitled order"),
-      node("small", (order.companyId || "") + " · " + (order.phase || "pending")));
+      node("small", (order.companyId || "") + " · " + (order.phase || "pending")+
+        (running||pending?" · "+running+" running / "+pending+" queued":"")));
     btn.addEventListener("click", () => action(async () => {
       app.activeId = order.taskId;
       await refreshOrders();
@@ -109,6 +113,9 @@ async function refreshOrders(selectId = null) {
     list.append(btn);
   }
   await showSelected();
+  try { await refreshAutomaticQueue(); }
+  catch(error) { $("automationCapacity").textContent="Agent queue unavailable";
+    $("automationPending").textContent=String(error?.message||error).slice(0,120); }
   try { await refreshAgentJobs(); }
   catch(error) { $("agentDetails").textContent="Local agent runtime unavailable: "+error.message; }
 }
@@ -172,12 +179,19 @@ async function renderExecutionQueue(taskId) {
   }
 }
 
+async function refreshAutomaticQueue(){
+  const result=await rpc("automation_list");
+  $("automationCapacity").textContent=result.active+" / "+result.maxActive+" active agents";
+  $("automationPending").textContent=result.queued+" queued requests";
+}
+
 async function showSelected() {
   const order = selectedOrder();
   $("noOrder").hidden = Boolean(order);
   $("activeOrder").hidden = !order;
   if (!order) {
     $("dispatchNext").disabled = true;
+    $("queueReadyAgents").disabled = true;
     $("executionQueue").textContent = "Choose a work order to view the execution queue.";
     $("artifactAgent").replaceChildren(new Option("Select a specialist",""));
     clear($("deliveries")).append(node("p","Choose a work order to view files.","muted"));
@@ -271,6 +285,7 @@ async function showSelected() {
     capture.append(row);
   }
   const approved = Boolean(order.plan && order.plan.reviewed);
+  $("queueReadyAgents").disabled=!approved;
   const plan = order.plan;
   $("planSummary").textContent = plan
     ? (plan.source === "local_deterministic_sop_not_ai"
@@ -642,6 +657,16 @@ function registerEvents() {
     await refreshOrders(o.taskId);
   }));
 
+  $("queueReadyAgents").addEventListener("click",()=>action(async()=>{
+    const o=selectedOrder();
+    if(!o)throw new Error("Select a work order first.");
+    if(!o.plan?.reviewed)throw new Error("Approve the specialist plan first.");
+    if(!confirm("Queue eligible ChatGPT/Claude specialist jobs? Only four may run at once, and external prompts will be sent when you open fresh provider tabs."))return;
+    const r=await rpc("automation_bulk_agents",{taskId:o.taskId,approved:true});
+    const count=(r.queued||[]).length;
+    toast(count+" specialist job(s) queued; "+(r.errors||[]).length+" unavailable. Open new provider tabs to execute pending requests.",count===0);
+    await refreshOrders(o.taskId);
+  }));
   $("pinHome").addEventListener("click",()=>action(async()=>{
     const tab=await chrome.tabs.getCurrent();
     if(!tab||!tab.id)throw new Error("Pin the full-tab Supervisor page, not its side panel.");
