@@ -75,7 +75,7 @@ class AutopilotTests(unittest.TestCase):
     def test_full_approved_commit_is_local_and_verified(self):
         self._patch_ready()
         data=json.dumps({'changes':[{'path':'main.py','content':GOOD}]})
-        mocked_result={'passed':True,'available':True,'mode':'sandbox','exit_code':0,'output':'2 tests passed','network':'none'}
+        mocked_result={'passed':True,'available':True,'mode':'sandbox','exit_code':0,'output':'Ran 2 tests in 0.1s\nOK','network':'none','test_count':2,'host_project_mount':False,'image_id':'sha256:'+'a'*64}
         with patch.object(core,'infer',return_value=data) as model, patch.object(coding,'_run_tests_sandbox',return_value=mocked_result) as verify:
             run=self._authorize()
             autopilot._execute(run['id'],self.project['id'],'Improve greet and tests',2)
@@ -98,7 +98,7 @@ class AutopilotTests(unittest.TestCase):
             source=(repo/'main.py').read_text()
             if 'broken' in source:
                 return {'passed':False,'available':True,'mode':'sandbox','exit_code':1,'output':'FAILED test_greet: wrong result'}
-            return {'passed':True,'available':True,'mode':'sandbox','exit_code':0,'output':'OK'}
+            return {'passed':True,'available':True,'mode':'sandbox','exit_code':0,'output':'Ran 2 tests in 0.1s\nOK','network':'none','test_count':2,'host_project_mount':False,'image_id':'sha256:'+'a'*64}
         with patch.object(core,'infer',side_effect=answers) as model, patch.object(coding,'_run_tests_sandbox',side_effect=fake_sandbox):
             run=self._authorize(attempts=2)
             autopilot._execute(run['id'],self.project['id'],'Improve greet and tests',2)
@@ -113,7 +113,7 @@ class AutopilotTests(unittest.TestCase):
         original=(self.repo/'main.py').read_text()
         ans=json.dumps({'changes':[{'path':'main.py','content':BAD}]})
         fail={'passed':False,'available':True,'mode':'sandbox','exit_code':1,'output':'FAILED: bad greet'}
-        baseline={'passed':True,'available':True,'mode':'sandbox','exit_code':0,'output':'Baseline OK','network':'none'}
+        baseline={'passed':True,'available':True,'mode':'sandbox','exit_code':0,'output':'Ran 2 tests in 0.1s\nOK','network':'none','test_count':2,'host_project_mount':False,'image_id':'sha256:'+'a'*64}
         with patch.object(core,'infer',return_value=ans),patch.object(coding,'_run_tests_sandbox',side_effect=[baseline,fail]):
             run=self._authorize(attempts=1)
             autopilot._execute(run['id'],self.project['id'],'Improve greet and tests',1)
@@ -125,7 +125,7 @@ class AutopilotTests(unittest.TestCase):
     def test_model_json_failure_does_not_modify_project(self):
         self._patch_ready()
         original=(self.repo/'main.py').read_text()
-        with patch.object(core,'infer',return_value='NOT JSON'),patch.object(coding,'_run_tests_sandbox',return_value={'passed':True,'mode':'sandbox','exit_code':0,'network':'none'}):
+        with patch.object(core,'infer',return_value='NOT JSON'),patch.object(coding,'_run_tests_sandbox',return_value={'passed':True,'mode':'sandbox','exit_code':0,'network':'none','test_count':2,'host_project_mount':False,'image_id':'sha256:'+'a'*64,'available':True,'output':'Ran 2 tests in 0.1s\nOK'}):
             run=self._authorize(attempts=3)
             autopilot._execute(run['id'],self.project['id'],'Improve greet and tests',3)
         record=autopilot.list_runs()[0]
