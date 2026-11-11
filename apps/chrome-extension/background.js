@@ -1,5 +1,5 @@
 /* TheOrg MV3 background — extension-owned messages only, no content scripts or site scraping. */
-importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js", "provider-auto-handoff.js");
+importScripts("agent-playbooks.js", "supervisor-plan.js", "supervisor-job-intake.js", "task-manager.js", "provider-auto-handoff.js");
 const manager = new globalThis.TheOrgTaskManager(chrome);
 const planner = globalThis.TheOrgPlanner;
 const autoHandoff = new globalThis.TheOrgProviderAutoHandoff(chrome,manager,planner);
@@ -37,6 +37,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
         message.taskId,message.providerId,message.agentId,message.approved)};
       case "automation_bulk_agents": return {ok:true,...await autoHandoff.bulk(
         message.taskId,message.approved)};
+      case "automation_answer": return {ok:true,job:await autoHandoff.answer(
+        message.taskId,message.answers,message.approved)};
       case "automation_list": return {ok:true,...await autoHandoff.list()};
       case "automation_status": return {ok:true,automation:await autoHandoff.status(message.taskId)};
       case "automation_cancel": return {ok:true,...await autoHandoff.cancel(
