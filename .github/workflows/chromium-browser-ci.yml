@@ -1,0 +1,134 @@
+name: TheOrg Offline Chromium Browser
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Compile standalone Windows bridge and test
+        shell: pwsh
+        run: |
+          dotnet publish engine/bridge/TheOrg.Bridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out/bridge
+          if ($LASTEXITCODE -ne 0) { throw 'Bridge compile failed' }
+          & out/bridge/TheOrg.Bridge.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Bridge failed self-test' }
+          python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Native Messaging failed' }
+      - name: Obtain official Chromium snapshot - fail if Google Chrome
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Force out/browser | Out-Null
+          $base='https://storage.googleapis.com/chromium-browser-snapshots/Win_x64'
+          $rev=([string](Invoke-RestMethod "$base/LAST_CHANGE")).Trim()
+          if ($rev -notmatch '^\d{6,8}$') { throw 'Invalid revision' }
+          $url="$base/$rev/chrome-win.zip"
+          Invoke-WebRequest -Uri $url -OutFile out/browser/chrome-win.zip
+          $zipHash=(Get-FileHash out/browser/chrome-win.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          Expand-Archive -LiteralPath out/browser/chrome-win.zip -DestinationPath out/browser -Force
+          $browser='out/browser/chrome-win/chrome.exe'
+          if (!(Test-Path $browser)) { throw 'Missing Chromium binary' }
+          $meta=(Get-Item $browser).VersionInfo
+          if ($meta.ProductName -notmatch 'Chromium' -or $meta.ProductName -match 'Google Chrome') { throw "Not Chromium: $($meta.ProductName)" }
+          $exeHash=(Get-FileHash $browser -Algorithm SHA256).Hash.ToLowerInvariant()
+          @(
+            'Official Chromium snapshot - NOT Google Chrome for Testing'
+            "Revision: $rev"
+            "Product: $($meta.ProductName)"
+            "Version: $($meta.ProductVersion)"
+            "Source: $url"
+            "Zip SHA256: $zipHash"
+            "Executable SHA256: $exeHash"
+            "TheOrg source commit: $env:GITHUB_SHA"
+            'The Chromium binary is NOT internally rebranded; TheOrg is a separate launcher and workspace.'
+            'No auto-updater included. Apply trusted security rebuilds regularly.'
+          ) | Set-Content out/browser/BROWSER_SOURCE.txt -Encoding utf8
+          Remove-Item out/browser/chrome-win.zip
+      - name: Preserve Chromium license and distribution notices
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/chromium/chromium/main/LICENSE' -OutFile 'out/browser/LICENSE'
+          if (!(Test-Path 'out/browser/LICENSE') -or (Get-Item 'out/browser/LICENSE').Length -lt 500) { throw 'Missing Chromium source license' }
+          @'
+          TheOrg Browser developer preview — third-party notices
+          Chromium copyright (c) The Chromium Authors.
+          This software bundles an unmodified upstream Chromium snapshot.
+          Its many third-party components have independent notices and license obligations.
+          See: https://chromium.googlesource.com/chromium/src/+/main/
+          See: https://www.chromium.org/Home/chromium-credits/
+          Before public redistribution, produce and audit full notices for this exact Chromium revision.
+          '@ | Set-Content -LiteralPath 'out/browser/LICENSES.chromium.html' -Encoding UTF8
+      - name: Generate branded desktop icon and compile NSIS
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          New-Item -ItemType Directory -Force out/branding,out/installer | Out-Null
+          $bmp=New-Object Drawing.Bitmap(64,64)
+          $g=[Drawing.Graphics]::FromImage($bmp)
+          $g.Clear([Drawing.Color]::FromArgb(16,30,58))
+          $font=New-Object Drawing.Font('Segoe UI',40,[Drawing.FontStyle]::Bold,[Drawing.GraphicsUnit]::Pixel)
+          $g.DrawString('T',$font,[Drawing.Brushes]::White,11,1)
+          $ico=[Drawing.Icon]::FromHandle($bmp.GetHicon())
+          $file=[IO.File]::Create('out/branding/TheOrg.ico')
+          $ico.Save($file);$file.Close();$g.Dispose();$font.Dispose();$bmp.Dispose()
+          choco install nsis --yes --no-progress --limit-output
+          $makensis=Join-Path ([Environment]::GetEnvironmentVariable('ProgramFiles(x86)')) 'NSIS\makensis.exe'
+          & $makensis /V2 tools/TheOrgChromium.nsi
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS build failed' }
+      - name: Silent install, native messaging registration and uninstall smoke test
+        shell: pwsh
+        run: |
+          $exe=(Resolve-Path out/installer/TheOrg-Browser-Chromium-Win-x64-unsigned.exe).Path
+          $res=Start-Process $exe -ArgumentList '/S' -Wait -PassThru
+          if ($res.ExitCode -ne 0) { throw 'Install failed' }
+          $root=Join-Path $env:LOCALAPPDATA 'Programs\TheOrg Browser'
+          $browser=Join-Path $root 'browser\chrome.exe'
+          $bridge=Join-Path $root 'TheOrg.Bridge.exe'
+          $launcher=Join-Path $root 'TheOrg-Start.ps1'
+          foreach($p in @($browser,$bridge,$launcher,(Join-Path $root 'chrome-extension\manifest.json'))) {
+            if (!(Test-Path $p)) { throw "Incomplete install: $p" }
+          }
+          if ((Get-Item $browser).VersionInfo.ProductName -notmatch 'Chromium') { throw 'Not Chromium' }
+          & $launcher -ValidateOnly
+          & $bridge --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Installed bridge self-test failed' }
+          $id='abcdefghijklmnopabcdefghijklmnop'
+          & (Join-Path $root 'install-chromium-host.ps1') -ExtensionId $id -ExecutablePath $bridge
+          $key='HKCU:\Software\Chromium\NativeMessagingHosts\com.theorg.bridge'
+          if (!(Test-Path $key)) { throw 'Chromium native host registry entry missing' }
+          $path=(Get-Item $key).GetValue('')
+          $native=Get-Content $path -Raw | ConvertFrom-Json
+          if ($native.allowed_origins.Count -ne 1 -or $native.allowed_origins[0] -cne "chrome-extension://$id/") { throw 'Host origin mismatch' }
+          $u=Start-Process (Join-Path $root 'Uninstall.exe') -ArgumentList '/S' -Wait -PassThru
+          if ($u.ExitCode -ne 0 -or (Test-Path $browser) -or (Test-Path $key)) { throw 'Uninstall failed' }
+          Write-Host 'PASS package installation and Chromium host isolation. Real GUI acceptance remains pending.'
+      - name: Record binary fingerprints and upload complete installer
+        shell: pwsh
+        run: |
+          foreach($p in @('out/installer/TheOrg-Browser-Chromium-Win-x64-unsigned.exe','out/bridge/TheOrg.Bridge.exe','out/browser/chrome-win/chrome.exe')) {
+            $hash=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $p" | Add-Content out/installer/SHA256SUMS.txt
+          }
+          Copy-Item docs/CHROMIUM_BROWSER_INSTALL.md out/installer/START_HERE.md
+          Copy-Item out/browser/BROWSER_SOURCE.txt out/installer/BROWSER_SOURCE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TheOrg-Browser-Chromium-Win-x64-unsigned
+          path: |
+            out/installer/TheOrg-Browser-Chromium-Win-x64-unsigned.exe
+            out/installer/SHA256SUMS.txt
+            out/installer/START_HERE.md
+            out/installer/BROWSER_SOURCE.txt
+          retention-days: 30
+          if-no-files-found: error
