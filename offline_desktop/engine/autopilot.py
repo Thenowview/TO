@@ -112,10 +112,10 @@ def _execute(ident, project_id, objective, max_attempts):
         # could receive credit for tests that were already failing and commit
         # an unverified regression. This executes only the detached snapshot.
         baseline=coding._run_tests_sandbox(coding._project(project_id))
-        if baseline.get('mode')!='sandbox' or baseline.get('passed') is not True or baseline.get('network') not in ('none', None):
+        if not coding.accepted_test_evidence(baseline, require_sandbox=True):
             raise core.EngineError('Existing tests did not pass in the offline sandbox before editing; no code changed.')
         baseline_summary={'passed':True,'exit_code':baseline.get('exit_code'),
-                          'image_id':baseline.get('image_id'),
+                          'image_id':baseline.get('image_id'), 'test_count':baseline['test_count'],
                           'output_tail':str(baseline.get('output',''))[-900:]}
         core.audit('autopilot.baseline_passed',{'run':ident,'project':project_id,'baseline':baseline_summary})
         for attempt in range(1,max_attempts+1):
@@ -141,7 +141,8 @@ def _execute(ident, project_id, objective, max_attempts):
             entry['status']=result['status']
             entry['test_evidence']=result.get('evidence',{}).get('checks',{})
             _save(ident,'running',history)
-            if result['status']=='verified':
+            if result['status']=='verified' and coding.accepted_test_evidence(
+                    result.get('evidence',{}).get('checks',{}).get('unit_tests'), require_sandbox=True):
                 _checkpoint(ident)
                 done=coding.commit(plan['id'],'TheOrg Autopilot: '+objective[:75])
                 entry['status']='committed'
