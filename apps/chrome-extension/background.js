@@ -1,13 +1,22 @@
 /* TheOrg MV3 background — extension-owned messages only, no content scripts or site scraping. */
-importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js");
+importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js", "provider-auto-handoff.js");
 const manager = new globalThis.TheOrgTaskManager(chrome);
 const planner = globalThis.TheOrgPlanner;
+const autoHandoff = new globalThis.TheOrgProviderAutoHandoff(chrome,manager,planner);
 
 chrome.action.onClicked.addListener(async () => {
   try { await chrome.tabs.create({url: chrome.runtime.getURL("home.html"),active:true}); }
   catch(e){ console.warn("TheOrg home could not open",String(e)); }
 });
 chrome.tabs.onRemoved.addListener(id=>manager.handleRemoved(id).catch(()=>undefined));
+chrome.tabs.onUpdated.addListener((tabId,info,tab)=>{
+  if(info.status==="complete" && tab?.active)
+    void autoHandoff.maybeStart(tab).catch(e=>console.warn("Auto handoff blocked",String(e)));
+});
+chrome.tabs.onActivated.addListener(({tabId})=>{
+  void chrome.tabs.get(tabId).then(tab=>autoHandoff.maybeStart(tab))
+    .catch(()=>undefined);
+});
 
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(sender.id!==chrome.runtime.id || !message || typeof message!=="object" ||
@@ -16,6 +25,13 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     switch(message.command){
       case "ping": return await manager.checkEngine();
       case "providers": return {ok:true,providers:manager.providers()};
+      case "automation_arm": return {ok:true,...await autoHandoff.arm(
+        message.taskId,message.providerId,message.approved)};
+      case "automation_status": return {ok:true,automation:await autoHandoff.status(message.taskId)};
+      case "automation_cancel": return {ok:true,...await autoHandoff.cancel(message.taskId)};
+      case "theorg.provider.event":
+        if(!sender.tab)throw new Error("Provider message must originate in an allowlisted tab");
+        return {ok:true,...await autoHandoff.onPageEvent(message,sender)};
       case "agent_skills": return {ok:true,version:globalThis.TheOrgSkills.version,profiles:globalThis.TheOrgSkills.profiles(),rubric:globalThis.TheOrgSkills.qualityRubric()};
       case "orders": return {ok:true,orders:await manager.listOrders()};
       case "execution_queue": return {ok:true,...await manager.executionQueue(message.taskId)};
