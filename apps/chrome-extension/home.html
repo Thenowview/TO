@@ -64,6 +64,28 @@
       </div>
       <form id="newOrder" class="composer">
         <div class="composer-top"><label for="companyId">Company workspace</label><input id="companyId" value="demo" pattern="[a-z0-9_-]{1,40}" maxlength="40" title="Lowercase letters, numbers, hyphen and underscore"></div>
+        <details class="company-agents-panel" id="companyAgentsPanel">
+          <summary><strong>Company AI team</strong> — named agents, expertise and responsibilities</summary>
+          <p class="muted">Every company has its own customizable team. Names and instructions change task routing, not access permissions. Owner approval and independent QA remain mandatory.</p>
+          <div class="action-row"><button id="loadCompanyAgents" type="button" class="secondary">Load company team</button>
+            <button id="recommendCompanyAgents" type="button" class="secondary">Suggest agents for my request</button></div>
+          <div id="companyAgentRecommendations" class="review-result" role="status">Enter a request to identify the relevant agents.</div>
+          <div id="companyAgentCards" class="company-agent-cards" aria-live="polite">Load a company team to view profiles.</div>
+          <div class="company-agent-editor">
+            <label for="companyAgentSelect">Select agent</label><select id="companyAgentSelect"><option value="">Select a profile</option></select>
+            <div class="company-agent-fields">
+              <label for="companyAgentName">Agent name <input id="companyAgentName" maxlength="60"></label>
+              <label for="companyAgentTitle">Job title <input id="companyAgentTitle" maxlength="90"></label>
+              <label for="companyAgentDepartment">Department <input id="companyAgentDepartment" maxlength="90"></label>
+              <label for="companyAgentExpertise">Areas of expertise, comma-separated <textarea id="companyAgentExpertise" rows="2"></textarea></label>
+              <label for="companyAgentResponsibilities">Responsibilities <textarea id="companyAgentResponsibilities" rows="2" maxlength="1200"></textarea></label>
+              <label for="companyAgentInstructions">Working instructions <textarea id="companyAgentInstructions" rows="3" maxlength="1600"></textarea></label>
+              <label for="companyAgentEnabled"><input id="companyAgentEnabled" type="checkbox" checked> Agent available for routing</label>
+            </div>
+            <div class="action-row"><button id="saveCompanyAgent" type="button" class="primary">Save profile</button>
+              <button id="resetCompanyAgent" type="button" class="secondary">Restore default</button></div>
+          </div>
+        </details>
         <label class="sr-only" for="ownerInstruction">Work order instruction</label>
         <textarea id="ownerInstruction" required minlength="5" maxlength="5000" rows="4" placeholder="Tell your Supervisor what you want to accomplish. Describe the intended outcome, constraints, and the files you need."></textarea>
         <div class="auto-provider-config">
