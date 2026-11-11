@@ -1,232 +1,281 @@
-/* TheOrg opt-in ChatGPT/Claude page automation.
- * A user-approved, task-bound prompt may be sent once in a NEW chat only.
- * No credentials, cookies, general site browsing, or other AI platforms.
- * Provider responses are untrusted and must be independently reviewed.
+/* TheOrg: approved multi-order AI provider queue. Four active jobs maximum.
+ * The browser must be opened by the user AFTER queueing. No provider auto-login.
+ * A crash cannot automatically re-send the same instruction.
  */
 (() => {
-  "use strict";
-  const KEY="theorgProviderAutoHandoffV1";
-  const ALLOWED=Object.freeze({chatgpt:"https://chatgpt.com",claude:"https://claude.ai"});
-  const ID=/^[a-f0-9]{32}$/;
-  const TTL_MS=10*60*1000;
-  const DONE_MS=8*60*1000;
-
-  function providerFor(url) {
+"use strict";
+const QUEUE_KEY="theorgAutoProviderQueueV2";
+const TAB_KEY="theorgNewProviderTabsV2";
+const LIMIT=4, MAX_JOBS=120;
+const WAIT_TTL=24*60*60*1000, ACTIVE_TTL=8*60*1000;
+const ACTIVE=new Set(["starting","waiting_response"]);
+const PENDING=new Set(["queued",...ACTIVE]);
+const HOSTS=Object.freeze({chatgpt:"https://chatgpt.com",claude:"https://claude.ai"});
+const TASK=/^[a-f0-9]{32}$/, AGENT=/^[a-z][a-z0-9_-]{0,39}$/;
+const fail=e=>String(e?.message||e).slice(0,230);
+function providerFor(url){
+  try {
+    const x=new URL(url);
+    if(x.protocol!=="https:" || !["/","/new"].includes(x.pathname))return null;
+    return Object.keys(HOSTS).find(p=>HOSTS[p]===x.origin)||null;
+  }catch{return null;}
+}
+function validHost(url,provider){
+  try{const u=new URL(url);return u.protocol==="https:"&&HOSTS[provider]===u.origin;}catch{return false;}
+}
+class ProviderAutoHandoff {
+  constructor(api,manager,planner){this.api=api;this.manager=manager;this.planner=planner;this.serial=Promise.resolve();}
+  lock(fn){const v=this.serial.then(fn,fn);this.serial=v.catch(()=>undefined);return v;}
+  async load(){return (await this.api.storage.local.get(QUEUE_KEY))[QUEUE_KEY]||[];}
+  async save(data){await this.api.storage.local.set({[QUEUE_KEY]:data});}
+  async tabCandidates(){return (await this.api.storage.session.get(TAB_KEY))[TAB_KEY]||{};}
+  async noteTab(tab){
+    if(!Number.isInteger(tab?.id))return;
+    const pending=await this.tabCandidates();
+    pending[tab.id]=Date.now();
+    for(const [id,at] of Object.entries(pending))
+      if(Date.now()-at>WAIT_TTL)delete pending[id];
+    await this.api.storage.session.set({[TAB_KEY]:pending});
+  }
+  async forgetTab(tabId){
+    const pending=await this.tabCandidates();
+    if(pending[tabId]){delete pending[tabId];await this.api.storage.session.set({[TAB_KEY]:pending});}
+  }
+  safe(job){
+    const {prompt,nonce,transfers,...exposed}=job;
+    return {...exposed,hasPendingPrompt:Boolean(prompt)};
+  }
+  async sync(job){
+    const data=await this.manager.orders(),order=data[job.taskId];
+    if(!order)return;
+    order.automationJobs=order.automationJobs||{};
+    const old=order.automationJobs[job.id]||{};
+    order.automationJobs[job.id]={
+      ...old,jobId:job.id,agentId:job.agentId,
+      providerId:job.actualProvider||job.providerId,status:job.status,
+      createdUtc:job.createdUtc,updatedUtc:new Date().toISOString(),
+      expiresAt:job.expiresAt,tabId:job.tabId,error:job.error||""
+    };
+    await this.manager.saveOrders(data);
+  }
+  async expire(jobs){
+    let changed=false;
+    for(const j of jobs){
+      if(PENDING.has(j.status)&&Date.now()>j.expiresAt){
+        j.status="interrupted";j.prompt="";j.transfers={};
+        j.error="Authorization expired or provider response timed out; requeue after review.";
+        await this.sync(j);changed=true;
+      }
+    }
+    if(changed)await this.save(jobs);
+  }
+  async create(taskId,providerId,agentId,approved,customInstruction=null){
+    if(approved!==true||!TASK.test(taskId)||
+       !["chatgpt","claude","auto"].includes(providerId)||
+       !(agentId==="supervisor"||AGENT.test(agentId)))
+      throw new Error("Explicit order/provider/agent permission is required.");
+    const data=await this.manager.orders(),order=data[taskId];
+    if(!order||order.phase==="archived")throw new Error("Order missing or archived.");
+    let prompt;
+    if(agentId==="supervisor"){
+      prompt=typeof customInstruction==="string"?customInstruction:
+        this.planner.supervisorPrompt(order.instruction);
+    }else{
+      if(!order.plan?.reviewed)throw new Error("Approve the Supervisor plan first.");
+      const q=await this.manager.executionQueue(taskId);
+      const entry=q.queue.find(x=>x.agentId===agentId);
+      if(entry?.state!=="ready_for_manual_provider_consultation")
+        throw new Error("Specialist dependencies, plan approval or QA are still pending.");
+      if(!["chatgpt","claude"].includes(entry.providerId))
+        throw new Error("Automatic specialist dispatch only supports ChatGPT and Claude.");
+      if(providerId!=="auto"&&providerId!==entry.providerId)
+        throw new Error("Specialist's approved provider does not match.");
+      providerId=entry.providerId;prompt=await this.manager.agentPrompt(taskId,agentId);
+    }
+    if(typeof prompt!=="string"||prompt.length<10||prompt.length>15000)
+      throw new Error("Supervisor prompt exceeds authorized size.");
+    return this.lock(async()=>{
+      const jobs=await this.load();await this.expire(jobs);
+      if(jobs.some(j=>j.taskId===taskId&&j.agentId===agentId&&PENDING.has(j.status)))
+        throw new Error("An agent already has an outstanding request in this order.");
+      if(jobs.length>=MAX_JOBS){
+        const oldestCompleted=jobs.findIndex(j=>!PENDING.has(j.status));
+        if(oldestCompleted<0)throw new Error("Queue capacity reached; archive old requests first.");
+        jobs.splice(oldestCompleted,1);
+      }
+      const at=Date.now();
+      const job={id:crypto.randomUUID(),nonce:crypto.randomUUID(),taskId,
+        companyId:order.companyId,agentId,providerId,actualProvider:null,
+        status:"queued",prompt,tabId:null,error:"",transfers:{},
+        createdAt:at,createdUtc:new Date().toISOString(),expiresAt:at+WAIT_TTL};
+      jobs.push(job);
+      await this.save(jobs);await this.sync(job);
+      return this.safe(job);
+    });
+  }
+  async arm(taskId,providerId,approved){return this.create(taskId,providerId,"supervisor",approved);}
+  async bulk(taskId,approved){
+    if(approved!==true)throw new Error("Bulk agent scheduling requires approval.");
+    const q=await this.manager.executionQueue(taskId);
+    if(!q.planApproved)throw new Error("Approve the specialist plan first.");
+    const ready=q.queue.filter(j=>j.state==="ready_for_manual_provider_consultation"&&
+      ["chatgpt","claude"].includes(j.providerId)).slice(0,8);
+    if(!ready.length)throw new Error("No eligible specialists; check dependencies.");
+    const queued=[],errors=[];
+    for(const role of ready){
+      try{queued.push(await this.create(taskId,role.providerId,role.agentId,true));}
+      catch(e){errors.push({agentId:role.agentId,error:fail(e)});}
+    }
+    return {queued:queued.map(j=>this.safe(j)),errors};
+  }
+  async list(){
+    return this.lock(async()=>{
+      const jobs=await this.load();await this.expire(jobs);
+      const active=jobs.filter(j=>ACTIVE.has(j.status)).length;
+      return {jobs:jobs.map(j=>this.safe(j)).reverse(),
+        active,queued:jobs.filter(j=>j.status==="queued").length,
+        availableSlots:Math.max(0,LIMIT-active),maxActive:LIMIT};
+    });
+  }
+  async status(taskId){
+    if(!TASK.test(taskId))throw new Error("Invalid order.");
+    const all=await this.list();
+    return {...all,jobs:all.jobs.filter(j=>j.taskId===taskId)};
+  }
+  async cancel(taskId,jobId){
+    return this.lock(async()=>{
+      const jobs=await this.load(),job=jobs.find(j=>j.taskId===taskId&&j.id===jobId);
+      if(!job||!PENDING.has(job.status))throw new Error("This request is not pending.");
+      job.status="cancelled";job.prompt="";job.transfers={};
+      job.error="Cancelled by Supervisor.";
+      await this.save(jobs);await this.sync(job);
+      return {taskId,jobId,status:job.status};
+    });
+  }
+  async maybeStart(tab){
+    if(!Number.isInteger(tab?.id)||!tab.active)return null;
+    const provider=providerFor(tab.url||"");if(!provider)return null;
+    const candidate=(await this.tabCandidates())[tab.id];
+    if(!candidate)return null; // Never repurpose a personal tab opened before authorization.
+    const claim=await this.lock(async()=>{
+      const jobs=await this.load();await this.expire(jobs);
+      if(jobs.filter(j=>ACTIVE.has(j.status)).length>=LIMIT)return null;
+      if(jobs.some(j=>j.tabId===tab.id))return null;
+      // FIFO amongst eligible requests for this provider.
+      const job=jobs.find(j=>j.status==="queued"&&
+        (j.providerId==="auto"||j.providerId===provider)&&candidate>=j.createdAt);
+      if(!job)return null;
+      job.status="starting";job.tabId=tab.id;job.actualProvider=provider;
+      job.expiresAt=Date.now()+ACTIVE_TTL;
+      const prompt=job.prompt;job.prompt=""; // Restart may interrupt, never resubmit.
+      await this.save(jobs);await this.sync(job);
+      await this.forgetTab(tab.id);
+      return {id:job.id,nonce:job.nonce,providerId:provider,prompt};
+    });
+    if(!claim)return null;
     try{
-      const parsed=new URL(url);
-      if(parsed.protocol!=="https:")return null;
-      const found=Object.keys(ALLOWED).find(x=>ALLOWED[x]===parsed.origin);
-      if(!found)return null;
-      if(found==="chatgpt" && !["/","/new"].includes(parsed.pathname))return null;
-      if(found==="claude" && !["/","/new"].includes(parsed.pathname))return null;
-      return found;
-    }catch{return null;}
+      await this.api.scripting.executeScript({target:{tabId:tab.id},files:["provider-page-agent.js"]});
+      const reply=await this.api.tabs.sendMessage(tab.id,{
+        command:"theorg.provider.begin",nonce:claim.nonce,
+        providerId:claim.providerId,prompt:claim.prompt
+      });
+      if(reply?.accepted!==true)throw new Error("Provider new-chat page could not accept prompt.");
+    }catch(e){await this.failJob(claim.nonce,"Page integration failed: "+fail(e));}
+    return claim;
   }
-  function originOf(url){
-    try{return new URL(url).origin;}catch{return null;}
-  }
-  function isAllowedProvider(url,expected){
-    return typeof expected==="string" && ALLOWED[expected]===originOf(url);
-  }
-  class ProviderAutoHandoff{
-    constructor(chromeApi,manager,planner){
-      this.api=chromeApi;this.manager=manager;this.planner=planner;
-      this.attaching=new Set();
-    }
-    async state(){
-      const all=await this.api.storage.local.get(KEY);
-      return all[KEY] || null;
-    }
-    async saveState(v){await this.api.storage.local.set({[KEY]:v});}
-    async arm(taskId,providerId,approved){
-      if(approved!==true || !ID.test(taskId) ||
-          !["chatgpt","claude","auto"].includes(providerId))
-        throw new Error("An explicit work-order and provider automation approval is required");
-      const orders=await this.manager.orders(),order=orders[taskId];
-      if(!order || order.phase==="archived")throw new Error("Unknown or archived work order");
-      const current=await this.state();
-      if(current && ["armed","starting","waiting_response"].includes(current.status) &&
-          Date.now()<current.expiresAt && current.taskId!==taskId)
-        throw new Error("An existing provider automation is pending; cancel it before starting another.");
-      const prompt=this.planner.supervisorPrompt(order.instruction);
-      const nonce=crypto.randomUUID();
-      const record={taskId,companyId:order.companyId,providerId,status:"armed",nonce,
-                    prompt,expiresAt:Date.now()+TTL_MS,startedUtc:new Date().toISOString(),
-                    tabId:null,error:null};
-      order.autoHandoff={providerId,status:"armed",updatedUtc:record.startedUtc,
-        expiresAt:record.expiresAt,autoSubmitAuthorized:true};
-      await this.manager.saveOrders(orders);
-      await this.saveState(record);
-      return {taskId,providerId,status:record.status,
-        expiresAt:record.expiresAt,note:"Open a NEW ChatGPT or Claude chat in Chrome. TheOrg will send the exact approved prompt once."};
-    }
-    async cancel(taskId){
-      const current=await this.state();
-      if(!current || current.taskId!==taskId)throw new Error("No automation found for this order");
-      if(current.status==="saved")throw new Error("Already saved; no active automation to cancel");
-      current.status="cancelled";current.prompt="";
-      await this.saveState(current);
-      const all=await this.manager.orders();
-      if(all[taskId]?.autoHandoff){all[taskId].autoHandoff.status="cancelled";await this.manager.saveOrders(all);}
-      return {taskId,status:"cancelled"};
-    }
-    async status(taskId){
-      const all=await this.manager.orders();
-      const order=all[taskId];
-      if(!order)throw new Error("Unknown work order");
-      const a=order.autoHandoff;
-      return a || {status:"not_enabled"};
-    }
-    async maybeStart(tab) {
-      if(!tab || !Number.isInteger(tab.id) || !tab.active)return;
-      const detected=providerFor(tab.url||"");
-      if(!detected || this.attaching.has(tab.id))return;
-      const state=await this.state();
-      if(!state || state.status!=="armed" || Date.now()>state.expiresAt ||
-          (state.providerId!=="auto"&&state.providerId!==detected))return;
-      this.attaching.add(tab.id);
+  async dispatchWaiting(){
+    const candidates=await this.tabCandidates();
+    const tabs=Object.keys(candidates).map(Number);
+    for(const id of tabs){
+      if((await this.list()).availableSlots===0)break;
       try{
-        // Mark before injecting: service-worker restarts must not cause double submission.
-        state.status="starting";state.tabId=tab.id;state.actualProvider=detected;
-        state.expiresAt=Date.now()+DONE_MS;
-        await this.saveState(state);
-        const orders=await this.manager.orders();
-        if(orders[state.taskId]?.autoHandoff){
-          orders[state.taskId].autoHandoff.providerId=detected;
-          orders[state.taskId].autoHandoff.status="in_progress";
-          await this.manager.saveOrders(orders);
-        }
-        await this.api.scripting.executeScript({
-          target:{tabId:tab.id},files:["provider-page-agent.js"]
-        });
-        const response=await this.api.tabs.sendMessage(tab.id,{
-          command:"theorg.provider.begin",nonce:state.nonce,providerId:detected,
-          prompt:state.prompt
-        });
-        if(!response || response.accepted!==true)
-          throw new Error("Provider page could not accept the instruction.");
-        // Never overwrite a newer submitted/captured status from the page script.
-        const latest=await this.state();
-        if(latest?.nonce===state.nonce && latest.status==="starting"){
-          latest.prompt="";
-          await this.saveState(latest);
-        }
-      }catch(error){
-        await this.setBlocked(state,"Page integration failed: "+String(error?.message||error));
-      }finally{this.attaching.delete(tab.id);}
-    }
-    async setBlocked(current,message){
-      current.status="blocked";current.prompt="";current.error=String(message).slice(0,220);
-      await this.saveState(current);
-      const all=await this.manager.orders();
-      if(all[current.taskId]?.autoHandoff){
-        all[current.taskId].autoHandoff.status="blocked";
-        all[current.taskId].autoHandoff.error=current.error;
-        await this.manager.saveOrders(all);
-      }
-    }
-    async onFileEvent(message,sender){
-      const current=await this.state();
-      if(!current || message.nonce!==current.nonce ||
-         sender?.tab?.id!==current.tabId ||
-         !isAllowedProvider(sender.tab.url||"",current.actualProvider) ||
-         !["saved","waiting_response","starting"].includes(current.status) ||
-         Date.now()>current.expiresAt)
-        throw new Error("Unauthorized or expired AI file capture");
-      const taskId=current.taskId;
-      const sourceUrl=ALLOWED[current.actualProvider];
-      current.transfers=current.transfers||{};
-      if(message.command==="theorg.provider.file.start"){
-        if(Object.keys(current.transfers).length>=2)
-          throw new Error("Maximum of two AI-generated files per work order");
-        const transfer=await this.manager.beginAutomaticFile(taskId,current.actualProvider,
-            message.fileName,message.bytes,message.sha256,sourceUrl);
-        current.transfers[transfer.uploadId]={
-          accessToken:transfer.accessToken,fileName:message.fileName,bytes:message.bytes
-        };
-        await this.saveState(current);
-        return {transfer};
-      }
-      const upload=current.transfers[message.uploadId];
-      if(!upload || upload.accessToken!==message.accessToken)
-        throw new Error("Unknown AI file upload token");
-      if(message.command==="theorg.provider.file.chunk"){
-        if(!Number.isInteger(message.index)||message.index<0 ||
-           typeof message.dataBase64!=="string"||message.dataBase64.length>185000)
-          throw new Error("Invalid AI file chunk");
-        const result=await this.manager.artifactTransfer(taskId,"append_artifact_chunk",
-            message.uploadId,message.accessToken,{index:message.index,
-              dataBase64:message.dataBase64});
-        return {result};
-      }
-      if(message.command==="theorg.provider.file.finish"){
-        const result=await this.manager.completeAutomaticFile(
-            taskId,message.uploadId,message.accessToken);
-        // Do not persist upload access tokens once a file completes.
-        const latest=await this.state();
-        if(latest?.nonce===current.nonce){
-          delete latest.transfers?.[message.uploadId];
-          await this.saveState(latest);
-        }
-        return {result};
-      }
-      throw new Error("Unsupported file automation event");
-    }
-    async onPageEvent(message,sender){
-      const current=await this.state();
-      if(!current || !message || message.nonce!==current.nonce ||
-          !Number.isInteger(sender?.tab?.id) || sender.tab.id!==current.tabId ||
-          !isAllowedProvider(sender.tab.url||"",current.actualProvider) ||
-          !["starting","waiting_response","saved"].includes(current.status))
-        throw new Error("Unauthorized or stale automated provider response.");
-      if(Date.now()>current.expiresAt){
-        await this.setBlocked(current,"AI provider response exceeded the timeout");
-        throw new Error("Provider capture expired.");
-      }
-      if(message.status==="file_warning"){
-        if(current.status!=="saved")throw new Error("File warning before response capture");
-        const all=await this.manager.orders();
-        const order=all[current.taskId];
-        if(order?.autoHandoff){
-          order.autoHandoff.fileWarnings=order.autoHandoff.fileWarnings||[];
-          if(order.autoHandoff.fileWarnings.length<4)
-            order.autoHandoff.fileWarnings.push(String(message.error||"File capture failed").slice(0,250));
-          await this.manager.saveOrders(all);
-        }
-        return {status:"file_warning"};
-      }
-      if(current.status==="saved")throw new Error("Provider response already consumed");
-      if(message.status==="submitted"){
-        current.status="waiting_response";
-        current.prompt="";
-        await this.saveState(current);
-        return {status:current.status};
-      }
-      if(message.status==="blocked"){
-        await this.setBlocked(current,String(message.error||"Unsupported provider page or sign-in needed"));
-        return {status:"blocked"};
-      }
-      if(message.status!=="captured" || typeof message.content!=="string" ||
-          message.content.length>90000 || message.content.trim().length<10)
-        throw new Error("Invalid provider content or unexpected event");
-      // Bound provenance; never store URL query parameters, fragments, credentials or secrets.
-      const url=new URL(sender.tab.url);
-      const source=url.origin+url.pathname.slice(0,420);
-      const result=await this.manager.saveAutomaticResult(
-          current.taskId,current.actualProvider,message.content,source);
-      if(message.truncated===true){
-        const all=await this.manager.orders();
-        if(all[current.taskId]?.autoHandoff){
-          all[current.taskId].autoHandoff.truncated=true;
-          await this.manager.saveOrders(all);
-        }
-      }
-      current.status="saved";current.prompt="";current.result=result;
-      await this.saveState(current);
-      return {status:"saved",result};
+        const tab=await this.api.tabs.get(id);
+        if(tab?.active)await this.maybeStart(tab);
+      }catch{await this.forgetTab(id);}
     }
   }
-  globalThis.TheOrgProviderAutoHandoff=ProviderAutoHandoff;
-  if(typeof module!=="undefined"&&module.exports)
-    module.exports={ProviderAutoHandoff,providerFor,isAllowedProvider};
+  async failJob(nonce,message){
+    return this.lock(async()=>{
+      const jobs=await this.load(),j=jobs.find(x=>x.nonce===nonce);
+      if(!j||!ACTIVE.has(j.status))return;
+      j.status="blocked";j.prompt="";j.error=String(message).slice(0,230);
+      await this.save(jobs);await this.sync(j);
+      void this.dispatchWaiting().catch(()=>undefined);
+    });
+  }
+  async event(message,sender){
+    const jobs=await this.load(),j=jobs.find(x=>x.nonce===message.nonce);
+    if(!j||sender?.tab?.id!==j.tabId||!validHost(sender.tab.url,j.actualProvider))
+      throw new Error("Invalid provider tab, job or response authorization.");
+    if(Date.now()>j.expiresAt)throw new Error("Provider job expired.");
+    if(message.status==="submitted"){
+      if(j.status!=="starting")throw new Error("Duplicate provider submission.");
+      j.status="waiting_response";await this.save(jobs);await this.sync(j);
+      return {status:j.status,jobId:j.id};
+    }
+    if(message.status==="file_warning"){
+      if(j.status!=="saved")throw new Error("File warning before response capture.");
+      const data=await this.manager.orders(),o=data[j.taskId];
+      const record=o?.automationJobs?.[j.id];
+      if(record){
+        record.fileWarnings=record.fileWarnings||[];
+        if(record.fileWarnings.length<4)record.fileWarnings.push(fail(message.error));
+        await this.manager.saveOrders(data);
+      }
+      return {status:"file_warning"};
+    }
+    if(message.status==="blocked"){
+      await this.failJob(j.nonce,fail(message.error));
+      return {status:"blocked",jobId:j.id};
+    }
+    if(message.status!=="captured"||j.status!=="waiting_response"||
+       typeof message.content!=="string"||message.content.length>90000||
+       message.content.trim().length<10)
+      throw new Error("Invalid or duplicate AI response.");
+    const url=new URL(sender.tab.url),source=url.origin+url.pathname.slice(0,400);
+    const output=await this.manager.saveAutomaticResult(j.taskId,j.actualProvider,
+      message.content,source,j.agentId,j.id);
+    j.status="saved";j.prompt="";j.result=output;
+    await this.save(jobs);await this.sync(j);
+    if(message.truncated===true){
+      const data=await this.manager.orders(),record=data[j.taskId]?.automationJobs?.[j.id];
+      if(record){record.truncated=true;await this.manager.saveOrders(data);}
+    }
+    void this.dispatchWaiting().catch(()=>undefined);
+    return {status:"saved",jobId:j.id,result:output};
+  }
+  async fileEvent(message,sender){
+    const jobs=await this.load(),j=jobs.find(x=>x.nonce===message.nonce);
+    if(!j||j.status!=="saved"||sender?.tab?.id!==j.tabId||
+       !validHost(sender.tab.url,j.actualProvider)||
+       Date.now()>j.expiresAt)throw new Error("File transfer not authorized for this saved job.");
+    j.transfers=j.transfers||{};
+    const source=HOSTS[j.actualProvider];
+    if(message.command==="theorg.provider.file.start"){
+      if(Object.keys(j.transfers).length>=2)throw new Error("Maximum two generated files per job.");
+      const t=await this.manager.beginAutomaticFile(j.taskId,j.actualProvider,
+        message.fileName,message.bytes,message.sha256,source,j.agentId,j.id);
+      j.transfers[t.uploadId]={accessToken:t.accessToken};
+      await this.save(jobs);
+      return {transfer:t};
+    }
+    const t=j.transfers[message.uploadId];
+    if(!t||t.accessToken!==message.accessToken)throw new Error("Unknown file transfer token.");
+    if(message.command==="theorg.provider.file.chunk"){
+      const result=await this.manager.artifactTransfer(j.taskId,"append_artifact_chunk",
+        message.uploadId,message.accessToken,{index:message.index,dataBase64:message.dataBase64});
+      return {result};
+    }
+    if(message.command==="theorg.provider.file.finish"){
+      const result=await this.manager.completeAutomaticFile(j.taskId,
+        message.uploadId,message.accessToken,j.agentId,j.id);
+      delete j.transfers[message.uploadId];await this.save(jobs);
+      return {result};
+    }
+    throw new Error("Unsupported file transfer operation.");
+  }
+}
+globalThis.TheOrgProviderAutoHandoff=ProviderAutoHandoff;
+if(typeof module!=="undefined"&&module.exports)
+  module.exports={ProviderAutoHandoff,providerFor,validHost,LIMIT};
 })();
