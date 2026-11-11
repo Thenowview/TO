@@ -36,8 +36,8 @@ jobs:
         run: node --test tests/ui-contract.test.cjs
       - name: Test guided prompt starters and AI adviser handoff
         run: node --test tests/supervisor-starters.test.cjs
-      - name: Test named agent directory and company isolation
-        run: node --test tests/company-agent-directory.test.cjs
+      - name: Test named agent directory, company isolation and four-slot queue
+        run: node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs
       - name: Audit fail-closed production release gates
         run: |
           node --test tests/release-gates.test.cjs
