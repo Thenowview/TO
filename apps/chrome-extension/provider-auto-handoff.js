@@ -177,12 +177,25 @@
       if(!current || !message || message.nonce!==current.nonce ||
           !Number.isInteger(sender?.tab?.id) || sender.tab.id!==current.tabId ||
           !isAllowedProvider(sender.tab.url||"",current.actualProvider) ||
-          !["starting","waiting_response"].includes(current.status))
+          !["starting","waiting_response","saved"].includes(current.status))
         throw new Error("Unauthorized or stale automated provider response.");
       if(Date.now()>current.expiresAt){
         await this.setBlocked(current,"AI provider response exceeded the timeout");
         throw new Error("Provider capture expired.");
       }
+      if(message.status==="file_warning"){
+        if(current.status!=="saved")throw new Error("File warning before response capture");
+        const all=await this.manager.orders();
+        const order=all[current.taskId];
+        if(order?.autoHandoff){
+          order.autoHandoff.fileWarnings=order.autoHandoff.fileWarnings||[];
+          if(order.autoHandoff.fileWarnings.length<4)
+            order.autoHandoff.fileWarnings.push(String(message.error||"File capture failed").slice(0,250));
+          await this.manager.saveOrders(all);
+        }
+        return {status:"file_warning"};
+      }
+      if(current.status==="saved")throw new Error("Provider response already consumed");
       if(message.status==="submitted"){
         current.status="waiting_response";
         current.prompt="";
@@ -201,6 +214,13 @@
       const source=url.origin+url.pathname.slice(0,420);
       const result=await this.manager.saveAutomaticResult(
           current.taskId,current.actualProvider,message.content,source);
+      if(message.truncated===true){
+        const all=await this.manager.orders();
+        if(all[current.taskId]?.autoHandoff){
+          all[current.taskId].autoHandoff.truncated=true;
+          await this.manager.saveOrders(all);
+        }
+      }
       current.status="saved";current.prompt="";current.result=result;
       await this.saveState(current);
       return {status:"saved",result};
