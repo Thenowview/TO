@@ -2,13 +2,14 @@
   "manifest_version": 3,
   "name": "TheOrg — Supervisor Workspace",
   "version": "0.3.0",
-  "description": "Local-first Windows Supervisor with reviewed optional Ollama agents and durable SQLite jobs (developer preview).",
+  "description": "Local-first AI Supervisor with explicit task-scoped ChatGPT/Claude automation (developer preview).",
   "permissions": [
     "storage",
     "tabs",
     "tabGroups",
     "nativeMessaging",
-    "sidePanel"
+    "sidePanel",
+    "scripting"
   ],
   "background": {
     "service_worker": "background.js"
@@ -18,5 +19,9 @@
   },
   "side_panel": {
     "default_path": "home.html"
-  }
+  },
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*"
+  ]
 }
