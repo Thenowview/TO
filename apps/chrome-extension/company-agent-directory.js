@@ -105,7 +105,7 @@ class Directory{
     const results=roster.filter(p=>p.enabled&&p.id!=="supervisor"&&p.id!=="qa_auditor"&&p.id!=="security_officer")
       .map(p=>{
         // Existing SOP routing remains canonical; company expertise refines it.
-        let score=baseline.includes(p.id)?70-baseline.indexOf(p.id)*10:0;
+        let score=baseline.includes(p.id)?40-baseline.indexOf(p.id)*10:0;
         const matches=[];
         for(const phrase of p.expertise){
           const low=phrase.toLocaleLowerCase();
@@ -113,7 +113,7 @@ class Directory{
           const parts=[...tokenize(phrase)];
           const matched=parts.some(word=>terms.has(word));
           if(exact||matched){
-            score+=exact?30:10;matches.push(phrase);
+            score+=exact?55:15;matches.push(phrase);
           }
         }
         return {id:p.id,name:p.name,title:p.title,department:p.department,
