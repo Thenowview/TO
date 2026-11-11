@@ -296,7 +296,7 @@ def main():
         TOKEN=core.init()
         coding.init_schema()
         autopilot.init_schema()
-    coordination.init_schema()
+        coordination.init_schema()
         try:
             outcome=core.benchmark_local_model()
             print(json.dumps(outcome,ensure_ascii=False))
@@ -313,7 +313,7 @@ def main():
         TOKEN=core.init()
         coding.init_schema()
         autopilot.init_schema()
-    coordination.init_schema()
+        coordination.init_schema()
         print('PASS bundled dashboard, engine, SQLite and role registry')
         return 0
     TOKEN=core.init()
