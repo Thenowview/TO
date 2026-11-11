@@ -182,6 +182,34 @@ internal sealed class ArtifactStore
         };
     }
 
+    // Export a verified, explicitly captured artifact into a readable result file.
+    // Never execute its contents or use an untrusted name as a filesystem path.
+    internal object ExportReadable(string companyId, string orderId, string artifactId)
+    {
+        string folder = Folder(companyId, orderId);
+        var record = Verify(companyId, orderId, artifactId);
+        if (!record.IntegrityValid)
+            throw new ArgumentException("Artifact integrity verification failed");
+        if (!SafeAgent.IsMatch(record.AgentId) ||
+            !SafeFile.IsMatch(record.FileName) || record.FileName.Contains("..", StringComparison.Ordinal) ||
+            !AllowedTypes.Contains(Path.GetExtension(record.FileName)))
+            throw new ArgumentException("Unsafe artifact name");
+        string source = Path.Combine(folder, artifactId + ".blob");
+        string outputDir = Path.Combine(Path.GetDirectoryName(folder)!, "results");
+        Directory.CreateDirectory(outputDir);
+        string outputName = record.AgentId + "-" + artifactId[..8] + "-" + record.FileName;
+        string output = Path.Combine(outputDir, outputName);
+        File.Copy(source, output, overwrite: false);
+        return new {
+            fileName = outputName,
+            path = output,
+            sha256 = record.Sha256,
+            bytes = record.Bytes,
+            contentApproved = false,
+            note = "Verified bytes only; AI-generated content remains untrusted"
+        };
+    }
+
     internal ArtifactRecord[] List(string companyId, string orderId)
     {
         string folder = Folder(companyId, orderId);
