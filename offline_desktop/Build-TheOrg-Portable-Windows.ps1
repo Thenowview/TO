@@ -75,6 +75,14 @@ try {
   if(!(Test-Path $TokenFile)){throw 'Portable EXE did not create local access token'}
   $Token=(Get-Content -LiteralPath $TokenFile -Raw).Trim()
   $Headers=@{Authorization="Bearer $Token"}
+  # Reject unauthenticated API callers even though this is a localhost-only service.
+  $Rejected=$false
+  try {
+    Invoke-WebRequest 'http://127.0.0.1:18765/api/status' -UseBasicParsing -TimeoutSec 5 | Out-Null
+  } catch {
+    if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 401) {$Rejected=$true}
+  }
+  if(-not $Rejected){throw 'Unauthenticated local API was not rejected with HTTP 401'}
   $Status=Invoke-RestMethod 'http://127.0.0.1:18765/api/status' -Headers $Headers -TimeoutSec 5
   if($Status.version -ne '0.10.0' -or !$Status.coding_git_available -or !$Status.llama_binary){throw 'Packaged API, MinGit, or llama runtime failed readiness check'}
   $Project=Invoke-RestMethod 'http://127.0.0.1:18765/api/code/projects' -Method Post -Headers $Headers -ContentType 'application/json' -Body '{"confirmed":true,"slug":"ci_build_smoke"}' -TimeoutSec 10
