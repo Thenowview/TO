@@ -725,6 +725,23 @@
     }catch(e){showToast(e.message,true)}
   });
   $('companyRefresh').addEventListener('click',()=>loadCompany().catch(e=>showToast(e.message,true)));
+  $('companyPlanPreview').addEventListener('click',async()=>{
+    const company=$('companyName').value.trim(),project=$('companyProject').value;
+    const objective=$('companyObjective').value.trim(),btn=$('companyPlanPreview');
+    if(!project)return showToast('Select a local Code Studio project first.',true);
+    if(objective.length<5)return showToast('Enter an objective of at least five characters.',true);
+    btn.disabled=true;
+    try{
+      const result=await request('company/plan',{method:'POST',body:{
+        company_id:company,project_id:project,objective
+      }});
+      $('companyTasks').value=JSON.stringify(result.plan.tasks,null,2);
+      $('companyPlanStatus').textContent=result.plan.warning+
+        ' This is an EDITABLE preview; no external agent was called or authorized.';
+      showToast('Agent draft prepared locally. Review dependencies and click Create draft work order.');
+    }catch(e){showToast(e.message,true)}
+    finally{btn.disabled=false}
+  });
   $('companyCreate').addEventListener('click',async()=>{
     const company=$('companyName').value.trim(), project=$('companyProject').value;
     const objective=$('companyObjective').value.trim();
