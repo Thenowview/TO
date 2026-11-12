@@ -686,6 +686,7 @@ def create_code_plan(job_id: str, *, confirmed: bool) -> dict:
         raise core.EngineError("Source changed or structural QA no longer passes.")
     order=_read_order(job["order_id"])
     stage=_validated_stage(job)
+    report=job["report"]
     repo=coding._project(order["project_id"])
     # Cumulative change proposal: later developers inherit QA-accepted parent
     # edits, so their own delta is not the complete set of proposed changes.
