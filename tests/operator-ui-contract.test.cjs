@@ -36,6 +36,21 @@ test("Operator output is rendered as text, never as HTML from a tool", () => {
   assert.match(operatorBlock, /text\(\$\('operatorPlanStatus'\),JSON\.stringify\(outcome,null,2\)\)/);
 });
 
+test("Desktop inspection and Google providers expose safe review controls", () => {
+  for (const id of ["operatorWindows", "operatorWindowsStatus",
+                    "operatorWindowList", "operatorIntegrations"]) {
+    assert.ok(html.includes('id="' + id + '"'), "Missing integration control " + id);
+  }
+  assert.match(js, /request\('integrations'\)/);
+  assert.match(js, /windows\.window\.list/);
+  assert.match(js, /windows\.window\.focus/);
+  assert.match(js, /title_sha256:item\.title_sha256/);
+  assert.match(js, /focus_confirmed/);
+  assert.doesNotMatch(js.slice(js.indexOf("async function inspectWindows"),
+                                js.indexOf("async function previewOperator")),
+                      /\.innerHTML\s*=/);
+});
+
 test("Github workflow verification requires exact source commit and numeric run ID", () => {
   assert.match(js, /Number\.isSafeInteger\(runId\)/);
   assert.match(js, /\^\[0-9a-f\]\{40\}\$/);
