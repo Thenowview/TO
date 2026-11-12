@@ -9,9 +9,12 @@ import json
 from pathlib import Path
 import re
 import secrets
+import sys
 from engine import core, device_capabilities
 
-REGISTRY = Path(__file__).resolve().parents[2] / "config" / "adaptive-model-registry.json"
+REGISTRY = (Path(getattr(sys, "_MEIPASS")) / "config" / "adaptive-model-registry.json"
+            if hasattr(sys, "_MEIPASS")
+            else Path(__file__).resolve().parents[2] / "config" / "adaptive-model-registry.json")
 _TIERS = ("nano", "lite", "advanced")
 _MAX_TEXT = 10000
 _MAX_RECALL = 5
