@@ -13,6 +13,8 @@ CATALOG={
  'desktop.runner.start': {'kind':'desktop','description':'Start a locally registered runner in a visible console; Online still requires provider verification.'},
  'windows.powershell.inspect': {'kind':'desktop','description':'Execute a fixed, read-only PowerShell inspection; arbitrary commands prohibited.'},
  'windows.source.verify': {'kind':'desktop','description':'Run fixed source tests in an explicitly trusted local checkout at an approved commit SHA.'},
+ 'windows.window.list': {'kind':'desktop','description':'List a bounded set of visible top-level Windows window titles and identities.'},
+ 'windows.window.focus': {'kind':'desktop','description':'Request foreground focus for one inspected hwnd, PID and title digest; no keystrokes.'},
  'github.runner.status': {'kind':'github','description':'Read runner Online/Idle and labels from authenticated GitHub API.'},
  'github.workflow.status': {'kind':'github','description':'Read recent CI runs from authenticated GitHub API.'},
  'github.workflow.result': {'kind':'github','description':'Verify the exact reviewed commit passed trusted preflight and source tests using GitHub job step evidence.'},
@@ -36,10 +38,12 @@ def enabled(name):
     if name=='browser.local.inspect':return os.environ.get('THEORG_ENABLE_BROWSER_PREVIEW')=='1'
     if name=='desktop.workspace.open':return os.environ.get('THEORG_ENABLE_OS_ACTIONS')=='1'
     if name=='desktop.runner.inspect':return os.environ.get('THEORG_ENABLE_RUNNER_DIAGNOSTICS')=='1'
-    if name in ('desktop.runner.registration_prompt','desktop.runner.start'):
+    if name in ('desktop.runner.registration_prompt','desktop.runner.start','windows.window.list','windows.window.focus'):
         return os.environ.get('THEORG_ENABLE_RUNNER_CONTROL')=='1'
     if name=='windows.powershell.inspect':return os.environ.get('THEORG_ENABLE_WINDOWS_INSPECTION')=='1'
     if name=='windows.source.verify':return os.environ.get('THEORG_ENABLE_LOCAL_SOURCE_TESTS')=='1'
+    if name=='windows.window.list':return os.environ.get('THEORG_ENABLE_WINDOW_INSPECTION')=='1'
+    if name=='windows.window.focus':return os.environ.get('THEORG_ENABLE_WINDOW_FOCUS')=='1'
     if name in ('github.runner.status','github.workflow.status','github.workflow.result'):
         return os.environ.get('THEORG_ENABLE_GITHUB_READONLY')=='1'
     if name=='github.workflow.source_dispatch':
@@ -61,7 +65,7 @@ def normalize(name,args):
             raise core.EngineError('Choose a fixed runner location: user_downloads or system_root.')
         return {'location':args['location']}
     if (name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify',
-                                                'desktop.runner.registration_prompt','desktop.runner.start')):
+                                                'desktop.runner.registration_prompt','desktop.runner.start','windows.window.list','windows.window.focus')):
         from engine import operator_tools
         return operator_tools.normalize(name,args)
     if set(args)!={'file','actions'} or type(args['file']) is not str:
@@ -123,7 +127,7 @@ def _execute(name,args):
         result['location']=args['location']
         return result
     if (name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify',
-                                                'desktop.runner.registration_prompt','desktop.runner.start')):
+                                                'desktop.runner.registration_prompt','desktop.runner.start','windows.window.list','windows.window.focus')):
         from engine import operator_tools
         return operator_tools.execute(name,args)
     raise core.EngineError('Unknown capability execution')
@@ -164,7 +168,7 @@ def approve_and_execute(ident,digest,confirmed=False):
         # GitHub might accept a dispatch even if the client loses its response.
         # Record uncertainty and require operator inspection; never auto-retry.
         uncertain=name in ('github.workflow.source_dispatch','windows.source.verify',
-                           'desktop.runner.registration_prompt','desktop.runner.start')
+                           'desktop.runner.registration_prompt','desktop.runner.start','windows.window.list','windows.window.focus')
         result={'ok':False,'error':str(e)[:350]}
         if uncertain:
             result['execution_outcome']='unverified'
