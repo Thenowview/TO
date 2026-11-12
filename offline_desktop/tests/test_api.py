@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 import app
-from engine import core, coding, chat_sessions
+from engine import core, coding, chat_sessions, adaptive_runtime
 
 class ApiTests(unittest.TestCase):
     @classmethod
@@ -20,6 +20,7 @@ class ApiTests(unittest.TestCase):
         app.TOKEN=core.init()
         coding.init_schema()
         chat_sessions.init_schema()
+        adaptive_runtime.init_schema()
         cls.server=ThreadingHTTPServer(('127.0.0.1',0),app.Handler)
         cls.server.daemon_threads=True
         cls.thread=threading.Thread(target=cls.server.serve_forever,daemon=True)
@@ -142,6 +143,47 @@ class ApiTests(unittest.TestCase):
                     'role':'supervisor','session_id':ident})[0],400)
         code,_,data=self.get('/api/chat/session/tasks?id='+ident)
         self.assertEqual(json.loads(data)['tasks'][0]['id'],task['id'])
+
+    def test_adaptive_runtime_is_local_first_and_review_gated(self):
+        self.assertEqual(self.get('/api/adaptive',auth=False)[0],401)
+        code,_,body=self.get('/api/adaptive')
+        self.assertEqual(code,200)
+        info=json.loads(body)
+        self.assertEqual([x['id'] for x in info['adaptive']['options']],
+                         ['nano','lite','advanced'])
+        self.assertIn('qwen35_2b',[m['id'] for m in info['models']])
+        self.assertFalse(info['adaptive']['automatic_training'])
+        self.assertEqual(self.post('/api/adaptive/select',{'tier':'nano'})[0],400)
+        code,reply=self.post('/api/adaptive/select',{'tier':'nano','confirmed':True})
+        self.assertEqual(code,200)
+        self.assertEqual(reply['adaptive']['selected'],'nano')
+
+        code,preview=self.post('/api/adaptive/resolve',{'query':'How to review CI failures?'})
+        self.assertEqual(code,200)
+        self.assertFalse(preview['resolution']['external_provider_contacted'])
+        self.assertFalse(preview['resolution']['model_called'])
+
+        data={'question':'How to review CI failures?',
+              'answer':'Examine the job logs, check the commit SHA, then rerun source tests.',
+              'origin':'owner','confirmed':True}
+        self.assertEqual(self.post('/api/adaptive/solutions/propose',
+                                   {**data,'confirmed':False})[0],400)
+        code,response=self.post('/api/adaptive/solutions/propose',data)
+        self.assertEqual(code,201,response)
+        item=response['candidate']
+        self.assertFalse(item['verified'])
+        code,recall=self.post('/api/adaptive/recall',{'query':data['question']})
+        self.assertEqual(code,200)
+        self.assertEqual(recall['recall']['matches'],[])
+        review={'id':item['id'],'approved':True,
+                'evidence':'Confirmed from manually inspected passing CI logs.',
+                'confirmed':True}
+        code,result=self.post('/api/adaptive/solutions/review',review)
+        self.assertEqual(code,200,result)
+        code,found=self.post('/api/adaptive/resolve',{'query':data['question']})
+        self.assertEqual(code,200)
+        self.assertEqual(found['resolution']['route'],'reviewed-local-solution')
+        self.assertFalse(found['resolution']['training_performed'])
 
     def test_authenticated_status(self):
         status,h,b=self.get('/api/status')
