@@ -57,20 +57,25 @@ def manifest(base: Path) -> dict[str, str]:
     """Calculate a bounded result inventory, rejecting links and large/unexpected files."""
     result = {}
     total = 0
-    for path in sorted(base.rglob("*")):
-        rel = path.relative_to(base)
-        if path.is_symlink():
-            raise core.EngineError("Unsafe symlink encountered in the staged workspace.")
-        if path.is_dir():
-            continue
-        if not _safe_file(rel):
-            continue
-        if len(result) >= MAX_FILES or path.stat().st_size > MAX_FILE:
-            raise core.EngineError("Project file limit exceeded.")
-        total += path.stat().st_size
-        if total > MAX_BYTES:
-            raise core.EngineError("Project size limit exceeded.")
-        result[rel.as_posix()] = _digest_file(path)
+    for folder, dirs, files in os.walk(base, topdown=True, followlinks=False):
+        root = Path(folder)
+        # Prune excluded trees instead of traversing node_modules or model archives.
+        if any((root / d).is_symlink() for d in dirs):
+            raise core.EngineError("Symlink directory found; use a safe project copy.")
+        dirs[:] = [d for d in dirs if d.lower() not in IGNORED_DIRS and not d.startswith(".")]
+        for name in sorted(files):
+            path = root / name
+            rel = path.relative_to(base)
+            if path.is_symlink():
+                raise core.EngineError("Unsafe symlink encountered in the staged workspace.")
+            if not _safe_file(rel):
+                continue
+            if len(result) >= MAX_FILES or path.stat().st_size > MAX_FILE:
+                raise core.EngineError("Project file limit exceeded.")
+            total += path.stat().st_size
+            if total > MAX_BYTES:
+                raise core.EngineError("Project size limit exceeded.")
+            result[rel.as_posix()] = _digest_file(path)
     return result
 
 
@@ -146,7 +151,7 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
     """
     if allow_provider_transfer is not True:
         raise core.EngineError("Explicit AI provider data-transfer approval is required.")
-    if type(instruction) is not str or not 5 <= len(instruction.strip()) <= 2000:
+    if type(instruction) is not str or not 5 <= len(instruction.strip()) <= 8500:
         raise core.EngineError("Invalid bounded task instruction.")
     if not isinstance(model, str) or not SAFE_MODEL.fullmatch(model):
         raise core.EngineError("Choose an explicit provider/model identifier.")
@@ -213,9 +218,11 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
         except (json.JSONDecodeError, TypeError):
             continue
     summary = "\n".join(messages)[-10000:] if messages else raw[-3500:]
+    after_digest = hashlib.sha256(json.dumps(after, sort_keys=True).encode()).hexdigest()
     return {"engine": "opencode", "status": "submitted_for_qa" if exit_code == 0 else "failed",
             "exit_code": exit_code, "agent": agent, "model": model,
             "changed_files": changes[:60], "changed_count": len(changes),
+            "final_manifest_sha256": after_digest,
             "summary": summary, "output_bytes": length,
             "structural_only": True, "independent_qa_passed": False,
             "sandboxed": False, "external_provider_transfer": True}
