@@ -629,6 +629,36 @@
             }catch(e){showToast(e.message,true);promote.disabled=false}
           });actions.append(promote);
         }
+        if(job.status==='accepted'){
+          const exportBtn=element('button','btn secondary','Export accepted results');
+          exportBtn.addEventListener('click',async()=>{
+            if(!confirm('Export the QA-attested summary and changed source into this company’s results folder? No code is executed or merged.'))return;
+            try{
+              const data=await request('company/jobs/export',{method:'POST',body:{
+                job_id:job.id,confirmed:true
+              }});
+              alert('Exported '+data.files.length+' files to:\n'+data.folder);
+            }catch(e){showToast(e.message,true)}
+          });actions.append(exportBtn);
+        }
+        if(['failed','rejected','interrupted'].includes(job.status)){
+          const retry=element('button','btn secondary','Prepare fresh retry');
+          retry.addEventListener('click',async()=>{
+            if(!confirm('Reset this failed/interrupted job to queued for a NEW manually approved attempt? Prior attempt files are preserved. No provider request will be sent yet.'))return;
+            try{await request('company/jobs/requeue',{method:'POST',body:{
+              job_id:job.id,confirmed:true
+            }});await loadCompany()}catch(e){showToast(e.message,true)}
+          });actions.append(retry);
+        }
+        if(['queued','interrupted'].includes(job.status)){
+          const cancel=element('button','btn secondary','Cancel queued request');
+          cancel.addEventListener('click',async()=>{
+            if(!confirm('Cancel this not-yet-active request? Running provider processes cannot be stopped from this control.'))return;
+            try{await request('company/jobs/cancel',{method:'POST',body:{
+              job_id:job.id,confirmed:true
+            }});await loadCompany()}catch(e){showToast(e.message,true)}
+          });actions.append(cancel);
+        }
         const handoff=element('button','btn secondary','Send note to this agent');
         handoff.addEventListener('click',async()=>{
           const note=prompt('Owner note for '+job.agent_role+'. Saved as untrusted task context:', '');
