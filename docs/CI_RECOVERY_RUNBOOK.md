@@ -22,17 +22,17 @@ git clone https://github.com/faisalwrokksa-hub/TO.git
 cd TO
 git fetch origin feat/agent-execution-handoffs-independent-qa
 git switch feat/agent-execution-handoffs-independent-qa
-powershell -NoProfile -File .\tools\Test-TheOrg-Source-Local.ps1 -CheckOnly
-powershell -NoProfile -File .\tools\Test-TheOrg-Source-Local.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Source-Local.ps1 -CheckOnly
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Source-Local.ps1
 ~~~
 
-If the repository was already cloned, do not clone again; update the existing local branch. Tests require no external model, GitHub Actions quota, deployment credentials, installation or Python package download. Results go to out\source-verification\source-results.json. A source check is NOT a production release verification.
+If the repository was already cloned, do not clone again; update the existing local branch. The process-only ExecutionPolicy override does not change system policy; run only scripts you have reviewed in a trusted clone. Tests require no external model, GitHub Actions quota, deployment credentials, installation or Python package download. Results go to out\source-verification\source-results.json. A source check is NOT a production release verification.
 
 For the full unsigned Windows candidate, separately use the existing builder on the Windows host after source checks:
 
 ~~~powershell
-powershell -NoProfile -File .\tools\Build-TheOrg-Windows-Local.ps1
-powershell -NoProfile -File .\tools\Build-TheOrg-Windows-Local.ps1 -CheckOnly
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-TheOrg-Windows-Local.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-TheOrg-Windows-Local.ps1 -CheckOnly
 ~~~
 
 The full build may fetch pinned dependencies; it does not merge or deploy. Inspect the output and test on a clean machine before any distribution.
