@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Confirm branch deletion remains disabled
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           Write-Host 'NO-OP: Branch deletion disabled while PRs #20-#23 are drafts.'
           Write-Host 'No git push/delete, merges, billing changes or deployments performed.'
