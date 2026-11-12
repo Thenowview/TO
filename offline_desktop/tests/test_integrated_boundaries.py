@@ -107,6 +107,25 @@ class IntegrationBoundaryTests(unittest.TestCase):
             self.assertTrue(ready['registration_file_present'])
             self.assertIsNone(ready['registered_online'])
 
+    def test_oversized_capability_output_has_valid_audit_and_no_auto_retry(self):
+        import json
+        with patch.dict(os.environ,{'THEORG_ENABLE_OS_ACTIONS':'1'}):
+            prepared=capabilities.prepare('desktop.workspace.open',{})
+            with patch.object(capabilities,'_execute',
+                              return_value={'large':'☑'*3000}) as action:
+                result=capabilities.approve_and_execute(
+                    prepared['id'],prepared['digest'],confirmed=True)
+            action.assert_called_once()
+            self.assertEqual(result['status'],'needs_review')
+            self.assertFalse(result['ok'])
+            self.assertEqual(result['execution_outcome'],'unverified')
+            row=core.records('SELECT result_json FROM capability_requests WHERE id=?',
+                             (prepared['id'],))[0]
+            self.assertEqual(json.loads(row['result_json'])['execution_outcome'],'unverified')
+            with self.assertRaisesRegex(core.EngineError,'consumed'):
+                capabilities.approve_and_execute(
+                    prepared['id'],prepared['digest'],confirmed=True)
+
     def test_browser_cannot_escape_workspace(self):
         with patch.dict(os.environ,{'THEORG_ENABLE_BROWSER_PREVIEW':'1'}):
             with self.assertRaises(core.EngineError):
