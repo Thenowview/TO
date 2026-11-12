@@ -60,7 +60,7 @@ test("Bridge runner preflight executes before any source or Windows build",()=>{
   const build=workflow.indexOf("./tools/Build-TheOrg-Windows-Local.ps1");
   assert.ok(preflight>0 && source>preflight && build>source);
   assert.match(workflow,/build_unsigned_windows_candidate:/);
-  assert.match(workflow,/build_unsigned_windows_candidate:[\\s\\S]*?default:\\s*false/);
+  assert.match(workflow,/build_unsigned_windows_candidate:[\s\S]*?default:\s*false/);
 });
 test("Runner launch needs explicit consent and registration; scripts never create tokens",()=>{
   const setup=fs.readFileSync(path.join(ROOT,"tools","Test-TheOrg-Runner-Preflight.ps1"),"utf8");
