@@ -98,7 +98,8 @@ class WindowsWindowControlTests(unittest.TestCase):
                               return_value={"focus_confirmed": False, "input_sent": False}):
                 outcome = capabilities.approve_and_execute(
                     request["id"], request["digest"], confirmed=True)
-            self.assertEqual(outcome["status"], "completed")
+            self.assertEqual(outcome["status"], "failed")
+            self.assertFalse(outcome["ok"])
             self.assertFalse(outcome["result"]["focus_confirmed"])
             with self.assertRaises(core.EngineError):
                 capabilities.approve_and_execute(
