@@ -112,7 +112,10 @@ def set_setting(key, value):
         db.execute('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',(key,value))
 
 def tasks():
-    return records('SELECT * FROM tasks ORDER BY created DESC LIMIT 100')
+    # Return context usage evidence, not duplicated private transcript excerpts.
+    return records("""SELECT id,role,prompt,status,output,error,created,updated,
+                  CASE WHEN LENGTH(context_snapshot)>0 THEN 1 ELSE 0 END AS has_context
+                  FROM tasks ORDER BY created DESC LIMIT 100""")
 
 def enqueue(prompt, role, context_snapshot=''):
     if not isinstance(prompt,str) or not prompt.strip() or len(prompt)>MAX_PROMPT:
