@@ -403,6 +403,8 @@ def main():
         capabilities.init_schema()
         company_execution.init_schema()
         try:
+            # CLI benchmarking also requires a real local generation probe first.
+            core.probe_local_model()
             outcome=core.benchmark_local_model()
             print(json.dumps(outcome,ensure_ascii=False))
             return 0 if outcome['structured_output_pass'] else 3
