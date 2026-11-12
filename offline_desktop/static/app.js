@@ -706,11 +706,11 @@
     const target=$('knowledgeTransferStatus');target.textContent='Preparing owner-approved local knowledge export…';
     try{
       const {knowledge}=await request('adaptive/knowledge/export',{method:'POST',body:{confirmed:true,limit:12}});
-      const file=new Blob([JSON.stringify({bundle:knowledge.bundle,sha256:knowledge.sha256},null,2)],{type:'application/json'});
+      const file=new Blob([JSON.stringify({bundle:knowledge.bundle,sha256:knowledge.sha256})],{type:'application/json'});
       const href=URL.createObjectURL(file), a=document.createElement('a');
       a.href=href;a.download='TheOrg-reviewed-knowledge.json';document.body.append(a);a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(href),1200);
-      target.textContent=knowledge.bundle.entries.length+' reviewed solutions exported locally; SHA-256 is not a signature.';
+      target.textContent=knowledge.bundle.entries.length+' reviewed solutions exported locally; '+knowledge.omitted_due_to_size+' older entries omitted for size. Inspect text for secrets. SHA-256 is not a signature.';
     }catch(e){target.textContent='Export failed: '+e.message;}
   }
   async function importReviewedKnowledge(){
