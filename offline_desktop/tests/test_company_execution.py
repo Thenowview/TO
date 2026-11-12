@@ -89,6 +89,8 @@ class CompanyExecutionTests(unittest.TestCase):
         # Do not silently corrupt Unicode JSON or store non-serializable objects.
         with self.assertRaisesRegex(core.EngineError,"valid JSON"):
             company._bounded_json({"unserializable":object()},30000,"Agent report")
+        with self.assertRaisesRegex(core.EngineError,"valid UTF-8 JSON"):
+            company._bounded_json({"invalid_unicode":chr(0xD800)},30000,"Agent report")
 
     def test_corrupt_agent_report_is_not_accepted_for_qa(self):
         order=self._create()
