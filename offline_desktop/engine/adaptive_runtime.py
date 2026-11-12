@@ -212,3 +212,18 @@ def resolve_preview(query):
             "note": ("A stored verified answer may be stale; confirm applicability."
                      if strong else
                      "No sufficiently close verified local solution; choose a separately approved tool or AI provider.")}
+
+
+def propose_completed_task(task_id):
+    """Queue a completed task's answer for owner review; never auto-promote."""
+    if type(task_id) is not str or not re.fullmatch("[0-9a-f]{16}", task_id):
+        raise core.EngineError("Invalid local task identifier.")
+    rows = core.records("SELECT id,prompt,output,status FROM tasks WHERE id=?", (task_id,))
+    if len(rows) != 1 or rows[0]["status"] != "completed" or not rows[0]["output"]:
+        raise core.EngineError("Only a completed task with actual saved output can become a knowledge candidate.")
+    row = rows[0]
+    candidate = propose(row["prompt"][:1000], row["output"][:_MAX_TEXT],
+                        origin="local-model")
+    core.audit("adaptive.task_solution_candidate", {"task_id": task_id, "candidate_id": candidate["id"]})
+    return {**candidate, "source_task_id": task_id,
+            "requires_independent_owner_review": True}
