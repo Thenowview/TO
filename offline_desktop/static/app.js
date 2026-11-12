@@ -305,8 +305,12 @@
     });
     text($('operatorPlanStatus'),JSON.stringify(outcome,null,2));
     await loadOperator();
-    if(outcome.status==='completed')showToast('Action completed; inspect returned evidence.');
-    else showToast('Action requires review: '+outcome.status,true);
+    const sourceFailed=tool==='windows.source.verify' && outcome.result?.source_tests_passed!==true;
+    const ciNotVerified=tool==='github.workflow.result' && outcome.result?.source_tests_verified!==true;
+    if(outcome.status==='completed' && !sourceFailed && !ciNotVerified)
+      showToast('Tool completed; inspect returned evidence.');
+    else showToast('Source/CI not verified or action requires review: '+outcome.status,true);
+    return outcome;
   }
   async function previewOperator(){
     const instruction=$('operatorInstruction').value.trim();
@@ -368,10 +372,12 @@
     }
     const button=$('operatorVerifyRun');button.disabled=true;
     try{
-      await runOperatorAction('github.workflow.result',{
+      const outcome=await runOperatorAction('github.workflow.result',{
         run_id:runId,expected_sha:sha
       },'authenticated_remote_read');
-      text($('operatorRunStatus'),'Result recorded in local operator history. See outcome above.');
+      if(outcome)text($('operatorRunStatus'),outcome.result?.source_tests_verified===true
+        ?'GitHub confirmed source tests passed on the exact reviewed commit.'
+        :'Source tests were not verified. Review the result and GitHub job steps.');
     }catch(e){text($('operatorRunStatus'),e.message);showToast(e.message,true);}
     finally{button.disabled=false;}
   });
