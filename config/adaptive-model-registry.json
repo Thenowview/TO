@@ -1,0 +1,100 @@
+{
+  "schema": "theorg-adaptive-registry-v1",
+  "source": "Drive 00 - Registry and Rules / AdaptiveAI-ModelRegistry-Names-v2.json",
+  "source_verified_on": "2026-11-12",
+  "policies": {
+    "automatic_download": false,
+    "model_weights_bundled": false,
+    "auto_weight_training": false,
+    "real_inference_required_for_benchmark": true,
+    "replace_knowledge_only_after_review": true
+  },
+  "tiers": [
+    {
+      "id": "nano",
+      "edition": 1,
+      "name": "TheOrg Adaptive 1",
+      "label": "Nano",
+      "mode": "model-free",
+      "min_total_ram_bytes": 2147483648,
+      "recommended_total_ram_gib": "2+",
+      "installed_weight_required": false,
+      "platforms": {
+        "windows": "source_only",
+        "android": "not_packaged"
+      },
+      "drive_folder_id": "1oOXLbWl__ZLkpQkq3Aa1X6NUPOQXYttS"
+    },
+    {
+      "id": "lite",
+      "edition": 2,
+      "name": "TheOrg Adaptive 2",
+      "label": "Lite",
+      "mode": "optional-local-gguf",
+      "min_total_ram_bytes": 4294967296,
+      "recommended_total_ram_gib": "4–8",
+      "installed_weight_required": true,
+      "platforms": {
+        "windows": "source_only",
+        "android": "not_packaged"
+      },
+      "drive_folder_id": "1dwSnYY-r2OIk8srLNo8aAlN2jhVBzadM"
+    },
+    {
+      "id": "advanced",
+      "edition": 3,
+      "name": "TheOrg Adaptive 3",
+      "label": "Advanced",
+      "mode": "optional-local-gguf",
+      "min_total_ram_bytes": 17179869184,
+      "recommended_total_ram_gib": "16+",
+      "installed_weight_required": true,
+      "platforms": {
+        "windows": "source_only",
+        "android": "not_packaged"
+      },
+      "drive_folder_id": "1p7s-y3nT1P6I2QcTPcYn-UQ4oq4l7mJ6"
+    }
+  ],
+  "models": [
+    {
+      "id": "qwen35_08b",
+      "tier": "lite",
+      "parameter_class": "0.8B",
+      "weight_state": "not_bundled",
+      "reference": "https://huggingface.co/ggml-org/Qwen3.5-0.8B-GGUF",
+      "verified_inference": false
+    },
+    {
+      "id": "qwen35_2b",
+      "tier": "lite",
+      "parameter_class": "2B",
+      "weight_state": "candidate_not_downloaded",
+      "reference": null,
+      "verified_inference": false,
+      "notes": "Dedicated 2B slot; exact publisher/quantization must be verified before acquisition. Q4_K_M class is only a target, not a proven binary."
+    },
+    {
+      "id": "qwen35_4b_sompoa",
+      "tier": "advanced",
+      "parameter_class": "4B",
+      "weight_state": "reference_only",
+      "reference": "https://huggingface.co/mradermacher/Qwen3.5-4B-SOMPOA-heresy-v2-GGUF",
+      "verified_inference": false
+    },
+    {
+      "id": "deepseek_qwen35_9b",
+      "tier": "advanced",
+      "parameter_class": "9B",
+      "weight_state": "archive_preserved_not_extracted",
+      "reference": "https://drive.google.com/file/d/14kb2EXL0MfChMFjHBTdMytk2FUgVFbyt/view",
+      "verified_inference": false
+    }
+  ],
+  "validation": {
+    "source_tests": "not_run_for_this_registry_revision",
+    "real_gguf": "not_verified",
+    "windows_installer": "not_verified",
+    "android_runtime": "not_verified"
+  }
+}
