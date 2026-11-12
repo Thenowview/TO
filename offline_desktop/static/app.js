@@ -270,7 +270,7 @@
       ['Status',job.status||'Unknown'],
       ['Created',job.created||'Unknown'],
       ['Updated',job.updated||'Unknown'],
-      ['Optional context',job.context_snapshot?'Previous completed-task excerpts attached by user choice':'None'],
+      ['Optional context',job.has_context?'Previous completed-task excerpts attached by user choice':'None'],
       ['Output evidence',job.output?'Returned by local worker':'None returned'],
       ['Error',job.error||'None reported']
     ];
