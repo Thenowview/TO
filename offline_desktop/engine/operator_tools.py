@@ -58,6 +58,9 @@ def plan(instruction: str) -> dict:
         tasks.append({"tool": "github.workflow.status", "arguments": {},
                       "effect": "authenticated_remote_read"})
     if any(word in words for word in ("run tests", "run ci", "dispatch", "trigger workflow")):
+        tasks.append({"tool": "windows.source.verify",
+                      "arguments": {"expected_sha": "<reviewed-commit-sha>"},
+                      "effect": "approved_local_code_execution"})
         tasks.append({"tool": "github.workflow.source_dispatch",
                       "arguments": {"expected_sha": "<reviewed-commit-sha>"},
                       "effect": "remote_job_execution"})
@@ -88,9 +91,9 @@ def normalize(name: str, args: dict) -> dict:
         if args:
             raise core.EngineError("Fixed GitHub read-only inspections take no arguments.")
         return {}
-    if name == "github.workflow.source_dispatch":
+    if name in ("github.workflow.source_dispatch", "windows.source.verify"):
         if set(args) != {"expected_sha"} or not isinstance(args["expected_sha"], str):
-            raise core.EngineError("Workflow dispatch requires the exact reviewed commit SHA.")
+            raise core.EngineError("Source execution requires the exact reviewed commit SHA.")
         sha = args["expected_sha"].lower()
         if not _COMMIT.fullmatch(sha):
             raise core.EngineError("Expected commit must be a 40-character SHA-1.")
@@ -224,4 +227,7 @@ def execute(name: str, args: dict) -> dict:
         return _workflow_status()
     if name == "github.workflow.source_dispatch":
         return _dispatch_source_only(clean["expected_sha"])
+    if name == "windows.source.verify":
+        from engine import local_validation
+        return local_validation.verify(clean["expected_sha"])
     raise core.EngineError("Unknown tool.")
