@@ -22,7 +22,16 @@ def get(ident):
         raise core.EngineError('Invalid advisory review ID.')
     rows=core.records('SELECT * FROM agent_reviews WHERE id=?',(ident,))
     if not rows: raise core.EngineError('Advisory review not found.')
-    item=rows[0];item['steps']=json.loads(item.pop('steps_json'))
+    item=rows[0]
+    try:
+        steps=json.loads(item.pop('steps_json'))
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise core.EngineError('Stored advisory steps have invalid JSON; review cannot continue.') from exc
+    if (not isinstance(steps,list) or
+            any(not isinstance(step,dict) or not isinstance(step.get('role'),str)
+                or step['role'] not in ROLES for step in steps)):
+        raise core.EngineError('Stored advisory steps have an invalid structure.')
+    item['steps']=steps
     return item
 
 def list_reviews(limit=30):
@@ -30,10 +39,23 @@ def list_reviews(limit=30):
     rows=core.records('SELECT id FROM agent_reviews ORDER BY created DESC,id DESC LIMIT ?',(limit,))
     return [get(x['id']) for x in rows]
 
+def _encode_steps(steps):
+    """Preserve complete UTF-8 JSON or reject it; never corrupt persisted reviews."""
+    if not isinstance(steps,list):
+        raise core.EngineError('Advisory step evidence must be a list.')
+    try:
+        encoded=json.dumps(steps,ensure_ascii=False)
+    except (TypeError,ValueError) as exc:
+        raise core.EngineError('Advisory step evidence cannot be serialized.') from exc
+    if len(encoded.encode('utf-8'))>48000:
+        raise core.EngineError('Advisory step evidence exceeds the bounded audit limit.')
+    return encoded
+
 def _save(ident,status,steps,error=''):
+    encoded=_encode_steps(steps)
     with core.conn() as db:
         db.execute('UPDATE agent_reviews SET status=?,steps_json=?,error=?,updated=? WHERE id=?',
-                   (status,json.dumps(steps,ensure_ascii=False)[:48000],str(error)[:1200],core.utcnow(),ident))
+                   (status,encoded,str(error)[:1200],core.utcnow(),ident))
 
 def _check(ident):
     item=get(ident)
