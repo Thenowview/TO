@@ -661,10 +661,17 @@
             }});await loadCompany()}catch(e){showToast(e.message,true)}
           });actions.append(retry);
         }
-        if(['queued','interrupted'].includes(job.status)){
-          const cancel=element('button','btn secondary','Cancel queued request');
+        if(job.status==='running' && job.cancellation_requested){
+          actions.append(element('span','tiny','Cancellation requested; awaiting local process termination.'));
+        }
+        if(['queued','interrupted','running'].includes(job.status) && !job.cancellation_requested){
+          const running=job.status==='running';
+          const cancel=element('button','btn secondary',running?'Stop running agent':'Cancel queued request');
           cancel.addEventListener('click',async()=>{
-            if(!confirm('Cancel this not-yet-active request? Running provider processes cannot be stopped from this control.'))return;
+            const warning=running
+              ?'Request termination of the running OpenCode process tree? Work will not be accepted; termination may take a moment and must be verified.'
+              :'Cancel this not-yet-active request?';
+            if(!confirm(warning))return;
             try{await request('company/jobs/cancel',{method:'POST',body:{
               job_id:job.id,confirmed:true
             }});await loadCompany()}catch(e){showToast(e.message,true)}
