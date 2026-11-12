@@ -458,7 +458,7 @@ def main():
         capabilities.init_schema()
         company_execution.init_schema()
         chat_sessions.init_schema()
-    adaptive_runtime.init_schema()
+        adaptive_runtime.init_schema()
         try:
             # CLI benchmarking also requires a real local generation probe first.
             core.probe_local_model()
@@ -493,7 +493,7 @@ def main():
     capabilities.init_schema()
     company_execution.init_schema()
     chat_sessions.init_schema()
-        adaptive_runtime.init_schema()
+    adaptive_runtime.init_schema()
     _create_desktop_shortcut_if_needed()
     if args.host not in ('127.0.0.1','::1','localhost'):
         if os.environ.get('THEORG_ALLOW_LAN_HTTP')!='1':
