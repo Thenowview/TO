@@ -23,7 +23,8 @@
         "windows": "source_only",
         "android": "not_packaged"
       },
-      "drive_folder_id": "1oOXLbWl__ZLkpQkq3Aa1X6NUPOQXYttS"
+      "drive_folder_id": "1oOXLbWl__ZLkpQkq3Aa1X6NUPOQXYttS",
+      "weights_included": false
     },
     {
       "id": "lite",
@@ -38,7 +39,8 @@
         "windows": "source_only",
         "android": "not_packaged"
       },
-      "drive_folder_id": "1dwSnYY-r2OIk8srLNo8aAlN2jhVBzadM"
+      "drive_folder_id": "1dwSnYY-r2OIk8srLNo8aAlN2jhVBzadM",
+      "weights_included": false
     },
     {
       "id": "advanced",
@@ -53,7 +55,8 @@
         "windows": "source_only",
         "android": "not_packaged"
       },
-      "drive_folder_id": "1p7s-y3nT1P6I2QcTPcYn-UQ4oq4l7mJ6"
+      "drive_folder_id": "1p7s-y3nT1P6I2QcTPcYn-UQ4oq4l7mJ6",
+      "weights_included": false
     }
   ],
   "models": [
