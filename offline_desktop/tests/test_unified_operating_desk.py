@@ -68,6 +68,8 @@ class UnifiedOperatingDeskTests(unittest.TestCase):
         self.assertEqual(out["bundle"]["schema"],reviewed_knowledge.SCHEMA)
         self.assertEqual(len(out["bundle"]["entries"]),1)
         self.assertNotIn("Do not export",json.dumps(out))
+        self.assertFalse(out["bundle"]["includes_token_files"])
+        self.assertTrue(out["bundle"]["manual_content_review_required"])
         self.assertNotIn("access-token",json.dumps(out))
         self.assertRegex(out["sha256"],r"^[0-9a-f]{64}$")
         self.assertTrue(reviewed_knowledge.validate_bundle(out["bundle"],out["sha256"])["valid"])
