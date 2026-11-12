@@ -78,6 +78,32 @@ def _terminate_windows_tree(pid: int) -> None:
             pass
 
 
+def _validated_report(report_path: Path, expected_sha: str, previous_mtime: int | None) -> list[dict]:
+    if not report_path.is_file() or report_path.is_symlink():
+        raise core.EngineError("Verification exited zero but no safe evidence report exists.")
+    if (previous_mtime is not None and
+            report_path.stat().st_mtime_ns == previous_mtime):
+        raise core.EngineError("Verification evidence is stale; do not mark source tests passed.")
+    if report_path.stat().st_size > _MAX_REPORT_BYTES:
+        raise core.EngineError("Source verification evidence exceeds the accepted size.")
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, UnicodeError) as exc:
+        raise core.EngineError("Source verification evidence is not valid UTF-8 JSON.") from exc
+    if not isinstance(report, dict):
+        raise core.EngineError("Source verification evidence must be a JSON object.")
+    checks = report.get("checks")
+    if (report.get("commit") != expected_sha or report.get("source_only") is not True
+            or report.get("passed") is not True
+            or report.get("deployment_performed") is not False
+            or report.get("windows_executable_verified") is not False
+            or not isinstance(checks, list) or len(checks) < 2
+            or any(not isinstance(item, dict) or item.get("passed") is not True
+                   for item in checks)):
+        raise core.EngineError("Source verification did not produce complete pinned PASS evidence.")
+    return checks
+
+
 def verify(expected_sha: str) -> dict:
     """Run the fixed source-only script; return provider-neutral execution evidence."""
     if os.name != "nt":
@@ -124,28 +150,7 @@ def verify(expected_sha: str) -> dict:
             "note": "Fixed source verifier exited nonzero; review the local out/source-verification/source-results.json. Output was suppressed to avoid credential disclosure."
         }
     _checked_checkout(root, expected_sha)  # Reject source modified during tests.
-    if not report_path.is_file() or report_path.is_symlink():
-        raise core.EngineError("Verification exited zero but no safe evidence report exists.")
-    if (previous_mtime is not None and
-            report_path.stat().st_mtime_ns == previous_mtime):
-        raise core.EngineError("Verification evidence is stale; do not mark source tests passed.")
-    if report_path.stat().st_size > _MAX_REPORT_BYTES:
-        raise core.EngineError("Source verification evidence exceeds the accepted size.")
-    try:
-        report = json.loads(report_path.read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError, UnicodeError) as exc:
-        raise core.EngineError("Source verification evidence is not valid UTF-8 JSON.") from exc
-    if not isinstance(report, dict):
-        raise core.EngineError("Source verification evidence must be a JSON object.")
-    checks = report.get("checks")
-    if (report.get("commit") != expected_sha or report.get("source_only") is not True
-            or report.get("passed") is not True
-            or report.get("deployment_performed") is not False
-            or report.get("windows_executable_verified") is not False
-            or not isinstance(checks, list) or len(checks) < 2
-            or any(not isinstance(item, dict) or item.get("passed") is not True
-                   for item in checks)):
-        raise core.EngineError("Source verification did not produce complete pinned PASS evidence.")
+    checks = _validated_report(report_path, expected_sha, previous_mtime)
     return {
         "status": "passed", "exit_code": 0, "duration_seconds": duration,
         "approved_sha": expected_sha, "source_tests_passed": True,
