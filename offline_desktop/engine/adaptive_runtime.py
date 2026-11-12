@@ -185,3 +185,27 @@ def review(ident, *, approved, evidence="", supersedes=""):
                                              "supersedes": supersedes})
     return {"id": ident, "status": "verified" if approved else "superseded",
             "evidence_recorded": bool(evidence.strip()), "model_trained": False}
+
+
+def resolve_preview(query):
+    """Route locally first; external provider is *never* invoked implicitly."""
+    recalled = recall(query)
+    strong = next((r for r in recalled["matches"] if r["similarity"] >= 0.55), None)
+    if strong:
+        route = "reviewed-local-solution"
+        result = {"id": strong["id"], "answer": strong["answer"],
+                  "evidence": strong["evidence"], "origin": strong["origin"]}
+    elif selected() != "nano":
+        route = "optional-local-model"
+        result = None
+    else:
+        route = "manual-external-research-or-model-free-tools"
+        result = None
+    return {"route": route, "solution": result, "tier": selected(),
+            "local_recall_matches": len(recalled["matches"]),
+            "external_provider_contacted": False, "model_called": False,
+            "tools_executed": False, "training_performed": False,
+            "external_requires_separate_permission": True,
+            "note": ("A stored verified answer may be stale; confirm applicability."
+                     if strong else
+                     "No sufficiently close verified local solution; choose a separately approved tool or AI provider.")}
