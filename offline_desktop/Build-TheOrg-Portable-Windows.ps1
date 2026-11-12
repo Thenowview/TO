@@ -55,13 +55,24 @@ if($LASTEXITCODE -ne 0){throw 'Windows binary compilation failed'}
 $Exe=Join-Path $Root 'dist\TheOrg.exe'
 if(-not (Test-Path $Exe)){throw 'TheOrg.exe not produced'}
 # Run the EXE itself, not just source-code tests.
+$SmokeRoot=Join-Path $Cache ('smoke-'+[Guid]::NewGuid().ToString('N'))
+$SmokeNames=@('THEORG_DATA_DIR','THEORG_WORKSPACE','THEORG_MODELS','THEORG_SKIP_SHORTCUT','THEORG_PORT')
+$SmokeSaved=@{}
+foreach($name in $SmokeNames){$SmokeSaved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
+$env:THEORG_DATA_DIR=Join-Path $SmokeRoot 'data'
+$env:THEORG_WORKSPACE=Join-Path $SmokeRoot 'workspace'
+$env:THEORG_MODELS=Join-Path $SmokeRoot 'models'
+$env:THEORG_SKIP_SHORTCUT='1'
+$Proc=$null
+$Shortcut=Join-Path ([Environment]::GetFolderPath('Desktop')) 'TheOrg.lnk'
+$ShortcutBackup=if(Test-Path -LiteralPath $Shortcut){[IO.File]::ReadAllBytes($Shortcut)}else{$null}
+try {
 $engineTest=Start-Process -FilePath $Exe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
 if($engineTest.ExitCode -ne 0){throw 'Packaged executable self-test failed'}
 # Portable smoke test, localhost only. Verify shortcut on ephemeral Windows CI user.
 $env:THEORG_SKIP_SHORTCUT='0'
 $env:THEORG_PORT='18765'
 $Proc=Start-Process -FilePath $Exe -ArgumentList '--no-browser' -WindowStyle Hidden -PassThru
-try {
   $Ready=$false
   for($i=0;$i -lt 45;$i++){
     Start-Sleep -Seconds 1
@@ -71,7 +82,7 @@ try {
     if($Proc.HasExited){throw 'Portable EXE terminated during local smoke test'}
   }
   if(-not $Ready){throw 'Portable EXE localhost dashboard smoke test failed'}
-  $TokenFile=Join-Path (Split-Path -Parent $Exe) '.theorg\data\access-token.txt'
+  $TokenFile=Join-Path $env:THEORG_DATA_DIR 'access-token.txt'
   if(!(Test-Path $TokenFile)){throw 'Portable EXE did not create local access token'}
   $Token=(Get-Content -LiteralPath $TokenFile -Raw).Trim()
   $Headers=@{Authorization="Bearer $Token"}
@@ -95,11 +106,14 @@ try {
   Remove-Item -LiteralPath $Shortcut -Force -ErrorAction SilentlyContinue
   Write-Output 'PASS Windows onefile launch, authenticated API, bundled Git, llama-server binary and shortcut'
 }finally {
-  if(-not $Proc.HasExited){
+  if($Proc -and -not $Proc.HasExited){
     # PyInstaller's parent and child must both stop before rebuilding the EXE.
     & "$env:SystemRoot\System32\taskkill.exe" /PID $Proc.Id /T /F | Out-Null
   }
-  Remove-Item Env:\THEORG_PORT -ErrorAction SilentlyContinue
+  foreach($name in $SmokeNames){[Environment]::SetEnvironmentVariable($name,$SmokeSaved[$name],'Process')}
+  if($ShortcutBackup){[IO.File]::WriteAllBytes($Shortcut,$ShortcutBackup)}
+  elseif(Test-Path -LiteralPath $Shortcut){Remove-Item -LiteralPath $Shortcut -Force}
+  if(Test-Path -LiteralPath $SmokeRoot){Remove-Item -LiteralPath $SmokeRoot -Recurse -Force}
 }
 $Hash=(Get-FileHash $Exe -Algorithm SHA256).Hash.ToLowerInvariant()
 "$Hash  TheOrg.exe" | Set-Content -Encoding ascii (Join-Path $Root 'dist\SHA256SUMS.txt')
