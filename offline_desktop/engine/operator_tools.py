@@ -75,6 +75,12 @@ def plan(instruction: str) -> dict:
         tasks.append({"tool": "github.workflow.source_dispatch",
                       "arguments": {"expected_sha": "<reviewed-commit-sha>"},
                       "effect": "remote_job_execution"})
+    for keyword, provider in (("gmail", "gmail"), ("drive", "drive"),
+                              ("calendar", "calendar")):
+        if keyword in words:
+            tasks.append({"tool": "google.readonly.probe",
+                          "arguments": {"provider": provider},
+                          "effect": "approved_external_read_only_authentication"})
     if not tasks:
         tasks.append({"tool": None, "arguments": {},
                       "effect": "manual_scoping_required"})
@@ -98,6 +104,11 @@ def normalize(name: str, args: dict) -> dict:
         if set(args) != {"location"} or args["location"] not in ("user_downloads", "system_root"):
             raise core.EngineError("Runner console actions require an approved fixed location.")
         return {"location": args["location"]}
+    if name == "google.readonly.probe":
+        from engine import google_readonly
+        if set(args) != {"provider"}:
+            raise core.EngineError("Google probe requires only a fixed provider.")
+        return {"provider": google_readonly.normalize(args["provider"])}
     if name == "windows.window.list":
         if args:
             raise core.EngineError("Visible window inventory takes no arguments.")
@@ -297,6 +308,9 @@ def execute(name: str, args: dict) -> dict:
         if name == "desktop.runner.registration_prompt":
             return runner_control.registration_prompt(clean["location"])
         return runner_control.start_registered(clean["location"])
+    if name == "google.readonly.probe":
+        from engine import google_readonly
+        return google_readonly.probe(clean["provider"])
     if name == "windows.window.list":
         from engine import window_control
         return window_control.inspect()
