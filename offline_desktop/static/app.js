@@ -17,6 +17,7 @@
     }
   }
   let activeView = 'overview';
+  let companyAgentProfiles=[];
   let jobs = [], modelData = {}, engineStatus = {};
   const labels = {overview:'Workspace overview',supervisor:'AI Supervisor',tasks:'Task queue',coding:'Code Studio',company:'Company agents',models:'Local models',files:'Workspace files',memory:'Memory vault',settings:'System & security'};
 
@@ -520,10 +521,20 @@
   async function loadCompany(){
     const company = $('companyName').value.trim() || 'demo';
     const target = $('companyOrderList');target.replaceChildren();
-    const [projects, runtime, data] = await Promise.all([
+    const [projects, runtime, data, directory] = await Promise.all([
       request('code/projects'), request('company/runtime'),
-      request('company/orders?company_id='+encodeURIComponent(company))
+      request('company/orders?company_id='+encodeURIComponent(company)),
+      request('company/agents?company_id='+encodeURIComponent(company))
     ]);
+    companyAgentProfiles=directory.agents||[];
+    const agentSelector=$('companyAgentSelect'), selectedAgent=agentSelector.value;
+    agentSelector.replaceChildren(element('option','', 'Select a specialist'));
+    for(const agent of companyAgentProfiles){
+      const opt=element('option','',agent.display_name+' · '+agent.title);
+      opt.value=agent.id;agentSelector.append(opt);
+    }
+    if(companyAgentProfiles.some(x=>x.id===selectedAgent))agentSelector.value=selectedAgent;
+    if(agentSelector.value)populateCompanyAgent();
     $('companyRuntime').textContent=runtime.opencode.available
       ? 'OpenCode detected: '+runtime.opencode.version+' · External runtime; authorization required.'
       : 'OpenCode not available: '+(runtime.opencode.reason||'Install and authenticate the OpenCode CLI before dispatch.');
@@ -602,7 +613,7 @@
             b.addEventListener('click',async()=>{
               const notes=prompt('Record specific evidence you independently inspected (minimum 30 characters). Do not falsely claim tests or reviewer identity:', '');
               if(notes===null)return;
-              const role=job.agent_role==='qa'?'security':'qa';
+              const role=['qa','qa_auditor'].includes(job.agent_role)?'security_officer':'qa_auditor';
               if(!confirm('Record a '+role.toUpperCase()+' reviewer attestation? It is not a verified reviewer login or independent automated test.'))return;
               try{
                 await request('company/qa/review',{method:'POST',body:{
@@ -675,6 +686,37 @@
       target.append(card);
     }
   }
+  function populateCompanyAgent(){
+    const p=companyAgentProfiles.find(x=>x.id===$('companyAgentSelect').value);
+    if(!p)return;
+    $('companyAgentName').value=p.display_name;
+    $('companyAgentTitle').value=p.title;
+    $('companyAgentDepartment').value=p.department;
+    $('companyAgentExpertise').value=(p.expertise||[]).join(', ');
+    $('companyAgentInstructions').value=p.instructions||'';
+    $('companyAgentEnabled').checked=p.enabled;
+    $('companyAgentEnabled').disabled=['qa_auditor','security_officer'].includes(p.id);
+  }
+  $('companyAgentSelect').addEventListener('change',populateCompanyAgent);
+  $('companyAgentSave').addEventListener('click',async()=>{
+    const id=$('companyAgentSelect').value;
+    if(!id)return showToast('Select a company specialist first.',true);
+    const updates={
+      display_name:$('companyAgentName').value.trim(),
+      title:$('companyAgentTitle').value.trim(),
+      department:$('companyAgentDepartment').value.trim(),
+      expertise:$('companyAgentExpertise').value.split(',').map(x=>x.trim()).filter(Boolean),
+      instructions:$('companyAgentInstructions').value,
+      enabled:$('companyAgentEnabled').checked
+    };
+    if(!confirm('Save role-description changes for this company? Immutable roles and execution permissions will not be changed.'))return;
+    try{
+      await request('company/agents',{method:'POST',body:{
+        company_id:$('companyName').value.trim(),agent_id:id,updates,confirmed:true
+      }});
+      await loadCompany();showToast('Company specialist profile saved.');
+    }catch(e){showToast(e.message,true)}
+  });
   $('companyRefresh').addEventListener('click',()=>loadCompany().catch(e=>showToast(e.message,true)));
   $('companyCreate').addEventListener('click',async()=>{
     const company=$('companyName').value.trim(), project=$('companyProject').value;
