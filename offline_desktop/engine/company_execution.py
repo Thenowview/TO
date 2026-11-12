@@ -237,8 +237,10 @@ def dispatch(job_id: str, model: str, *, confirmed: bool,
                 raise core.EngineError("Only queued jobs may be dispatched once.")
             if item["edit_mode"] and isolated_edit_confirmed is not True:
                 raise core.EngineError("Isolated source-editing requires separate explicit approval.")
-            if db.execute("SELECT COUNT(*) AS n FROM company_jobs WHERE status='running'").fetchone()["n"] >= MAX_ACTIVE:
-                raise core.EngineError("Four local execution jobs already active; leave this job queued.")
+            active=db.execute("SELECT COUNT(*) AS n FROM company_jobs WHERE status='running'").fetchone()["n"]
+            active+=db.execute("SELECT COUNT(*) AS n FROM company_qa WHERE verdict='running'").fetchone()["n"]
+            if active >= MAX_ACTIVE:
+                raise core.EngineError("Four local agent/QA executions already active; leave this job queued.")
             deps = json.loads(item["depends_on"])
             if deps:
                 accepted = db.execute("""SELECT id FROM company_jobs WHERE order_id=?
@@ -329,6 +331,11 @@ def structural_qa(job_id: str) -> dict:
         except core.EngineError as exc:
             findings.append("Staged file inventory invalid: " + str(exc))
             current = {}
+    current_digest = hashlib.sha256(json.dumps(current,sort_keys=True).encode()).hexdigest()
+    if current_digest != report.get("final_manifest_sha256"):
+        findings.append("The complete source manifest changed after the executor finished.")
+    if report.get("changed_count", 0) > len(report.get("changed_files", [])):
+        findings.append("Executor modified more files than its bounded change report includes.")
     for change in report.get("changed_files", []):
         name = change.get("path", "")
         if current.get(name) != change.get("after"):
@@ -392,3 +399,78 @@ def qa_history(job_id: str) -> list:
     _read_job(job_id)
     return core.records("SELECT * FROM company_qa WHERE job_id=? ORDER BY created,id",
                         (job_id,))
+
+
+def request_ai_qa(job_id: str, model: str, *, confirmed: bool,
+                  data_transfer_confirmed: bool) -> dict:
+    """Launch a separate read-only OpenCode review. Never automatically accepts."""
+    if confirmed is not True or data_transfer_confirmed is not True:
+        raise core.EngineError("Separate AI QA and source-transfer approvals required.")
+    if not isinstance(model,str) or not adapter.SAFE_MODEL.fullmatch(model):
+        raise core.EngineError("Choose an explicit AI QA provider/model.")
+    with _LOCK:
+        checks = structural_qa(job_id)
+        if not checks["structural_pass"]:
+            raise core.EngineError("Fix failed mechanical QA before asking AI reviewer.")
+        job = _read_job(job_id)
+        if job["status"] != "submitted_for_qa":
+            raise core.EngineError("Only submitted agent results may receive AI QA.")
+        ident = secrets.token_hex(12)
+        with core.conn() as db:
+            db.execute("BEGIN IMMEDIATE")
+            count = db.execute("SELECT COUNT(*) n FROM company_jobs WHERE status='running'").fetchone()["n"]
+            count += db.execute("SELECT COUNT(*) n FROM company_qa WHERE verdict='running'").fetchone()["n"]
+            if count >= MAX_ACTIVE:
+                raise core.EngineError("Four local agent/QA executions active; retry when free.")
+            if db.execute("SELECT 1 FROM company_qa WHERE job_id=? AND verdict='running'",
+                          (job_id,)).fetchone():
+                raise core.EngineError("An independent AI QA review is already active.")
+            db.execute("INSERT INTO company_qa VALUES(?,?,?,?,?,?,?)",
+                       (ident,job_id,"ai_qa","running","",
+                        json.dumps({"model":model,"initial":checks}),core.utcnow()))
+        thread=threading.Thread(target=_run_ai_qa,args=(ident,job_id,model),daemon=True,
+                                name="TheOrgQA-"+ident[:7])
+        _THREADS[ident]=thread
+        thread.start()
+    core.audit("company.qa.ai_requested",{"job_id":job_id,"model":model,"review_id":ident})
+    return {"job_id":job_id,"review_id":ident,"status":"running",
+            "reviewer_role":"ai_qa", "human_approval_required":True}
+
+
+def _run_ai_qa(review_id: str, job_id: str, model: str) -> None:
+    try:
+        job=_read_job(job_id)
+        stage=Path(job["staging_path"])
+        baseline=adapter.manifest(stage)
+        instruction=(
+            "You are a separate, read-only QA reviewer. Do not edit files. "
+            "Independently inspect the copied source and challenge the executor's "
+            "claims below. Identify correctness, missing tests, security vulnerabilities, "
+            "potential regressions, and uncertainty. Do not invent test results. "
+            "Use concise FINDINGS and EVIDENCE sections. The model output is advisory, "
+            "not a formal QA acceptance.\n"
+            +json.dumps({"instruction":job["instruction"],"executor_report":job["report"]},
+                        ensure_ascii=False)[:6800])
+        result=adapter.run(stage,instruction,edit=False,model=model,
+                           allow_provider_transfer=True)
+        after=adapter.manifest(stage)
+        if result["exit_code"] != 0 or baseline != after:
+            raise core.EngineError("AI QA run failed or altered the staged source files.")
+        with core.conn() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("""UPDATE company_qa SET verdict='advisory',
+              findings=?,structural_json=? WHERE id=? AND verdict='running'""",
+                       (result["summary"][:4000],
+                        json.dumps({"model":model,"advisory_only":True,
+                                    "source_unchanged":True,
+                                    "initial":structural_qa(job_id)})[:18000],
+                        review_id))
+        core.audit("company.qa.ai_finished",{"job_id":job_id,"review_id":review_id})
+    except Exception as exc:
+        with core.conn() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("""UPDATE company_qa SET verdict='failed',findings=?
+              WHERE id=? AND verdict='running'""",(str(exc)[:2000],review_id))
+        core.audit("company.qa.ai_failed",{"job_id":job_id,"review_id":review_id})
+    finally:
+        _THREADS.pop(review_id,None)
