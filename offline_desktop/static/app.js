@@ -20,6 +20,8 @@
   let companyAgentProfiles=[];
   let jobs = [], modelData = {}, engineStatus = {};
   let lastChatSignature = null;
+  let chatSessions=[], activeSessionId=null, activeSessionTasks=[];
+  let includeArchivedSessions=false, selectedChatTaskId=null;
   const labels = {overview:'Overview',supervisor:'Chat',operator:'Windows Operator',tasks:'Task queue',coding:'Code Studio',company:'Agent team',models:'Models',files:'Files',memory:'Memory',settings:'Settings'};
 
   /* Original, dependency-free line icon set. Icons are pure local SVG,
@@ -165,48 +167,183 @@
     list.append(readyRow('GGUF model files',data.model_files>0,(data.model_files||0)+' available'));
     list.append(readyRow('llama-server binary',data.llama_binary, data.llama_binary?'FOUND':'OPTIONAL'));
   }
+  function activeChatItems(){return activeSessionId?activeSessionTasks:jobs;}
+  function currentChatSession(){return chatSessions.find(x=>x.id===activeSessionId);}
+  function setSessionTitle(){
+    const active=currentChatSession(), archived=!!active?.archived;
+    text($('activeSessionTitle'),active?.title||'All local tasks');
+    $('sessionRename').hidden=!active;
+    $('sessionArchive').hidden=!active;
+    text($('sessionArchive'),archived?'Restore':'Archive');
+    $('promptInput').disabled=archived;
+    $('submitTask').disabled=archived;
+    text($('chatDisclaimer'),archived
+      ?'This session is archived. Restore it to add tasks. Existing jobs continue independently.'
+      :'Sessions organize independent local tasks. Previous messages are not automatically sent to the model. No AI replies are fabricated.');
+  }
+  function renderSessionList(){
+    const list=$('sessionList');list.replaceChildren();
+    const term=$('sessionSearch').value.trim().toLocaleLowerCase();
+    const visible=chatSessions.filter(session=>
+      (includeArchivedSessions||!session.archived) &&
+      session.title.toLocaleLowerCase().includes(term));
+    if(!visible.length){
+      list.append(element('div','session-empty',term
+        ?'No matching session titles.':'No saved sessions. Choose New task to begin.'));
+      return;
+    }
+    for(const session of visible.slice(0,100)){
+      const item=element('button','session-row'+(activeSessionId===session.id?' selected':''));
+      item.type='button';item.dataset.sessionId=session.id;
+      item.setAttribute('aria-current',activeSessionId===session.id?'page':'false');
+      const icon=element('span','session-row-icon','◌');
+      const info=element('span','session-row-copy');
+      info.append(element('strong','',session.title.slice(0,100)));
+      info.append(element('small','',(session.archived?'Archived · ':'')+
+        String(session.task_count||0)+' tasks'));
+      item.append(icon,info);
+      item.addEventListener('click',()=>selectChatSession(session.id).catch(e=>showToast(e.message,true)));
+      list.append(item);
+    }
+  }
+  async function loadChatSessions(){
+    const raw=await request('chat/sessions?archived=true');
+    chatSessions=raw.sessions||[];
+    if(activeSessionId && !chatSessions.some(s=>s.id===activeSessionId)){
+      activeSessionId=null;activeSessionTasks=[];lastChatSignature=null;
+    }
+    renderSessionList();setSessionTitle();
+  }
+  async function selectChatSession(id){
+    if(id && !chatSessions.some(s=>s.id===id)){
+      throw new Error('Session was not found; refresh the local list.');
+    }
+    activeSessionId=id||null;
+    lastChatSignature=null;
+    selectedChatTaskId=null;
+    closeChatDetails();
+    changeView('supervisor');
+    await loadTasks();
+    renderSessionList();setSessionTitle();
+    $('chatScroll').scrollTop=$('chatScroll').scrollHeight;
+  }
+  async function clipboardCopy(value,button){
+    if(!navigator.clipboard?.writeText){
+      showToast('Clipboard is unavailable in this browser.',true);return;
+    }
+    try{
+      await navigator.clipboard.writeText(String(value));
+      if(button)text(button,'Copied');
+      showToast('Copied to clipboard.');
+    }catch{showToast('Clipboard access was denied.',true);}
+  }
+  function closeChatDetails(){
+    const panel=$('chatDetailsPanel');
+    panel.hidden=true;
+    $('chatDetailsToggle').setAttribute('aria-expanded','false');
+  }
+  function openChatDetails(job){
+    selectedChatTaskId=job.id;
+    const panel=$('chatDetailsPanel'),target=$('chatDetailsContent');
+    target.replaceChildren();
+    const section=element('section','chat-evidence');
+    const fields=[
+      ['Task ID',job.id],
+      ['Role',job.role||'Unknown'],
+      ['Status',job.status||'Unknown'],
+      ['Created',job.created||'Unknown'],
+      ['Updated',job.updated||'Unknown'],
+      ['Output evidence',job.output?'Returned by local worker':'None returned'],
+      ['Error',job.error||'None reported']
+    ];
+    for(const [label,value] of fields){
+      const row=element('div','chat-evidence-row');
+      row.append(element('dt','',label),element('dd','',String(value)));
+      section.append(row);
+    }
+    const note=element('p','chat-evidence-notice',
+      'Task status and text come from the local SQLite task record. This panel does not imply tool execution, sources, or successful inference beyond the evidence shown.');
+    target.append(section,note);
+    if(job.output){
+      const summary=window.TheOrgChatRenderer?.codeSummary(job.output)||[];
+      if(summary.length){
+        target.append(element('h3','chat-evidence-subhead','Code blocks'));
+        for(const block of summary){
+          target.append(element('p','chat-evidence-item',
+            block.language+' · '+block.lines+' lines · block '+block.index));
+        }
+      }
+    }
+    panel.hidden=false;
+    $('chatDetailsToggle').setAttribute('aria-expanded','true');
+    if(window.matchMedia('(max-width:1050px)').matches)panel.focus?.();
+  }
   function renderChatMessages(){
     const feed=$('supervisorResults'),scroll=$('chatScroll'),welcome=$('chatWelcome');
     if(!feed||!scroll||!welcome)return;
-    const recent=jobs.slice(0,30).reverse();
-    const signature=recent.map(job=>
-      [job.id,job.status,job.output||'',job.error||''].join('\\x1f')).join('\\x1e');
+    const recent=activeChatItems().slice(0,100).reverse();
+    const signature=String(activeSessionId||'all')+':'+recent.map(job=>
+      [job.id,job.status,job.output||'',job.error||''].join('\x1f')).join('\x1e');
     if(signature===lastChatSignature)return;
     lastChatSignature=signature;
     const nearBottom=scroll.scrollHeight-scroll.scrollTop-scroll.clientHeight<150;
-    feed.replaceChildren();
-    welcome.hidden=recent.length>0;
+    feed.replaceChildren();welcome.hidden=recent.length>0;
     for(const job of recent){
       const user=element('article','chat-message chat-user');
       const userBody=element('div','chat-message-body');
       userBody.append(element('p','chat-prompt',job.prompt));
-      const userMeta=element('div','chat-message-meta',
-        (job.created||'Local task')+' · '+(job.role||'Agent'));
-      userBody.append(userMeta);user.append(userBody);feed.append(user);
+      userBody.append(element('div','chat-message-meta',
+        (job.created||'Local task')+' · '+(job.role||'Agent')));
+      user.append(userBody);feed.append(user);
       const reply=element('article','chat-message chat-assistant');
-      const badge=element('div','chat-avatar');badge.append(element('span','', 'T'));
+      const badge=element('div','chat-avatar','T');
+      badge.setAttribute('aria-hidden','true');
       const body=element('div','chat-message-body');
       const label=element('div','chat-response-head');
       label.append(element('strong','', 'TheOrg · '+(job.role||'Agent')),pill(job.status));
       body.append(label);
-      if(job.output)body.append(element('pre','chat-response-text',job.output));
-      else if(job.error)body.append(element('p','chat-error-text',job.error));
+      if(job.output){
+        const content=element('div','chat-response-rich');
+        if(window.TheOrgChatRenderer)content.append(window.TheOrgChatRenderer.render(job.output,clipboardCopy));
+        else content.append(element('pre','chat-response-text',job.output));
+        body.append(content);
+      }else if(job.error)body.append(element('p','chat-error-text',job.error));
       else body.append(element('p','chat-pending-text',
         job.status==='queued'?'Waiting for a local model worker…':
         job.status==='running'?'Running locally; checking for results…':
         job.status==='cancelled'?'Task cancelled.':'No verified model response available.'));
+      const actions=element('div','chat-message-actions');
+      const details=element('button','chat-action-button','Details');
+      details.type='button';details.setAttribute('aria-label','View task details and evidence');
+      details.addEventListener('click',()=>openChatDetails(job));actions.append(details);
+      if(job.output){
+        const copy=element('button','chat-action-button','Copy response');
+        copy.type='button';
+        copy.addEventListener('click',()=>clipboardCopy(job.output,copy));actions.append(copy);
+      }
       if(job.status==='queued'){
-        const cancel=element('button','chat-cancel','Cancel task');
+        const cancel=element('button','chat-action-button','Cancel');
+        cancel.type='button';
         cancel.addEventListener('click',()=>request('tasks/cancel',{
           method:'POST',body:{id:job.id}
         }).then(loadTasks).catch(e=>showToast(e.message,true)));
-        body.append(cancel);
+        actions.append(cancel);
       }
-      reply.append(badge,body);feed.append(reply);
+      body.append(actions);reply.append(badge,body);feed.append(reply);
     }
     if(nearBottom)scroll.scrollTop=scroll.scrollHeight;
+    const selected=recent.find(j=>j.id===selectedChatTaskId);
+    if(selected&&!$('chatDetailsPanel').hidden)openChatDetails(selected);
   }
-  async function loadTasks(){const data=await request('tasks');jobs=data.tasks||[];renderTasks($('taskList'));renderChatMessages();}
+  async function loadTasks(){
+    const [all,session]=await Promise.all([
+      request('tasks'),
+      activeSessionId?request('chat/session/tasks?id='+encodeURIComponent(activeSessionId)):Promise.resolve(null)
+    ]);
+    jobs=all.tasks||[];
+    activeSessionTasks=session?.tasks||[];
+    renderTasks($('taskList'));renderChatMessages();
+  }
   function runtimeCard(title,detail,ready){const c=element('div','runtime-card'),left=element('div');left.append(element('strong','',title),element('small','',detail));c.append(left,pill(ready?'completed':'failed'));return c;}
   async function loadModels(){
     const data=await request('models');modelData=data;
