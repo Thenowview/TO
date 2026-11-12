@@ -55,12 +55,12 @@ if($LASTEXITCODE -ne 0){throw 'Windows binary compilation failed'}
 $Exe=Join-Path $Root 'dist\TheOrg.exe'
 if(-not (Test-Path $Exe)){throw 'TheOrg.exe not produced'}
 # Run the EXE itself, not just source-code tests.
-& $Exe --self-test
-if($LASTEXITCODE -ne 0){throw 'Packaged executable self-test failed'}
+$engineTest=Start-Process -FilePath $Exe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
+if($engineTest.ExitCode -ne 0){throw 'Packaged executable self-test failed'}
 # Portable smoke test, localhost only. Verify shortcut on ephemeral Windows CI user.
 $env:THEORG_SKIP_SHORTCUT='0'
 $env:THEORG_PORT='18765'
-$Proc=Start-Process -FilePath $Exe -ArgumentList '--no-browser' -PassThru
+$Proc=Start-Process -FilePath $Exe -ArgumentList '--no-browser' -WindowStyle Hidden -PassThru
 try {
   $Ready=$false
   for($i=0;$i -lt 45;$i++){
@@ -95,7 +95,10 @@ try {
   Remove-Item -LiteralPath $Shortcut -Force -ErrorAction SilentlyContinue
   Write-Output 'PASS Windows onefile launch, authenticated API, bundled Git, llama-server binary and shortcut'
 }finally {
-  if(-not $Proc.HasExited){Stop-Process -Id $Proc.Id -Force -ErrorAction SilentlyContinue}
+  if(-not $Proc.HasExited){
+    # PyInstaller's parent and child must both stop before rebuilding the EXE.
+    & "$env:SystemRoot\System32\taskkill.exe" /PID $Proc.Id /T /F | Out-Null
+  }
   Remove-Item Env:\THEORG_PORT -ErrorAction SilentlyContinue
 }
 $Hash=(Get-FileHash $Exe -Algorithm SHA256).Hash.ToLowerInvariant()

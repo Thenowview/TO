@@ -59,8 +59,8 @@ try {
   [Environment]::SetEnvironmentVariable('THEORG_WORKSPACE',(Join-Path $SmokeRoot 'workspace'),'Process')
   [Environment]::SetEnvironmentVariable('THEORG_MODELS',(Join-Path $SmokeRoot 'models'),'Process')
   [Environment]::SetEnvironmentVariable('THEORG_SKIP_SHORTCUT','1','Process')
-  & $Exe --self-test
-  CheckExit 'Real packaged engine self-test'
+  $engineTest = Start-Process -FilePath $Exe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
+  if($engineTest.ExitCode -ne 0){throw ('Real packaged engine self-test failed: '+$engineTest.ExitCode)}
 } finally {
   foreach($name in $envNames){[Environment]::SetEnvironmentVariable($name,$oldEnvironment[$name],'Process')}
   if(Test-Path -LiteralPath $SmokeRoot){Remove-Item -LiteralPath $SmokeRoot -Recurse -Force}

@@ -48,8 +48,8 @@ function VerifyStagedPayload {
     [Environment]::SetEnvironmentVariable('THEORG_WORKSPACE',(Join-Path $testRoot 'workspace'),'Process')
     [Environment]::SetEnvironmentVariable('THEORG_MODELS',(Join-Path $testRoot 'models'),'Process')
     [Environment]::SetEnvironmentVariable('THEORG_SKIP_SHORTCUT','1','Process')
-    & (Join-Path $Stage 'TheOrg.exe') --self-test
-    FailIfExit 'TheOrg executable self-test'
+    $engineTest = Start-Process -FilePath (Join-Path $Stage 'TheOrg.exe') -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
+    if($engineTest.ExitCode -ne 0){throw ('TheOrg executable self-test failed: '+$engineTest.ExitCode)}
   } finally {
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
     if(Test-Path -LiteralPath $testRoot){Remove-Item -LiteralPath $testRoot -Recurse -Force}
