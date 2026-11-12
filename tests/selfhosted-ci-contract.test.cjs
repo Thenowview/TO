@@ -60,6 +60,9 @@ test("Bridge runner preflight executes before any source or Windows build",()=>{
   const source=workflow.indexOf("./tools/Test-TheOrg-Source-Local.ps1");
   const build=workflow.indexOf("./tools/Build-TheOrg-Windows-Local.ps1");
   assert.ok(preflight>0 && source>preflight && build>source);
+  assert.equal((workflow.match(/shell: powershell -NoProfile -ExecutionPolicy RemoteSigned -File \{0\}/g)||[]).length,4,
+    "Every Windows step must set execution policy only for its own process");
+  assert.doesNotMatch(workflow,/Set-ExecutionPolicy/);
   assert.match(workflow,/build_unsigned_windows_candidate:/);
   assert.match(workflow,/build_unsigned_windows_candidate:[\s\S]*?default:\s*false/);
 });

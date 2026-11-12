@@ -35,22 +35,22 @@ jobs:
         with:
           persist-credentials: false
       - name: Check preinstalled Windows runner tools (no downloads)
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy RemoteSigned -File {0}
         run: |
           ./tools/Test-TheOrg-Runner-Preflight.ps1
       - name: Verify source on local Windows runner
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy RemoteSigned -File {0}
         run: |
           ./tools/Test-TheOrg-Source-Local.ps1
       - name: Optional unsigned Windows build on local machine
         if: ${{ inputs.build_unsigned_windows_candidate }}
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy RemoteSigned -File {0}
         run: |
           ./tools/Build-TheOrg-Windows-Local.ps1
           ./tools/Build-TheOrg-Windows-Local.ps1 -CheckOnly
       - name: Record verification scope
         if: always()
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $message = @(
             'Self-hosted Windows check only. No merge or deployment. No GitHub-hosted compute used.',
