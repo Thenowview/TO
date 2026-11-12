@@ -58,6 +58,10 @@ class Handler(BaseHTTPRequestHandler):
                        'selected':core.setting('backend','auto'),
                        'ollama_model':core.setting('ollama_model',''),
                        'llama_binary':core.llama_binary() is not None,'model_directory':str(core.MODELS)})
+                elif path=='/api/company/agents':
+                    q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'agents':company_execution.company_profiles(
+                        q.get('company_id',['demo'])[0])})
                 elif path=='/api/company/orders':
                     q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
                     self._json({'orders':company_execution.list_orders(q.get('company_id',[''])[0])})
@@ -139,7 +143,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({'error':'Payload must be between 1 byte and 150 KB.'},413);return
             payload=json.loads(self.rfile.read(n).decode('utf-8'))
             if not isinstance(payload,dict):raise core.EngineError('Request body must be an object.')
-            if path=='/api/company/orders':
+            if path=='/api/company/agents':
+                self._json({'agent':company_execution.save_company_profile(
+                    payload.get('company_id'),payload.get('agent_id'),
+                    payload.get('updates'),confirmed=payload.get('confirmed'))})
+            elif path=='/api/company/orders':
                 self._json({'order':company_execution.create_order(
                     payload.get('company_id'),payload.get('project_id'),
                     payload.get('objective'),payload.get('tasks'),confirmed=payload.get('confirmed'))},201)
