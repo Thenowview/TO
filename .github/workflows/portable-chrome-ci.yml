@@ -28,19 +28,19 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Compile Windows self-contained local controller (no Chrome bundled)
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/portable-bridge
           if ($LASTEXITCODE -ne 0) { throw 'Windows bridge compilation failed' }
       - name: Check bridge self tests and Native Messaging protocol
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           & out/portable-bridge/TheOrg.Bridge.exe --self-test
           if ($LASTEXITCODE -ne 0) { throw 'TheOrg bridge self tests failed' }
           python tests/native-messaging-smoke.py out/portable-bridge/TheOrg.Bridge.exe
           if ($LASTEXITCODE -ne 0) { throw 'Native Messaging smoke test failed' }
       - name: Assemble portable no-new-browser package and integrity report
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $root='out/TheOrg-Portable-Chrome'
           New-Item -ItemType Directory -Path $root -Force | Out-Null
