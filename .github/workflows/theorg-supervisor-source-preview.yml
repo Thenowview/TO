@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '22'
       - name: Validate agents and extension on Windows
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Node agent tests failed' }
@@ -37,7 +37,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Syntax failed: $file" }
           }
       - name: Create hash-verified source candidate locally
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           python tools/package-supervisor-source.py
           if ($LASTEXITCODE -ne 0) { throw 'Source packaging failed' }
