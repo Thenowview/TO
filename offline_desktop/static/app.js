@@ -569,7 +569,26 @@
           showToast('Automatic edition selection enabled. Inference still requires your approval.');
       }catch(e){showToast(e.message,true);autoButton.disabled=false;}
     });
-    autoCard.append(autoButton);root.append(autoCard);
+    autoCard.append(autoButton);
+    // Edition choice never starts inference. This separate action requires
+    // permission and reruns the hardware + GGUF checks immediately before use.
+    if(mode==='auto'){
+      const launch=element('button','btn secondary','Start recommended local model');
+      launch.type='button';
+      launch.disabled=!choice.model || choice.tier==='nano';
+      launch.title=launch.disabled?'No local model currently passes the auto preflight.':'Requires a separate explicit confirmation. No remote services used.';
+      launch.addEventListener('click',async()=>{
+        if(!confirm('Start the recommended LOCAL model '+choice.model+' now? TheOrg will recheck free RAM and GGUF metadata; this may consume substantial memory.'))return;
+        launch.disabled=true;
+        try{
+          const result=await request('adaptive/start-recommended',{method:'POST',body:{confirmed:true}});
+          showToast('Local model start requested: '+result.adaptive_start.model+'. Verify actual generation next.');
+          await Promise.all([loadAdaptive(),loadModels(),loadStatus()]);
+        }catch(e){showToast(e.message,true);launch.disabled=false;}
+      });
+      autoCard.append(launch);
+    }
+    root.append(autoCard);
     for(const tier of data.adaptive.options||[]){
       const card=element('article','adaptive-edition-card'+(tier.selected?' selected':''));
       card.append(element('div','adaptive-edition-label','Adaptive '+({nano:'1',lite:'2',advanced:'3'}[tier.id]||'')));
