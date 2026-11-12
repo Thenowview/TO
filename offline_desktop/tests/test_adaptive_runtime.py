@@ -101,6 +101,22 @@ class AdaptiveRuntimeTests(unittest.TestCase):
         matches=adaptive_runtime.recall("Prepare source verification")["matches"]
         self.assertEqual([r["id"] for r in matches],[correction["id"]])
 
+    def test_completed_task_can_only_enter_review_queue(self):
+        ident=core.enqueue("Check release gate evidence","supervisor")
+        with self.assertRaisesRegex(core.EngineError,"Only a completed task"):
+            adaptive_runtime.propose_completed_task(ident)
+        with core.conn() as db:
+            db.execute("UPDATE tasks SET status='completed',output=? WHERE id=?",
+                       ("Build is blocked until tests pass; inspect the real job logs.",ident))
+        candidate=adaptive_runtime.propose_completed_task(ident)
+        self.assertEqual(candidate['status'],'candidate')
+        self.assertTrue(candidate['requires_independent_owner_review'])
+        self.assertEqual(adaptive_runtime.recall("Check release gate evidence")['matches'],[])
+        adaptive_runtime.review(candidate['id'],approved=True,
+            evidence="Owner checked the real source-job result before approving.")
+        self.assertEqual(adaptive_runtime.recall("Check release gate evidence")
+                         ['matches'][0]['id'],candidate['id'])
+
     def test_bad_sources_and_invalid_query_refused(self):
         with self.assertRaises(core.EngineError):
             adaptive_runtime.propose("Some question","Some answer to save",
