@@ -137,6 +137,18 @@ class LocalVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(core.EngineError, "accepted size"):
             local_validation._validated_report(path, self.sha, None)
 
+    def test_failed_source_suite_never_counts_as_successful_operator_action(self):
+        with patch.dict(os.environ, {"THEORG_ENABLE_LOCAL_SOURCE_TESTS": "1"}):
+            item = capabilities.prepare("windows.source.verify", {"expected_sha": self.sha})
+            failed = {"status": "failed", "exit_code": 1, "source_tests_passed": False,
+                      "approved_sha": self.sha, "build_performed": False}
+            with patch.object(operator_tools, "execute", return_value=failed):
+                result = capabilities.approve_and_execute(
+                    item["id"], item["digest"], confirmed=True)
+            self.assertEqual(result["status"], "failed")
+            self.assertFalse(result["ok"])
+            self.assertFalse(result["result"]["source_tests_passed"])
+
     def test_no_approval_no_execution_and_uncertain_results_not_retried(self):
         with patch.dict(os.environ, {"THEORG_ENABLE_LOCAL_SOURCE_TESTS": "1"}):
             request = capabilities.prepare("windows.source.verify",
