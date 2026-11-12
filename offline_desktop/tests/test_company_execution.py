@@ -78,6 +78,18 @@ class CompanyExecutionTests(unittest.TestCase):
                        (json.dumps(report),str(stage),job["id"]))
         return job["id"],stage
 
+    def test_bounded_audit_json_is_valid_or_refused_without_truncation(self):
+        payload={"status":"submitted_for_qa","summary":"Reviewed ✓ with source lineage"}
+        encoded=json.dumps(payload,ensure_ascii=False,sort_keys=True)
+        exact=len(encoded.encode("utf-8"))
+        saved=company._bounded_json(payload,exact,"Agent report")
+        self.assertEqual(json.loads(saved),payload)
+        with self.assertRaisesRegex(core.EngineError,"safe audit size limit"):
+            company._bounded_json(payload,exact-1,"Agent report")
+        # Do not silently corrupt Unicode JSON or store non-serializable objects.
+        with self.assertRaisesRegex(core.EngineError,"valid JSON"):
+            company._bounded_json({"unserializable":object()},30000,"Agent report")
+
     def test_company_profile_editor_is_scoped_and_immutable(self):
         names=company.company_profiles("demo")
         self.assertEqual(len(names),12)
