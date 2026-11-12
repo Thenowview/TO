@@ -115,6 +115,30 @@ class ApiTests(unittest.TestCase):
             self.assertIn('Benchmark locked',body['error'])
             inference.assert_not_called()
 
+    def test_full_chat_search_is_authenticated_read_only_and_exact_task_retrieval(self):
+        self.assertEqual(self.get('/api/chat/search?q=release',auth=False)[0],401)
+        code,created=self.post('/api/chat/sessions',{'title':'Review'})
+        self.assertEqual(code,201)
+        session=created['session']['id']
+        task=self.post('/api/tasks',{'session_id':session,
+                                    'prompt':'Review release approval gates',
+                                    'role':'supervisor'})[1]['id']
+        core.finish_task(task,output='No production deployment before approval.')
+        query='/api/chat/search?q=release&session_id='+session
+        code,_,raw=self.get(query)
+        self.assertEqual(code,200)
+        found=json.loads(raw)['search']
+        self.assertFalse(found['remote_search_performed'])
+        self.assertEqual(found['matches'][0]['id'],task)
+        self.assertNotIn('context_snapshot',found['matches'][0])
+        code,_,raw=self.get('/api/chat/task?id='+task)
+        self.assertEqual(code,200)
+        item=json.loads(raw)['task']
+        self.assertEqual(item['output'],'No production deployment before approval.')
+        self.assertNotIn('context_snapshot',item)
+        self.assertEqual(self.get('/api/chat/search?q=x')[0],400)
+        self.assertEqual(self.get('/api/chat/task?id=../bad')[0],400)
+
     def test_chat_context_requires_consent_and_does_not_reexpose_private_snapshot(self):
         code,created=self.post('/api/chat/sessions',{'title':'Local followups'})
         self.assertEqual(code,201)
