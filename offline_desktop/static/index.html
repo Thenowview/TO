@@ -113,8 +113,13 @@
         </div>
         <div class="chat-filters">
           <label for="chatMessageSearch" class="visually-hidden">Search tasks and responses in the current view</label>
-          <input id="chatMessageSearch" type="search" maxlength="120" placeholder="Search messages in this view…" autocomplete="off">
+          <input id="chatMessageSearch" type="search" maxlength="120" placeholder="Search messages…" autocomplete="off">
+          <button type="button" id="chatSearchAll" class="chat-search-all" title="Search all saved tasks in this workspace">Search history</button>
           <span id="chatSearchStatus" role="status" aria-live="polite">Showing recent tasks</span>
+        </div>
+        <div class="chat-history-results" id="chatHistoryResults" role="region" aria-label="Saved task search results" hidden>
+          <div class="chat-history-results-head"><strong>Saved task matches</strong><button type="button" id="chatCloseSearch" class="quiet-icon-button" aria-label="Close saved task search">Close</button></div>
+          <div id="chatHistoryMatches"></div>
         </div>
         <div class="chat-scroll" id="chatScroll">
           <div class="chat-conversation" id="supervisorResults" role="log" aria-label="Task messages and verified agent results" aria-live="polite" aria-relevant="additions text"></div>
