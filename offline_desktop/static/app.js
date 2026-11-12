@@ -19,7 +19,7 @@
   let activeView = 'overview';
   let companyAgentProfiles=[];
   let jobs = [], modelData = {}, engineStatus = {};
-  const labels = {overview:'Workspace overview',supervisor:'AI Supervisor',tasks:'Task queue',coding:'Code Studio',company:'Company agents',models:'Local models',files:'Workspace files',memory:'Memory vault',settings:'System & security'};
+  const labels = {overview:'Workspace overview',supervisor:'AI Supervisor',operator:'Windows Operator',tasks:'Task queue',coding:'Code Studio',company:'Company agents',models:'Local models',files:'Workspace files',memory:'Memory vault',settings:'System & security'};
 
   function text(node, value){ node.textContent = String(value ?? ''); return node; }
   function element(tag, className, value) {
@@ -70,6 +70,7 @@
     document.querySelector('.sidebar').classList.remove('open');
     if(view==='coding')loadCodeStudio().catch(e=>showToast(e.message,true));
     if(view==='company')loadCompany().catch(e=>showToast(e.message,true));
+    if(view==='operator')loadOperator().catch(e=>showToast(e.message,true));
     if(view==='models')loadModels();if(view==='tasks'||view==='supervisor')loadTasks();
     if(view==='files')loadFiles();if(view==='memory')loadMemories();if(view==='settings')loadAudit();
   }
@@ -261,6 +262,95 @@
     if(!(d.events||[]).length){appendEmpty(list,'No audit events yet.');return;}
     for(const x of d.events){const e=element('div','audit-event');e.append(element('strong','',x.event+' · '),document.createTextNode(x.created));list.append(e);}
   }
+  /* Windows Operator — the preview never triggers commands. Each action gets
+     a fresh, short-lived digest approval; all source/provider data is text. */
+  let operatorCatalog=[];
+  async function loadOperator(){
+    const [available,history]=await Promise.all([request('capabilities'),request('capabilities/history')]);
+    operatorCatalog=available.capabilities||[];
+    const catalog=$('operatorCatalog');catalog.replaceChildren();
+    for(const tool of operatorCatalog){
+      const card=element('div','task-card');
+      card.append(element('strong','',tool.id+' · '+(tool.enabled?'Enabled':'Disabled')));
+      card.append(element('div','muted',tool.description||'No description'));
+      catalog.append(card);
+    }
+    const recent=$('operatorHistory');recent.replaceChildren();
+    const records=(history.requests||[]).slice(0,20);
+    if(!records.length)appendEmpty(recent,'No operator tool execution yet.');
+    for(const item of records){
+      const card=element('div','task-card');
+      card.append(element('strong','',item.capability+' · '+item.status));
+      card.append(element('div','muted','Request '+String(item.id).slice(0,10)+' · '+String(item.updated)));
+      recent.append(card);
+    }
+  }
+  async function runOperatorAction(tool,args,effect){
+    const prepared=await request('capabilities/prepare',{
+      method:'POST',body:{capability:tool,arguments:args}
+    });
+    const p=prepared.request;
+    const label='Execute exactly '+tool+'?'+
+      '\nEffect: '+effect+
+      '\nRequest: '+p.id+
+      '\nDigest: '+p.digest+
+      '\nExpiry: '+new Date(p.expires_at*1000).toLocaleString()+
+      '\nOnly this exact action is approved. No unattended follow-up actions.';
+    if(!confirm(label)){
+      showToast('Approval declined; the prepared request will expire.');
+      return;
+    }
+    const outcome=await request('capabilities/execute',{
+      method:'POST',body:{id:p.id,digest:p.digest,confirmed:true}
+    });
+    text($('operatorPlanStatus'),JSON.stringify(outcome,null,2));
+    await loadOperator();
+    if(outcome.status==='completed')showToast('Action completed; inspect returned evidence.');
+    else showToast('Action requires review: '+outcome.status,true);
+  }
+  async function previewOperator(){
+    const instruction=$('operatorInstruction').value.trim();
+    if(instruction.length<5){showToast('Enter at least 5 characters.',true);return;}
+    const btn=$('operatorPreview');btn.disabled=true;
+    try{
+      const r=await request('operator/plan',{method:'POST',body:{instruction}});
+      text($('operatorPlanStatus'),r.plan.warning);
+      await loadOperator();
+      const target=$('operatorPlan');target.replaceChildren();
+      for(const step of r.plan.tasks||[]){
+        const card=element('div','task-card');
+        const tool=step.tool;
+        card.append(element('strong','',tool||'Manual scoping required'));
+        card.append(element('div','muted','Effect: '+step.effect));
+        if(!tool){card.append(element('div','muted','No executable tool matched this instruction.'));target.append(card);continue;}
+        const entry=operatorCatalog.find(x=>x.id===tool);
+        if(!entry||!entry.enabled){
+          card.append(element('div','muted','Disabled. An operator must enable this tool in the local environment.'));
+          target.append(card);continue;
+        }
+        const args={...step.arguments};
+        const needsSha=args.expected_sha==='<reviewed-commit-sha>';
+        let shaInput;
+        if(needsSha){
+          shaInput=element('input');
+          shaInput.placeholder='Exact reviewed 40-character commit SHA';
+          shaInput.maxLength=40;
+          shaInput.setAttribute('aria-label','Exact reviewed commit SHA for '+tool);
+          card.append(shaInput);
+        }
+        const action=element('button','btn secondary','Prepare and approve this one action');
+        action.addEventListener('click',async()=>{
+          if(needsSha)args.expected_sha=shaInput.value.trim();
+          action.disabled=true;
+          try{await runOperatorAction(tool,args,step.effect);}
+          catch(e){text($('operatorPlanStatus'),e.message);showToast(e.message,true);}
+          finally{action.disabled=false;}
+        });
+        card.append(action);target.append(card);
+      }
+    }catch(e){text($('operatorPlanStatus'),e.message);showToast(e.message,true);}
+    finally{btn.disabled=false;}
+  }
   async function refreshAll(){
     try{await Promise.all([loadStatus(),loadTasks()]);if(activeView==='models')await loadModels();}
     catch(e){showToast(e.message,true);}
@@ -268,6 +358,8 @@
   document.querySelectorAll('[data-view],[data-go]').forEach(btn=>btn.addEventListener('click',()=>changeView(btn.dataset.view||btn.dataset.go)));
   $('menuToggle').addEventListener('click',()=>document.querySelector('.sidebar').classList.toggle('open'));
   $('refreshBtn').addEventListener('click',refreshAll);
+  $('operatorPreview').addEventListener('click',previewOperator);
+  $('operatorRefresh').addEventListener('click',()=>loadOperator().catch(e=>showToast(e.message,true)));
   $('refreshTasks').addEventListener('click',loadTasks);
   $('refreshFiles').addEventListener('click',loadFiles);
   $('readFile').addEventListener('click',readFile);
