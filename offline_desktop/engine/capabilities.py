@@ -148,7 +148,12 @@ def approve_and_execute(ident,digest,confirmed=False):
         raw=json.dumps({'capability':name,'arguments':clean},sort_keys=True,separators=(',',':'))
         if hashlib.sha256(raw.encode()).hexdigest()!=digest:
             raise core.EngineError('Stored operator request changed after approval; refuse execution.')
-        output=_execute(name,clean);result={'ok':True,'result':output};status='completed'
+        output=_execute(name,clean)
+        if (name=='windows.source.verify' and isinstance(output,dict) and
+                output.get('source_tests_passed') is not True):
+            result={'ok':False,'result':output};status='failed'
+        else:
+            result={'ok':True,'result':output};status='completed'
     except Exception as e:
         # GitHub might accept a dispatch even if the client loses its response.
         # Record uncertainty and require operator inspection; never auto-retry.
