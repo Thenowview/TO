@@ -13,10 +13,10 @@
 | OpenCode execution | Isolated copy, optional V2 CLI, manual approval, no general OS shell | Verify exact installed CLI permissions, real provider, process termination |
 | QA and Code Studio draft | Independent QA attestation and stale-source protections | Execute developer → auditor → security handoff and verify exact diff |
 | Local runner diagnostics | `desktop.runner.inspect`, read-only, off by default | Test both fixed locations, registration-file privacy and truthful unknown Online status |
-| Windows desktop automation | Fixed read-only PowerShell inspections added; general computer use NOT complete | Add least-privilege UI controls, approved installs and safe process management |
+| Windows desktop automation | Fixed PowerShell inspections plus opt-in top-level window inventory and guarded window focus committed; general computer use NOT complete | Real keyboard/mouse/browser control, explicit window identity, isolation and full Windows E2E |
 | Browser automation | Offline workspace inspection/Chrome Supervisor components | Verify authorized browser tasks, recovery, download and authentication handoff |
 | GitHub runner registration and job control | Authenticated runner/workflow *read* plus reviewed source-only dispatch implemented in draft code; registration NOT automated | Verify GitHub CLI scopes, live runner status, short-lived token handling and real workflow receipts |
-| P2 business connectors | **NOT complete** | Permission-scoped mail, Drive and calendar actions, dry runs and audit history |
+| P2 business connectors | Optional Gmail/Drive/Calendar fixed read-only OAuth-token health probes committed; no live account verified and full operations not complete | Official OAuth consent, credential lifecycle, scoped operations, readbacks and real service acceptance |
 
 ## P0 — Windows and agent execution (blocking core autonomy)
 
@@ -51,11 +51,12 @@
 - Do not infer success from a model response. Each integration must produce provider-confirmed receipts and test a revoked/expired/denied credential state.
 - Keep no-paid-services mode as an enforceable policy: provider cost estimates and a per-action deny control, not a marketing promise.
 
-## Current CI evidence (12 November 2026)
+## Latest CI and development evidence — 12 November 2026
 
-The user reports `TheOrg-Windows` is registered and Online with the `theorg-win` label. GitHub workflow jobs have started and successfully checked out the reviewed branch. However, two observed manually dispatched jobs—[run 43230697731](https://github.com/faisalwrokksa-hub/TO/actions/runs/43230697731) and [run 43231104099](https://github.com/faisalwrokksa-hub/TO/actions/runs/43231104099)—stopped at **Test-TheOrg-Runner-Preflight.ps1**. Neither reached source tests or an executable build. The GitHub connection can read job-step status but not the private failure-step logs; diagnose the exact failing prerequisite in the GitHub UI. No success is implied by job allocation.
-
-The review branch now includes `operator_tools.py` and `test_operator_tools.py`. These are source candidates only; no successful full test run has been recorded for their commit. The Windows build must remain gated on a passed source run.
+- The Windows runner was registered with the `theorg-win` label and GitHub successfully ran [source-only job 43233299196](https://github.com/faisalwrokksa-hub/TO/actions/runs/43233299196) at commit `0b17ae4c65acffbebbee64bb42002235cede20b7`. Job logs confirm the preflight passed, **153 Python tests (1 skipped)** and **58 Node tests (0 failed)**; eleven additional Node syntax checks passed.
+- Subsequent review-branch commits contain the Windows Operator cockpit, trusted local source verifier, guarded runner consoles, GitHub result verification, Win32 window inventory/focus and the opt-in Google read-only probe adapters. **No completed source-only CI on these latest changes has been confirmed.**
+- Source-level code edits and synthetic tests are **not** equivalent to proven Windows UI operations, live Google authorization, actual OpenCode task execution, browser E2E, clean-install EXE acceptance or signed production release.
+- Windows build must remain blocked until an actual full source test suite passes on the exact latest reviewed head. The user's requested bulk development does not authorize silent deployment, credential operations or merges.
 
 ## Mandatory quality gates
 
