@@ -20,6 +20,8 @@
 | Name | Effect | Required environment flag | Arguments |
 |---|---|---|---|
 | `desktop.runner.inspect` | Local known-file inspection | `THEORG_ENABLE_RUNNER_DIAGNOSTICS=1` | `{"location":"user_downloads"}` or `{"location":"system_root"}` |
+| `desktop.runner.registration_prompt` | Open private interactive registration wizard (does not register without owner token) | `THEORG_ENABLE_RUNNER_CONTROL=1` | `{"location":"user_downloads"}` or `{"location":"system_root"}` |
+| `desktop.runner.start` | Open registered runner console (does not assert Online) | `THEORG_ENABLE_RUNNER_CONTROL=1` | `{"location":"user_downloads"}` or `{"location":"system_root"}` |
 | `windows.powershell.inspect` | Read-only fixed PowerShell 5.1 script | `THEORG_ENABLE_WINDOWS_INSPECTION=1` | `{"check":"toolchain"}` or `{"check":"powershell_version"}` |
 | `github.runner.status` | Authenticated GitHub API read | `THEORG_ENABLE_GITHUB_READONLY=1` | `{}` |
 | `github.workflow.status` | Authenticated GitHub API read | `THEORG_ENABLE_GITHUB_READONLY=1` | `{}` |
@@ -30,6 +32,12 @@
 The GitHub tools require an installed, authenticated official `gh` CLI with appropriate repository scopes and permissions. No credential is requested or stored by the module. GitHub runner status requires the provider to grant the relevant read permission; a 403 is an unavailable result, not proof of Offline status.
 
 The dispatch tool is fixed to `faisalwrokksa-hub/TO`, `bridge-ci.yml`, and `feat/agent-execution-handoffs-independent-qa`. It dispatches `confirm_self_hosted=true`, `build_unsigned_windows_candidate=false`. It compares the full requested commit SHA with the current branch before dispatching. Because branch refs can advance between the check and dispatch, it does not claim race-free execution or completed tests. On uncertain dispatch outcome, it records `needs_review` rather than blindly retrying.
+
+## Interactive Windows runner lifecycle
+
+`desktop.runner.registration_prompt` and `desktop.runner.start` are **opt-in Windows-only process-launch actions**. They accept only two fixed runner root locations and check for existing `config.cmd`, `run.cmd`, `bin`, `externals`; a symlinked runner root or script is rejected. Registration refuses a pre-existing `.runner` marker, and starting requires it. These actions open a visible standard user console for the official locally installed runner scripts. They **do not download or verify binary provenance**, install services, or request administrator rights; manually validate the installation source before enabling them.
+
+The fresh GitHub registration token is typed **directly into the new console**, never into an API payload, agent transcript, SQLite database or background script. The launch result records a process ID, not a claim that registration succeeded or that GitHub reports Online. Use `github.runner.status` for authenticated confirmation. Launching and registering require independent one-use approval receipts; an uncertain launch is marked `needs_review`, without retries.
 
 ## Approved local Windows source checks
 
@@ -57,7 +65,7 @@ These actions are never run automatically from model output. Model instructions 
 ## Remaining development
 
 - Fully permission-controlled Windows UI automation (window identity, mouse, keyboard, downloads, installation, process tree controls) is NOT implemented by this module.
-- Runner registration, token acquisition, software installation and arbitrary PowerShell are deliberately NOT provided.
+- Runner registration now has an *interactive user-token console handoff* and a registered-runner launch, but no unattended token acquisition, official download verification, software installation, Windows service management, or arbitrary PowerShell.
 - P1 browser E2E and P2 business app connectors remain separate development phases.
 - Run the full Python/Node suite, real Windows PowerShell, authenticated GitHub API, runner flow and packaged EXE on the same reviewed commit before claiming completion.
 - The $0 Actions compute approach, unmerged draft PRs and production `NO_GO` still apply.
