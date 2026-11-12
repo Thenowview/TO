@@ -1,5 +1,15 @@
 # TheOrg Portable v0.10 — model archive import and readiness testing
 
+## Chrome company workflow release candidate
+
+The Chrome-first company workflow update is described in [RELEASE-COMPANY.md](RELEASE-COMPANY.md).
+It adds Manager/Worker/Reviewer handoffs, explicit review and lessons, cited online
+research through an owner-configured API, manual browser research handoff, and
+memory-aware settings around one bundled model. Build the onefile Windows package
+with `scripts/build_chrome_company.py` using its checksum-verified local inputs.
+The older release and verification statements below describe earlier packages;
+use the new artifact's receipt for its actual Windows and inference checks.
+
 **Local-first Code Studio with bounded Autopilot.** This is a **tested source release and Windows EXE builder**; a tested Windows `.exe` is **not** included in the ZIP unless a Windows CI build has subsequently completed. TheOrg's score has not been recalibrated against real Codex tasks.
 
 ## Run locally

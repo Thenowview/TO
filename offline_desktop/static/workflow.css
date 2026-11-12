@@ -1,0 +1,11 @@
+.office-workflow{padding:10px 18px;border-bottom:1px solid var(--line);max-height:45vh;overflow:auto;font-size:13px;min-width:0;max-width:100%;box-sizing:border-box}
+.office-workflow summary{cursor:pointer;padding:7px 0;font-weight:600}
+.office-workflow p{line-height:1.5;color:var(--muted);white-space:normal;overflow-wrap:anywhere}
+.office-workflow label{display:block;margin:9px 0}
+.office-workflow input[type=checkbox]{width:auto;margin-right:8px}
+.office-workflow textarea,.office-workflow input:not([type=checkbox]){display:block;box-sizing:border-box;width:100%;padding:8px;margin-top:5px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:6px}
+.office-workflow textarea{min-height:80px;resize:vertical}
+.office-task{margin-top:12px;padding:8px;border:1px solid var(--line);border-radius:8px}
+.office-workflow pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;padding:8px;background:var(--card)}
+.office-workflow a{color:var(--blue);display:inline-block;margin:8px}
+.office-workflow button{margin:4px}

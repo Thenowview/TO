@@ -220,9 +220,12 @@ def write_file(name, content):
 
 def local_models():
     items=[]
-    for p in sorted(MODELS.glob('*.gguf')):
-        if p.is_file() and not p.is_symlink():
-            items.append({'name':p.name, 'bytes':p.stat().st_size, 'path':str(p)})
+    roots=[MODELS]
+    if FROZEN:roots.append(Path(getattr(sys,'_MEIPASS',BASE))/'bundled-models')
+    for root in roots:
+        for p in sorted(root.glob('*.gguf')):
+            if p.is_file() and not p.is_symlink() and not any(x['name']==p.name for x in items):
+                items.append({'name':p.name, 'bytes':p.stat().st_size, 'path':str(p)})
     return items
 
 def git_binary():
@@ -296,7 +299,14 @@ def active_backend():
         if not (FROZEN or os.getenv('THEORG_PORTABLE') == '1') and backends['ollama']: return 'ollama',backends['ollama'][0]
     return None,None
 
+_inference_lock=threading.RLock()
+
 def infer(prompt,role,max_tokens=750,structured=False,include_memory=True,context_snapshot=''):
+    # All AI employees share one device; never run overlapping inference jobs.
+    with _inference_lock:
+        return _infer_serial(prompt,role,max_tokens,structured,include_memory,context_snapshot)
+
+def _infer_serial(prompt,role,max_tokens=750,structured=False,include_memory=True,context_snapshot=''):
     if type(include_memory) is not bool:
         raise EngineError('Memory inclusion must be a boolean.')
     if type(structured) is not bool:raise EngineError('Structured option must be boolean.')
@@ -323,7 +333,8 @@ def infer(prompt,role,max_tokens=750,structured=False,include_memory=True,contex
     messages.append({'role':'user','content':prompt})
     temp=0.0 if structured else model_behavior.temperature(role)
     if backend=='llamacpp':
-        payload={'messages':messages,'max_tokens':max_tokens,'temperature':temp}
+        payload={'messages':messages,'max_tokens':max_tokens,'temperature':temp,
+                 'chat_template_kwargs':{'enable_thinking':False}}
         if structured: payload['response_format']={'type':'json_object'}
         r=local_http_json('http://127.0.0.1:8081/v1/chat/completions',payload,timeout=180)
         try: content=r['choices'][0]['message']['content']
@@ -384,7 +395,8 @@ def probe_local_model():
             {'role':'user','content':'Reply with one word: ready.'}]
     if backend=='llamacpp':
         reply=local_http_json('http://127.0.0.1:8081/v1/chat/completions',
-             {'messages':prompt,'max_tokens':24,'temperature':0},timeout=90)
+             {'messages':prompt,'max_tokens':24,'temperature':0,
+              'chat_template_kwargs':{'enable_thinking':False}},timeout=90)
         try: answer=reply['choices'][0]['message']['content']
         except (KeyError,IndexError,TypeError) as exc:raise EngineError('Invalid local model probe response.') from exc
     else:
@@ -448,6 +460,10 @@ class QueueWorker:
                 self.stop.wait(.7)
                 continue
             try:
+                from engine import answer_flow
+                if answer_flow.policy()['enabled']:
+                    answer_flow.process(job)
+                    continue
                 snapshot=job.get('context_snapshot','')
                 if snapshot:
                     output=infer(job['prompt'],job['role'],context_snapshot=snapshot)
@@ -525,7 +541,7 @@ def start_local_model(name):
             raise EngineError(preflight['ram_block_reason'])
         available=preflight['available_ram_bytes'] or 0
         required=preflight['estimated_min_available_ram_bytes']
-        raise EngineError(f'Insufficient available RAM for CPU model: about {required//(1024**2)} MiB estimated required; {available//(1024**2)} MiB currently available. Choose a smaller GGUF.')
+        raise EngineError(preflight['ram_block_reason'])
     binary=llama_binary()
     if not binary: raise EngineError('llama-server executable not installed in bin/ or PATH.')
     with _model_lock:
@@ -533,15 +549,18 @@ def start_local_model(name):
             raise EngineError('A local llama-server process is already active.')
         if available_backends()['llamacpp']:
             raise EngineError('Port 8081 already hosts a llama.cpp server; configure it separately.')
-        threads=max(1,(os.cpu_count() or 2)//2)
-        args=[binary,'-m',candidate['path'],'--host','127.0.0.1','--port','8081','-c',str(max(1024,min(8192,int(os.getenv('THEORG_MODEL_CONTEXT','4096'))))),'-t',str(threads),'-np','1']
+        from engine import runtime_budget
+        budget=runtime_budget.select(preflight['available_ram_bytes'],candidate['bytes'],os.cpu_count(),os.getenv('THEORG_MODEL_CONTEXT','4096'))
+        threads=budget['threads']
+        args=[binary,'-m',candidate['path'],'--host','127.0.0.1','--port','8081','-c',str(budget['context']),'-t',str(threads),'-np','1']
         log=open(DATA/'llama-server.log','ab')
         try:
-            _model_process=subprocess.Popen(args,stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL)
+            _model_process=subprocess.Popen(args,stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,
+                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         finally: log.close()
     set_setting('backend','llamacpp')
     audit('model.start',{'name':name,'pid':_model_process.pid})
-    return {'started':True,'name':name,'pid':_model_process.pid,'note':'Model may take time to initialize; refresh status.'}
+    return {'started':True,'name':name,'pid':_model_process.pid,'runtime_budget':budget,'note':'Model may take time to initialize; refresh status.'}
 
 
 MAX_MODEL_BYTES = 32 * 1024**3

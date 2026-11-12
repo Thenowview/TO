@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime, operating_desk, reviewed_knowledge
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime, operating_desk, reviewed_knowledge, answer_flow, office_agents
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -53,6 +53,12 @@ class Handler(BaseHTTPRequestHandler):
                         'coding_projects':len(core.records('SELECT id FROM code_projects')),'coding_git_available':core.git_binary() is not None})
                 elif path=='/api/device/capabilities':
                     self._json({'capabilities':device_capabilities.detect()})
+                elif path=='/api/answer-flow':
+                    answer_flow.init_schema()
+                    self._json({'policy':answer_flow.policy(),'tasks':answer_flow.history()})
+                elif path=='/api/answer-flow/messages':
+                    ident=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
+                    self._json({'messages':office_agents.messages(ident)})
                 elif path=='/api/adaptive':
                     self._json({'adaptive':adaptive_runtime.readiness(),
                                 'models':adaptive_runtime.registry()['models']})
@@ -240,6 +246,16 @@ class Handler(BaseHTTPRequestHandler):
                 if payload.get('confirmed') is not True:
                     raise core.EngineError('Model startup requires separate explicit confirmation.')
                 self._json({'adaptive_start':adaptive_runtime.start_recommended(confirmed=True)})
+            elif path=='/api/answer-flow/settings':
+                self._json({'policy':answer_flow.configure(payload.get('options'),confirmed=payload.get('confirmed'))})
+            elif path=='/api/answer-flow/research':
+                self._json(answer_flow.submit_research(payload.get('id'),payload.get('answer'),payload.get('source_url'),confirmed=payload.get('confirmed')))
+            elif path=='/api/answer-flow/close':
+                self._json(answer_flow.close_review(payload.get('id'),payload.get('evidence'),payload.get('lesson'),confirmed=payload.get('confirmed')))
+            elif path=='/api/answer-flow/resume':
+                self._json(answer_flow.resume(payload.get('id'),confirmed=payload.get('confirmed')))
+            elif path=='/api/answer-flow/cancel':
+                self._json(answer_flow.cancel(payload.get('id'),confirmed=payload.get('confirmed')))
             elif path=='/api/operating/route':
                 self._json({'route':operating_desk.route_preview(
                     payload.get('instruction'),payload.get('role','supervisor'))})
@@ -417,7 +433,13 @@ def _show_error(message):
 
 
 def _open_dashboard(url):
-    """Use the user's DEFAULT browser (Chrome if chosen in Windows settings)."""
+    """Prefer existing Chrome profile; fall back to the default browser."""
+    for root in (os.getenv('PROGRAMFILES',''),os.getenv('PROGRAMFILES(X86)',''),os.getenv('LOCALAPPDATA','')):
+        chrome=Path(root)/'Google'/'Chrome'/'Application'/'chrome.exe'
+        if chrome.is_file():
+            subprocess.Popen([str(chrome),'--new-window',url],stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            return
     webbrowser.open(url, new=1)
 
 
