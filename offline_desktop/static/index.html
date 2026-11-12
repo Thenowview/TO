@@ -59,6 +59,22 @@
           <div class="separator"></div><h2>Execution boundaries</h2>
           <div class="inline-note">No shell commands, web tools, subagents, deployment, external directory access, or automatic production writes in TheOrg's configured policy. This is not a security boundary against malicious native processes.</div>
           <div class="inline-note">An independent QA verdict requires structural integrity evidence and a separate QA/security review. Reviewer identity is self-attested; verification of identity is not implemented.</div>
+          <div class="separator"></div><h2>Company specialist profiles</h2>
+          <p class="muted">Twelve named agent profiles per company. Names, departments and expertise are customizable; execution permissions and roles remain fixed.</p>
+          <label for="companyAgentSelect">Specialist</label>
+          <select id="companyAgentSelect"><option value="">Select an agent</option></select>
+          <label for="companyAgentName">Display name</label>
+          <input id="companyAgentName" maxlength="100">
+          <label for="companyAgentTitle">Job title</label>
+          <input id="companyAgentTitle" maxlength="100">
+          <label for="companyAgentDepartment">Department</label>
+          <input id="companyAgentDepartment" maxlength="100">
+          <label for="companyAgentExpertise">Expertise, comma-separated</label>
+          <input id="companyAgentExpertise" maxlength="560" placeholder="Python, data analysis, project planning">
+          <label for="companyAgentInstructions">Role instructions</label>
+          <textarea id="companyAgentInstructions" rows="4" maxlength="1500"></textarea>
+          <label for="companyAgentEnabled"><input id="companyAgentEnabled" type="checkbox" checked> Agent enabled</label>
+          <button class="btn secondary wide" id="companyAgentSave">Save company agent</button>
         </article>
       </div>
       <article class="panel"><div class="panel-heading"><div><div class="section-kicker">PERSISTENT WORK</div><h2>Orders, handoffs and QA</h2></div></div>
