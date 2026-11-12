@@ -271,6 +271,16 @@
       <div class="adaptive-edition-grid" id="adaptiveEditionList" aria-live="polite">
         <div class="inline-note">Checking installed hardware and Adaptive tiers…</div>
       </div>
+      <div class="adaptive-learning" aria-label="Local operating desk">
+        <h3>Operating desk · All local work</h3>
+        <p>Read-only status of personal tasks, company agents, Code Studio and workflows. Nothing executes or contacts a provider when refreshed.</p>
+        <button class="btn secondary" id="operatingRefresh" type="button">Refresh operating status</button>
+        <div id="operatingStatus" class="inline-note" role="status">Local status not loaded.</div>
+        <label for="operatingInstruction">Preview task route (no dispatch)</label>
+        <input id="operatingInstruction" maxlength="1000" placeholder="Describe the task to plan locally">
+        <button class="btn secondary" id="operatingRoute" type="button">Preview safe route</button>
+        <div id="operatingRouteResult" class="inline-note" role="status">Preview does not enqueue an agent.</div>
+      </div>
       <div class="adaptive-learning" aria-label="Locally verified knowledge">
         <h3>Adaptive knowledge</h3>
         <p>Look for a previously verified solution before sending a task to an AI provider. No websites are contacted automatically and no model weights are retrained.</p>
@@ -278,6 +288,18 @@
         <input id="adaptiveQuery" type="search" maxlength="1000" placeholder="Search verified local solutions…">
         <button class="btn secondary" id="adaptiveFind" type="button">Search local knowledge</button>
         <div id="adaptiveResults" class="task-stack" role="status">Only reviewed, locally stored solutions appear here.</div>
+        <div class="separator"></div>
+        <h3>Owner-reviewed solutions</h3>
+        <button class="btn secondary" id="knowledgeRefresh" type="button">Review knowledge candidates</button>
+        <div id="knowledgeCandidates" class="task-stack" role="region" aria-label="Knowledge review queue">Review is required before a candidate becomes reusable.</div>
+        <div class="separator"></div>
+        <h3>Local knowledge portability</h3>
+        <p>Exports only reviewed solutions after approval. Imports never inherit verification. Saved memory, tasks, and credentials are not exported as separate records. Review exported text for sensitive content.</p>
+        <button class="btn secondary" id="knowledgeExport" type="button">Export reviewed solutions (confirm)</button>
+        <label for="knowledgeImportFile">Import an exported JSON file as unverified candidates</label>
+        <input id="knowledgeImportFile" type="file" accept=".json,application/json">
+        <button class="btn secondary" id="knowledgeImport" type="button">Preview and import (confirm)</button>
+        <div id="knowledgeTransferStatus" class="inline-note" role="status">No external sync or automatic learning.</div>
       </div>
     </section>
     <section class="hardware-advisor" aria-label="Automatic AI model sizing guidance">
