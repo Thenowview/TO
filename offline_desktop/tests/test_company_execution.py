@@ -61,7 +61,7 @@ class CompanyExecutionTests(unittest.TestCase):
         before=hashlib.sha256(b"old\n").hexdigest()
         after=hashlib.sha256(b"new\n").hexdigest()
         stage=(core.WORKSPACE/"theorg_agent_runs"/"demo"/order["id"]/
-               job["id"]/"a"*16)
+               job["id"]/("a"*16))
         stage.mkdir(parents=True)
         (stage/"main.py").write_text("new\n",encoding="utf-8")
         result=adapter.manifest(stage)
