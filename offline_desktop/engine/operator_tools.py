@@ -91,6 +91,15 @@ def normalize(name: str, args: dict) -> dict:
         if args:
             raise core.EngineError("Fixed GitHub read-only inspections take no arguments.")
         return {}
+    if name == "github.workflow.result":
+        if set(args) != {"run_id", "expected_sha"}:
+            raise core.EngineError("Workflow result requires exact run ID and expected commit.")
+        if type(args["run_id"]) is not int or not 1 <= args["run_id"] <= 10**13:
+            raise core.EngineError("Workflow run ID must be a positive integer.")
+        if (type(args["expected_sha"]) is not str or
+                not _COMMIT.fullmatch(args["expected_sha"])):
+            raise core.EngineError("Expected result commit must be exactly 40 lowercase hex.")
+        return {"run_id": args["run_id"], "expected_sha": args["expected_sha"]}
     if name in ("github.workflow.source_dispatch", "windows.source.verify"):
         if set(args) != {"expected_sha"} or not isinstance(args["expected_sha"], str):
             raise core.EngineError("Source execution requires the exact reviewed commit SHA.")
@@ -197,6 +206,48 @@ def _workflow_status() -> dict:
             "source": "authenticated-github-api"}
 
 
+def _workflow_result(run_id: int, expected_sha: str) -> dict:
+    """Require provider-confirmed source step on the exact reviewed commit."""
+    endpoint = "repos/" + REPOSITORY + "/actions/runs/" + str(run_id)
+    run = _github_json(endpoint)
+    if run.get("head_sha") != expected_sha:
+        raise core.EngineError("Workflow run does not belong to the approved commit.")
+    if run.get("path") not in (".github/workflows/" + WORKFLOW, WORKFLOW):
+        raise core.EngineError("Workflow result is not from the source-only CI workflow.")
+    if run.get("head_branch") != REVIEW_BRANCH or run.get("event") != "workflow_dispatch":
+        raise core.EngineError("Workflow result is not a manually dispatched reviewed branch.")
+    jobs = _github_json(endpoint + "/jobs?per_page=100").get("jobs")
+    if not isinstance(jobs, list):
+        raise core.EngineError("GitHub workflow job evidence is unavailable.")
+    matching = [j for j in jobs if isinstance(j, dict) and
+                j.get("name") == "self-hosted-windows-source"]
+    if len(matching) != 1:
+        raise core.EngineError("Cannot uniquely verify the trusted source-test job.")
+    job = matching[0]
+    steps = job.get("steps")
+    if not isinstance(steps, list):
+        raise core.EngineError("GitHub workflow step evidence is unavailable.")
+    required = ("Check preinstalled Windows runner tools (no downloads)",
+                "Verify source on local Windows runner")
+    step_ok = {name: sum(1 for st in steps if isinstance(st, dict) and
+              st.get("name") == name and st.get("conclusion") == "success") == 1
+               for name in required}
+    verified = (
+        run.get("status") == "completed" and run.get("conclusion") == "success"
+        and job.get("status") == "completed" and job.get("conclusion") == "success"
+        and all(step_ok.values())
+    )
+    return {
+        "run_id": run_id, "approved_sha": expected_sha, "workflow": WORKFLOW,
+        "run_status": run.get("status"), "run_conclusion": run.get("conclusion"),
+        "job_status": job.get("status"), "job_conclusion": job.get("conclusion"),
+        "required_steps": step_ok,
+        "source_tests_verified": verified, "windows_executable_verified": False,
+        "production_deployed": False, "evidence_source": "authenticated-github-api",
+        "note": "Verified" if verified else "Not verified: inspect incomplete or failing CI step."
+    }
+
+
 def _dispatch_source_only(expected_sha: str) -> dict:
     """Manual source-only workflow request, pinned by preflight check as far as API permits."""
     check = _github_json("repos/" + REPOSITORY + "/git/ref/heads/" + REVIEW_BRANCH)
@@ -225,6 +276,8 @@ def execute(name: str, args: dict) -> dict:
         return _runner_status()
     if name == "github.workflow.status":
         return _workflow_status()
+    if name == "github.workflow.result":
+        return _workflow_result(clean["run_id"], clean["expected_sha"])
     if name == "github.workflow.source_dispatch":
         return _dispatch_source_only(clean["expected_sha"])
     if name == "windows.source.verify":
