@@ -126,3 +126,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(prefers-reduced-motion:reduce){
   .chat-scroll,.chat-jump-button{scroll-behavior:auto!important}
 }
+
+/* Compact navigation leaves the session rail accessible on smaller desktops. */
+.sidebar-more-tools{flex:none;margin:2px 0 4px}
+.sidebar-more-tools summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;color:#cbd1d5;padding:11px;border-radius:10px;font-size:12px;font-weight:580}
+.sidebar-more-tools summary::-webkit-details-marker{display:none}
+.sidebar-more-tools summary::marker{content:""}
+.sidebar-more-tools summary:hover{background:#2a3034}
+.sidebar-more-tools summary .ui-icon{width:25px;color:#adbbb8}
+.sidebar-more-tools summary .ui-icon svg{width:19px;height:19px}
+.sidebar-more-tools summary small{font-size:9px;color:#8f999f;margin-left:auto;font-weight:400}
+.sidebar-more-links{padding-left:7px;border-left:1px solid #3e4649;margin:3px 0 0 21px}
+.sidebar-more-links .nav-button{min-height:43px;padding:5px 9px}
+.sidebar-more-links .nav-copy small{font-size:9.5px}
+@media(max-width:560px){.sidebar-more-tools summary small{font-size:9px}}
