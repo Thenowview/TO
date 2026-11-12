@@ -92,11 +92,11 @@ input[type=search]{appearance:none}
   font:10.5px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;
 }
 .chat-action-button:hover,.chat-copy-button:hover{transform:translateY(-1px)}
-.chat-stage:has(.chat-details-panel:not([hidden])) .chat-conversation{max-width:760px}
+.chat-workspace:has(.chat-details-panel:not([hidden])) .chat-conversation{max-width:760px}
 #chatContextToggle[aria-pressed=true]{color:#d4f3e7;border:1px solid #4b7265;background:#2b4138}
 #chatContextToggle[aria-pressed=false]{color:#b5bfc1}
 #chatContextToggle:disabled{opacity:.55}
-.chat-stage:has(.chat-details-panel:not([hidden])) .chat-composer{max-width:770px}
+.chat-workspace:has(.chat-details-panel:not([hidden])) .chat-composer{max-width:770px}
 .chat-scroll{scroll-padding-bottom:18px}
 .chat-scroll-bottom{z-index:1}
 @media(max-width:1200px){
@@ -105,7 +105,7 @@ input[type=search]{appearance:none}
 }
 @media(max-width:1050px){
   .chat-details-panel{z-index:10}
-  .chat-stage:has(.chat-details-panel:not([hidden])) .chat-conversation{max-width:850px}
+  .chat-workspace:has(.chat-details-panel:not([hidden])) .chat-conversation{max-width:850px}
 }
 @media(max-width:850px){
   .chat-filters{padding:7px 14px}
@@ -176,7 +176,7 @@ input[type=search]{appearance:none}
 #chatHistoryMatches>.muted{padding:14px 6px}
 @media(max-width:850px){
   .chat-history-results{top:103px;width:calc(100% - 24px);max-height:47dvh}
-  .chat-filters span{display:none}
+  .chat-filters span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 }
 @media(max-width:560px){
   .chat-search-all{padding:7px 8px;font-size:9px;min-height:32px}
