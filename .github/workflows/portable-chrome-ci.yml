@@ -5,37 +5,40 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      confirm_self_hosted:
+        description: 'Run trusted source on my private Windows runner only'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   portable:
-    runs-on: windows-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
+    runs-on: [self-hosted, windows, x64, theorg-win]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
       - name: Compile Windows self-contained local controller (no Chrome bundled)
-        shell: pwsh
+        shell: powershell
         run: |
           dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/portable-bridge
           if ($LASTEXITCODE -ne 0) { throw 'Windows bridge compilation failed' }
       - name: Check bridge self tests and Native Messaging protocol
-        shell: pwsh
+        shell: powershell
         run: |
           & out/portable-bridge/TheOrg.Bridge.exe --self-test
           if ($LASTEXITCODE -ne 0) { throw 'TheOrg bridge self tests failed' }
           python tests/native-messaging-smoke.py out/portable-bridge/TheOrg.Bridge.exe
           if ($LASTEXITCODE -ne 0) { throw 'Native Messaging smoke test failed' }
       - name: Assemble portable no-new-browser package and integrity report
-        shell: pwsh
+        shell: powershell
         run: |
           $root='out/TheOrg-Portable-Chrome'
           New-Item -ItemType Directory -Path $root -Force | Out-Null
@@ -65,6 +68,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Extracted archive failed SHA256 verification' }
       - name: Upload portable Chrome distribution (developer preview only)
         uses: actions/upload-artifact@v4
+        if: ${{ false }}
         with:
           name: TheOrg-Portable-Chrome-Win-x64
           path: out/TheOrg-Portable-Chrome-Win-x64.zip

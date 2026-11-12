@@ -5,17 +5,21 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm_self_hosted:
+        description: 'Run trusted source on my private Windows runner only'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   onefile-windows:
-    runs-on: windows-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
+    runs-on: [self-hosted, windows, x64, theorg-win]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -26,7 +30,7 @@ jobs:
           node-version: '22'
 
       - name: Test extension and Native Messaging routing
-        shell: pwsh
+        shell: powershell
         run: |
           node --check apps/chrome-extension/background.js
           node --check apps/chrome-extension/home.js
@@ -34,7 +38,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Supervisor tests failed' }
 
       - name: Publish self-contained Windows local controller
-        shell: pwsh
+        shell: powershell
         run: |
           dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/onefile/bridge
           if ($LASTEXITCODE -ne 0) { throw 'Bridge publish failed' }
@@ -44,13 +48,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native Messaging framing failed' }
 
       - name: Create fixed-ID unpacked Chrome extension
-        shell: pwsh
+        shell: powershell
         run: |
           node tools/prepare-onefile-extension.cjs apps/chrome-extension out/onefile/chrome-extension tools/onefile-extension-public-key.txt tools/onefile-extension-id.txt
           if ($LASTEXITCODE -ne 0) { throw 'Fixed ID packaging failed' }
 
       - name: Directly validate Windows registration before packaging
-        shell: pwsh
+        shell: powershell
         run: |
           $root=(Resolve-Path 'out/onefile').Path
           Copy-Item -LiteralPath 'tools/Setup-OneFile.ps1' -Destination (Join-Path $root 'Setup-OneFile.ps1')
@@ -68,11 +72,13 @@ jobs:
           if (Test-Path -LiteralPath $key) { throw 'Preflight registry key not cleaned up' }
 
       - name: Install NSIS compiler
-        shell: pwsh
-        run: choco install nsis --yes --no-progress --limit-output
+        shell: powershell
+        run: |
+          $nsis = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'NSIS\makensis.exe'
+          if (-not (Test-Path -LiteralPath $nsis -PathType Leaf)) { throw 'Preinstall NSIS on the private runner.' }
 
       - name: Build one unsigned Windows EXE (no Chrome bundle)
-        shell: pwsh
+        shell: powershell
         run: |
           $compiler=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'NSIS\makensis.exe'
           if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) { throw 'NSIS compiler missing' }
@@ -83,7 +89,7 @@ jobs:
           }
 
       - name: Smoke-test real Windows install, exact extension ID, registration and uninstall
-        shell: pwsh
+        shell: powershell
         run: |
           $file=(Resolve-Path 'out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe').Path
           $proc=Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
@@ -125,7 +131,7 @@ jobs:
           Write-Host 'PASS one-file EXE, Native Messaging registration, uninstall and user data retention'
 
       - name: Report installer SHA-256
-        shell: pwsh
+        shell: powershell
         run: |
           $file='out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe'
           $sha=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -134,6 +140,7 @@ jobs:
           Write-Host 'Unsigned developer preview. Production remains NO_GO.'
       - name: Upload ONE Windows EXE
         uses: actions/upload-artifact@v4
+        if: ${{ false }}
         with:
           name: TheOrg-OneFile-ExistingChrome-Win-x64
           path: out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe

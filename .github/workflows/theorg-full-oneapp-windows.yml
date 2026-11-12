@@ -5,23 +5,21 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  pull_request:
-    paths:
-      - 'tools/Build-TheOrg-Full-OneApp.ps1'
-      - 'tools/Start-TheOrg-Full.ps1'
-      - 'tools/Build-TheOrg-Windows-Local.ps1'
-      - '.github/workflows/theorg-full-oneapp-windows.yml'
-      - 'engine/bridge/**'
-      - 'apps/chrome-extension/**'
-      - 'offline_desktop/**'
   workflow_dispatch:
+    inputs:
+      confirm_self_hosted:
+        description: 'Run trusted source on my private Windows runner only'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   oneapp-windows:
-    runs-on: windows-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
+    runs-on: [self-hosted, windows, x64, theorg-win]
     timeout-minutes: 85
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +34,7 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Parse PowerShell scripts before building
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
           $paths = @(
@@ -56,7 +54,7 @@ jobs:
           }
           Write-Host 'PASS all four PowerShell build/launcher scripts parse'
       - name: Verify source and company-agent request limit
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference='Stop'
           python -m unittest discover -s offline_desktop/tests -t offline_desktop -q
@@ -68,12 +66,12 @@ jobs:
           node --check apps/chrome-extension/provider-auto-handoff.js
           node --check offline_desktop/static/app.js
       - name: Compile self-contained engine and .NET bridge
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference='Stop'
           ./tools/Build-TheOrg-Full-OneApp.ps1 -SkipTests
       - name: Verify actual Windows payload
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference='Stop'
           ./out/full-oneapp/TheOrg/Start-TheOrg-Full.ps1 -CheckOnly
@@ -95,7 +93,7 @@ jobs:
           }
           if (Test-Path ./out/full-oneapp/TheOrg/.theorg) { throw 'Runtime state found in distributable package' }
       - name: Create unsigned candidate archive
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference='Stop'
           Compress-Archive -Path ./out/full-oneapp/TheOrg -DestinationPath ./out/TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip -CompressionLevel Optimal
@@ -103,7 +101,7 @@ jobs:
           $hash=(Get-FileHash ./out/TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip" | Set-Content ./out/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
-        if: success()
+        if: ${{ false }}
         with:
           name: TheOrg-Full-OneApp-Windows-Unsigned-Candidate
           path: |
@@ -113,6 +111,6 @@ jobs:
           retention-days: 30
       - name: Do not release unverified binaries
         if: failure()
-        shell: pwsh
+        shell: powershell
         run: |
           Add-Content $env:GITHUB_STEP_SUMMARY 'Full OneApp NOT BUILT or NOT VERIFIED. No binary published.'

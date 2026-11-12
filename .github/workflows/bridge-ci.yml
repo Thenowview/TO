@@ -5,19 +5,15 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       confirm_self_hosted:
-        description: 'Use my own Windows runner (no GitHub-hosted compute)'
+        description: 'Run trusted source on my private Windows runner only'
         type: boolean
         required: true
         default: false
       build_unsigned_windows_candidate:
-        description: 'After source tests, compile unsigned Windows candidate locally (may download build dependencies)'
+        description: 'Also build unsigned Windows candidate locally'
         type: boolean
         required: true
         default: false
@@ -26,186 +22,9 @@ permissions:
   contents: read
 
 jobs:
-  js-syntax:
-    if: ${{ github.event_name != 'workflow_dispatch' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Validate Chrome extension JavaScript
-        run: |
-          node --check apps/chrome-extension/agent-playbooks.js
-          node --check apps/chrome-extension/task-manager.js
-          node --check apps/chrome-extension/supervisor-plan.js
-          node --check apps/chrome-extension/background.js
-          node --check apps/chrome-extension/home.js
-          node --check apps/chrome-extension/supervisor-starters.js
-          node --check apps/chrome-extension/company-agent-directory.js
-          node --check apps/chrome-extension/supervisor-job-intake.js
-          node --check apps/chrome-extension/provider-auto-handoff.js
-          node --check apps/chrome-extension/provider-page-agent.js
-      - name: Test Supervisor handoff and artifact gates with simulated Chrome
-        run: node --test tests/task-manager.test.cjs
-      - name: Audit Supervisor UI to background contracts
-        run: node --test tests/ui-contract.test.cjs
-      - name: Test guided prompt starters and AI adviser handoff
-        run: node --test tests/supervisor-starters.test.cjs
-      - name: Test named agent directory, company isolation and four-slot queue
-        run: node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs
-      - name: Audit fail-closed production release gates
-        run: |
-          node --test tests/release-gates.test.cjs
-          node tools/check-release-readiness.cjs
-      - name: Generate auditable release preflight without changing release gates
-        run: |
-          node --test tests/release-audit.test.cjs
-          node tools/generate-release-audit.cjs
-      - name: Upload production preflight evidence (not a deployment)
-        uses: actions/upload-artifact@v4
-        with:
-          name: TheOrg-Release-Preflight-NO-GO
-          path: |
-            out/release-audit/release-preflight.json
-            out/release-audit/release-preflight.md
-          if-no-files-found: error
-          retention-days: 30
-      - name: Validate extension and profile JSON
-        run: |
-          node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json','config/release-gates.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
-
-  windows-bridge:
-    if: ${{ github.event_name != 'workflow_dispatch' }}
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-      - name: Compile self-contained bridge source
-        run: dotnet build engine/bridge/TheOrg.Bridge.csproj --configuration Release --nologo
-      - name: Run offline controller and artifact regression checks
-        run: dotnet run --project engine/bridge/TheOrg.Bridge.csproj --configuration Release --no-build -- --self-test
-      - name: Publish self-contained Windows bridge candidate
-        run: dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/bridge
-      - name: Test actual Native Messaging stdio framing and tenant isolation
-        shell: pwsh
-        run: python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
-      - name: Fetch pinned official Chrome for Testing for dedicated TheOrg workspace
-        shell: pwsh
-        run: |
-          $version = '157.0.8103.50'
-          $url = "https://storage.googleapis.com/chrome-for-testing-public/$version/win64/chrome-win64.zip"
-          New-Item -ItemType Directory -Force out/browser | Out-Null
-          Invoke-WebRequest -Uri $url -OutFile out/browser/chrome-win64.zip
-          Expand-Archive -LiteralPath out/browser/chrome-win64.zip -DestinationPath out/browser -Force
-          $browser = 'out/browser/chrome-win64/chrome.exe'
-          if (!(Test-Path -LiteralPath $browser)) { throw 'Official browser binary missing from archive' }
-          $versionText = (Get-Item -LiteralPath $browser).VersionInfo.ProductVersion
-          if ("$versionText" -notmatch [regex]::Escape($version)) { throw "Unexpected browser binary version: $versionText" }
-          $archiveHash = (Get-FileHash -Path out/browser/chrome-win64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          $binaryHash = (Get-FileHash -Path $browser -Algorithm SHA256).Hash.ToLowerInvariant()
-          @(
-            'Chrome for Testing (official GoogleChromeLabs browser automation build)'
-            "Version: $version"
-            "Official source: $url"
-            "Downloaded archive SHA256: $archiveHash"
-            "Extracted chrome.exe SHA256: $binaryHash"
-            'Build channel: pinned testing build; does NOT auto-update'
-            'This upstream browser is NOT renamed or modified; TheOrg is the application launcher.'
-            'Use synthetic data in this developer preview. Review browser licensing before public redistribution.'
-          ) | Set-Content -LiteralPath out/browser/BROWSER_SOURCE.txt -Encoding utf8
-          Remove-Item -LiteralPath out/browser/chrome-win64.zip
-
-      - name: Install NSIS compiler
-        shell: pwsh
-        run: choco install nsis --yes --no-progress --limit-output
-      - name: Compile unsigned Windows developer-preview installer
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path out/installer | Out-Null
-          $compiler = "${env:ProgramFiles(x86)}\\NSIS\\makensis.exe"
-          if (!(Test-Path $compiler)) { throw "NSIS compiler missing: $compiler" }
-          & $compiler /V2 tools/TheOrgPreview.nsi
-          if ($LASTEXITCODE -ne 0) { throw "NSIS installer build failed" }
-          if (!(Test-Path out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe)) {
-            throw "Installer output missing"
-          }
-      - name: Smoke-test silent Windows installation and uninstall
-        shell: pwsh
-        run: |
-          $installer = (Resolve-Path out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe).Path
-          $result = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
-          if ($result.ExitCode -ne 0) { throw "Installer failed with code $($result.ExitCode)" }
-          $root = Join-Path $env:LOCALAPPDATA 'Programs\TheOrg'
-          $binary = Join-Path $root 'TheOrg.Bridge.exe'
-          $manifest = Join-Path $root 'chrome-extension\manifest.json'
-          $browser = Join-Path $root 'browser\chrome.exe'
-          $launcher = Join-Path $root 'TheOrg-Start.ps1'
-          if (!(Test-Path $binary) -or !(Test-Path $manifest) -or !(Test-Path $browser) -or !(Test-Path $launcher)) {
-            throw 'Installed bridge or Chrome extension is missing'
-          }
-          & $launcher -ValidateOnly
-          if (!$?) { throw 'TheOrg dedicated browser package validation failed' }
-          & $binary --self-test
-          if ($LASTEXITCODE -ne 0) { throw 'Installed binary self-test failed' }
-          & .\tests\windows-install-registration.ps1 -InstallRoot $root
-          if ($LASTEXITCODE -ne 0) { throw 'Installed Native Messaging registration regression failed' }
-          $uninstall = Join-Path $root 'Uninstall.exe'
-          $uninstalled = Start-Process -FilePath $uninstall -ArgumentList '/S' -Wait -PassThru
-          if ($uninstalled.ExitCode -ne 0) { throw 'Silent uninstall failed' }
-          if ((Test-Path $binary) -or (Test-Path $browser)) { throw 'Uninstall left TheOrg components installed' }
-      - name: Record SHA-256 checksums for unsigned release candidates
-        shell: pwsh
-        run: |
-          $binary = "out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe"
-          $bridge = "out/bridge/TheOrg.Bridge.exe"
-          $browser = "out/browser/chrome-win64/chrome.exe"
-          $rows = @(
-            "$( (Get-FileHash -Path $binary -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg-DevPreview-Windows-x64-unsigned.exe"
-            "$( (Get-FileHash -Path $bridge -Algorithm SHA256).Hash.ToLowerInvariant() )  TheOrg.Bridge.exe"
-            "$( (Get-FileHash -Path $browser -Algorithm SHA256).Hash.ToLowerInvariant() )  chrome.exe (bundled, pinned upstream browser)"
-            "Source commit: $env:GITHUB_SHA"
-            "Release channel: developer-preview-unsigned; NOT production"
-          )
-          $rows | Set-Content -Path out/installer/SHA256SUMS.txt -Encoding utf8
-      - name: Bundle operator instructions and verify SHA256 integrity
-        shell: pwsh
-        run: |
-          Copy-Item -LiteralPath docs/OPERATE_THEORG_WINDOWS.md -Destination out/installer/START_HERE.md
-          Copy-Item -LiteralPath tools/verify-preview.ps1 -Destination out/installer/VERIFY.ps1
-          Copy-Item -LiteralPath out/browser/BROWSER_SOURCE.txt -Destination out/installer/BROWSER_SOURCE.txt
-          $checksums = 'out/installer/SHA256SUMS.txt'
-          @(
-            "$( (Get-FileHash -Path out/installer/START_HERE.md -Algorithm SHA256).Hash.ToLowerInvariant() )  START_HERE.md"
-            "$( (Get-FileHash -Path out/installer/VERIFY.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() )  VERIFY.ps1"
-            "$( (Get-FileHash -Path out/installer/BROWSER_SOURCE.txt -Algorithm SHA256).Hash.ToLowerInvariant() )  BROWSER_SOURCE.txt"
-          ) | Add-Content -LiteralPath $checksums -Encoding utf8
-          & ./out/installer/VERIFY.ps1 -PackageDirectory out/installer
-      - name: Upload unsigned Windows developer-preview installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: TheOrg-DevPreview-Windows-x64-unsigned-installer
-          path: |
-            out/installer/TheOrg-DevPreview-Windows-x64-unsigned.exe
-            out/installer/SHA256SUMS.txt
-            out/installer/START_HERE.md
-            out/installer/VERIFY.ps1
-            out/installer/BROWSER_SOURCE.txt
-          if-no-files-found: error
-          retention-days: 30
-      - name: Upload unsigned Windows bridge candidate
-        uses: actions/upload-artifact@v4
-        with:
-          name: TheOrg-Windows-bridge-unsigned-candidate
-          path: out/bridge/
-          if-no-files-found: error
-          retention-days: 30
-
   self-hosted-windows-source:
     # Manual dispatch only. Never run untrusted PR code on a persistent private PC.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_self_hosted }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
     runs-on: [self-hosted, windows, x64, theorg-win]
     timeout-minutes: 90
     permissions:

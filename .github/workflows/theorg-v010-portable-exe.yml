@@ -1,20 +1,13 @@
 name: TheOrg portable Windows release acceptance
 
 on:
-  push:
-    branches:
-      - main
-      - feat/theorg-v010-offline-portable
-      - feat/theorg-release-gates
-      - feat/theorg-v1-integrated-candidate
-    paths:
-      - 'offline_desktop/**'
-      - '.github/workflows/theorg-v010-portable-exe.yml'
-  pull_request:
-    paths:
-      - 'offline_desktop/**'
-      - '.github/workflows/theorg-v010-portable-exe.yml'
   workflow_dispatch:
+    inputs:
+      confirm_self_hosted:
+        description: 'Run trusted source on my private Windows runner only'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -25,8 +18,9 @@ concurrency:
 
 jobs:
   source-acceptance:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
     name: Source tests and fail-closed evidence
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, x64, theorg-win]
     timeout-minutes: 12
     defaults:
       run:
@@ -39,16 +33,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify Python, JavaScript, and offline engine
-        shell: bash
+      - name: Verify Python, JavaScript and offline engine on Windows
+        shell: powershell
         run: |
-          set -euo pipefail
-          python -m unittest discover -s tests -v 2>&1 | tee ../theorg-source-ci.log
+          python -m unittest discover -s tests -v 2>&1 | Tee-Object -FilePath ../theorg-source-ci.log
+          if ($LASTEXITCODE -ne 0) { throw 'Offline unit tests failed' }
           python -m compileall -q app.py engine scripts
+          if ($LASTEXITCODE -ne 0) { throw 'Offline compile failed' }
           node --check static/app.js
+          if ($LASTEXITCODE -ne 0) { throw 'Dashboard syntax failed' }
           python app.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Offline self-test failed' }
       - name: Retain source diagnostics even on failed checks
-        if: always()
+        if: ${{ false }}
         uses: actions/upload-artifact@v4
         with:
           name: TheOrg-source-diagnostics
@@ -57,25 +54,25 @@ jobs:
           retention-days: 10
       - name: Summarize source acceptance outcome
         if: always()
-        shell: bash
+        shell: powershell
         run: |
-          if [[ -f ../theorg-source-ci.log ]]; then
-            tail -n 35 ../theorg-source-ci.log >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo 'Source diagnostics unavailable; check runner or checkout setup.' >> "$GITHUB_STEP_SUMMARY"
-          fi
-          echo 'Windows, GGUF and autonomous coding acceptance are independent gates.' >> "$GITHUB_STEP_SUMMARY"
+          if (Test-Path ../theorg-source-ci.log) {
+            Get-Content ../theorg-source-ci.log -Tail 35 | Add-Content $env:GITHUB_STEP_SUMMARY
+          } else {
+            Add-Content $env:GITHUB_STEP_SUMMARY 'Source diagnostics unavailable.'
+          }
+          Add-Content $env:GITHUB_STEP_SUMMARY 'GGUF inference and Windows release acceptance are separate checks.'
       - name: Explain real-model acceptance gate
-        shell: bash
+        shell: powershell
         run: |
-          echo 'Real-model Autopilot acceptance requires llama.cpp and an offline Docker image.'
-          echo 'Source CI does NOT mock or claim real GGUF inference.'
-          echo 'On a suitable device: python scripts/acceptance_real_autopilot.py --report acceptance-real.json'
+          Write-Host 'Real model acceptance requires a verified llama.cpp runtime and offline Docker image.'
+          Write-Host 'These source checks do not prove GGUF inference.'
 
   portable-windows:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
     name: Build and execute Windows EXE
     needs: source-acceptance
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows, x64, theorg-win]
     timeout-minutes: 60
     defaults:
       run:
@@ -87,24 +84,24 @@ jobs:
           python-version: '3.12'
           architecture: 'x64'
       - name: Re-run source unit tests on Windows
-        shell: pwsh
+        shell: powershell
         run: |
           python -m unittest discover -s tests -q
           if ($LASTEXITCODE -ne 0) { throw 'Windows source test failure' }
           python app.py --self-test
           if ($LASTEXITCODE -ne 0) { throw 'Windows source self-test failure' }
       - name: Build and smoke-test actual portable EXE
-        shell: pwsh
+        shell: powershell
         run: |
           ./Build-TheOrg-Portable-Windows.ps1 -SkipTests
           if ($LASTEXITCODE -ne 0) { throw 'Windows EXE builder failed' }
       - name: Independently validate release receipts
-        shell: pwsh
+        shell: powershell
         run: |
           python scripts/check_release.py dist --report dist/RELEASE-ACCEPTANCE.json
           if ($LASTEXITCODE -ne 0) { throw 'Release acceptance failed' }
       - name: Upload verified release only
-        if: success()
+        if: ${{ false }}
         uses: actions/upload-artifact@v4
         with:
           name: TheOrg-v0.10-Portable-Windows-EXE
@@ -118,7 +115,7 @@ jobs:
           if-no-files-found: error
       - name: Record failure state without publishing an unverified EXE
         if: failure()
-        shell: pwsh
+        shell: powershell
         run: |
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'Windows release NOT VERIFIED. Do not distribute a binary from this run.'
           if (Test-Path dist/RELEASE-ACCEPTANCE.json) {

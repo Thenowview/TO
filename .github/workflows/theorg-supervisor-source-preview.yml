@@ -5,35 +5,43 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  pull_request:
   workflow_dispatch:
+    inputs:
+      confirm_self_hosted:
+        description: 'Run trusted source on my private Windows runner only'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   source-candidate:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
+    runs-on: [self-hosted, windows, x64, theorg-win]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Test named company agents, prompt starters and Supervisor contracts
-        shell: bash
+      - name: Validate agents and extension on Windows
+        shell: powershell
         run: |
-          set -euo pipefail
           node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs
-          node --check apps/chrome-extension/company-agent-directory.js
-          node --check apps/chrome-extension/provider-auto-handoff.js
-          node --check apps/chrome-extension/provider-page-agent.js
-          node --check apps/chrome-extension/background.js
-          node --check apps/chrome-extension/home.js
-      - name: Build hash-verified source-only candidate
-        shell: bash
-        run: python3 tools/package-supervisor-source.py
+          if ($LASTEXITCODE -ne 0) { throw 'Node agent tests failed' }
+          foreach ($file in @('apps/chrome-extension/company-agent-directory.js','apps/chrome-extension/provider-auto-handoff.js','apps/chrome-extension/provider-page-agent.js','apps/chrome-extension/background.js','apps/chrome-extension/home.js')) {
+            node --check $file
+            if ($LASTEXITCODE -ne 0) { throw "Syntax failed: $file" }
+          }
+      - name: Create hash-verified source candidate locally
+        shell: powershell
+        run: |
+          python tools/package-supervisor-source.py
+          if ($LASTEXITCODE -ne 0) { throw 'Source packaging failed' }
       - name: Upload review-only full source candidate
         uses: actions/upload-artifact@v4
+        if: ${{ false }}
         with:
           name: TheOrg-Supervisor-CompanyAgents-SourceOnly
           path: out/source-preview/*
