@@ -6,27 +6,42 @@
 <body>
 <div class="app">
 <aside class="sidebar">
-  <div class="brand"><div class="brand-logo">◈</div><div><strong>THEORG</strong><small>PORTABLE ENGINE <b>0.9</b></small></div></div>
+  <div class="brand"><div class="brand-logo" aria-label="TheOrg mark"><span class="ui-icon" data-icon="blocks"></span></div><div><strong>THEORG</strong><small>LOCAL AI WORKSPACE <b>0.10</b></small></div></div>
   <div class="workspace-chip"><span class="chip-dot"></span><div><strong>Personal workspace</strong><small>Local-first • Private</small></div></div>
+  <button class="new-task-button" id="newChatButton" type="button" title="Compose a new independent local task">
+    <span class="ui-icon" data-icon="square-pen"></span><span>New task</span>
+    <span class="new-task-shortcut">Ctrl K</span>
+  </button>
   <div class="nav-label">WORKSPACE</div>
   <nav id="navigation" aria-label="Main navigation">
-    <button class="nav-button active" data-view="overview"><span>▦</span><b>Overview</b></button>
-    <button class="nav-button" data-view="supervisor"><span>✳</span><b>AI Supervisor</b></button>
-    <button class="nav-button" data-view="operator"><span>⌁</span><b>Windows Operator</b></button>
-    <button class="nav-button" data-view="tasks"><span>☷</span><b>Task queue</b></button>
-    <button class="nav-button" data-view="coding"><span>⌘</span><b>Code Studio</b></button>
-    <button class="nav-button" data-view="company"><span>◎</span><b>Company agents</b></button>
-    <button class="nav-button" data-view="models"><span>◉</span><b>Local models</b></button>
-    <button class="nav-button" data-view="files"><span>▤</span><b>Workspace files</b></button>
-    <button class="nav-button" data-view="memory"><span>▧</span><b>Memory vault</b></button>
-    <button class="nav-button" data-view="settings"><span>⚙</span><b>System & security</b></button>
+    <button class="nav-button active" data-view="supervisor" title="Chat with an agent using local tasks">
+      <span class="ui-icon" data-icon="messages-square"></span><span class="nav-copy"><b>Chat</b><small>Ask a local agent</small></span></button>
+    <button class="nav-button" data-view="tasks" title="Monitor durable local jobs and results">
+      <span class="ui-icon" data-icon="list-checks"></span><span class="nav-copy"><b>Task queue</b><small>Progress and history</small></span></button>
+    <button class="nav-button" data-view="coding" title="Local Git projects and reviewed code edits">
+      <span class="ui-icon" data-icon="code-2"></span><span class="nav-copy"><b>Code Studio</b><small>Projects and changes</small></span></button>
+    <button class="nav-button" data-view="operator" title="Permission-controlled Windows and GitHub tools">
+      <span class="ui-icon" data-icon="monitor-cog"></span><span class="nav-copy"><b>Windows Operator</b><small>Tools and approvals</small></span></button>
+    <button class="nav-button" data-view="company" title="Plan specialized agent jobs and QA">
+      <span class="ui-icon" data-icon="users"></span><span class="nav-copy"><b>Agent team</b><small>Handoffs and QA</small></span></button>
+    <div class="nav-label nav-label-tools">LIBRARY & SETTINGS</div>
+    <button class="nav-button" data-view="models" title="Check your RAM, load models and test actual inference">
+      <span class="ui-icon" data-icon="cpu"></span><span class="nav-copy"><b>Models</b><small>Local AI and hardware</small></span></button>
+    <button class="nav-button" data-view="files" title="Read and edit approved workspace files">
+      <span class="ui-icon" data-icon="folder-open"></span><span class="nav-copy"><b>Files</b><small>Workspace only</small></span></button>
+    <button class="nav-button" data-view="memory" title="Private, user-managed reference notes">
+      <span class="ui-icon" data-icon="book-open"></span><span class="nav-copy"><b>Memory</b><small>Saved references</small></span></button>
+    <button class="nav-button" data-view="overview" title="Review engine health and workspace metrics">
+      <span class="ui-icon" data-icon="layout-dashboard"></span><span class="nav-copy"><b>Overview</b><small>System status</small></span></button>
+    <button class="nav-button" data-view="settings" title="Review local permissions and audit events">
+      <span class="ui-icon" data-icon="settings-2"></span><span class="nav-copy"><b>Settings</b><small>Privacy and security</small></span></button>
   </nav>
   <div class="sidebar-bottom"><div class="privacy-banner"><span>◎</span><div><strong>Offline by design</strong><small>No cloud needed. Optional AI links require your choice.</small></div></div><div class="footer-brand">TheOrg independent runtime · Local data</div></div>
 </aside>
 <div class="main-shell">
-  <header class="topbar"><div class="topbar-left"><button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button><div><div class="breadcrumb">THEORG / <span id="breadcrumb">OVERVIEW</span></div><div class="top-title" id="pageTitle">Workspace overview</div></div></div><div class="topbar-right"><span class="status-pill" id="connectionStatus"><i></i> Connecting</span><button class="icon-btn" id="refreshBtn" title="Refresh">↻</button></div></header>
+  <header class="topbar"><div class="topbar-left"><button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation"><span class="ui-icon" data-icon="panel-left"></span></button><div><div class="breadcrumb">THEORG / <span id="breadcrumb">SUPERVISOR</span></div><div class="top-title" id="pageTitle">Chat</div></div></div><div class="topbar-right"><span class="status-pill" id="connectionStatus"><i></i> Connecting</span><button class="icon-btn" id="refreshBtn" title="Refresh task and engine status" aria-label="Refresh"><span class="ui-icon" data-icon="refresh-cw"></span></button></div></header>
   <main id="content">
-    <section class="view active" id="view-overview">
+    <section class="view" id="view-overview">
       <div class="hero"><div class="hero-shine"></div><div class="hero-text"><div class="eyebrow">LOCAL INTELLIGENCE SYSTEM</div><h1>One workspace.<br><em>Every agent, locally.</em></h1><p>Run compatible AI models, manage work, and keep your files and memories on your own device.</p><div class="hero-actions"><button class="btn primary" data-go="supervisor">✳ &nbsp; Open Supervisor</button><button class="btn secondary" data-go="models">◉ &nbsp; Configure model</button></div></div><div class="hero-orb"><div class="orb-inner">◈</div><div class="orbit orbit1"></div><div class="orbit orbit2"></div></div></div>
       <div class="metrics"><article class="metric"><div class="metric-icon teal">◉</div><small>AI CONNECTION</small><strong id="metricModel">—</strong><span id="metricModelDetail">Checking...</span></article><article class="metric"><div class="metric-icon amber">☷</div><small>TASKS COMPLETED</small><strong id="metricTasks">0</strong><span>Durable SQLite queue</span></article><article class="metric"><div class="metric-icon blue">▤</div><small>LOCAL FILES</small><strong id="metricFiles">0</strong><span>Restricted workspace</span></article><article class="metric"><div class="metric-icon violet">▧</div><small>SAVED MEMORIES</small><strong id="metricMemory">0</strong><span>Private on this device</span></article></div>
       <div class="two-col"><article class="panel"><div class="panel-heading"><div><div class="section-kicker">GET STARTED</div><h2>Quick actions</h2></div></div><div class="quick-actions"><button data-go="supervisor"><span>✳</span><div><strong>Send an AI instruction</strong><small>Assign a role and queue a task</small></div><span class="chevron">›</span></button><button data-go="models"><span>◉</span><div><strong>Connect an offline model</strong><small>Load a GGUF without Ollama</small></div><span class="chevron">›</span></button><button data-go="files"><span>▤</span><div><strong>Open secure workspace</strong><small>Manage approved local text files</small></div><span class="chevron">›</span></button></div></article><article class="panel"><div class="panel-heading"><div><div class="section-kicker">SYSTEM READINESS</div><h2>Live engine status</h2></div></div><div id="systemReadiness" class="readiness"></div></article></div>
@@ -67,7 +82,42 @@
         </article>
       </div>
     </section>
-    <section class="view" id="view-supervisor"><div class="section-header"><div><div class="section-kicker">AGENT OPERATIONS</div><h1>AI Supervisor</h1><p>Instructions are routed only to local model servers. Tool actions require independent approval.</p></div></div><div class="two-col supervisor-grid"><article class="panel"><h2>New instruction</h2><p class="muted">Choose a specialist and enter the work to perform.</p><label for="roleSelect">Agent role</label><select id="roleSelect"></select><label for="promptInput">Instruction</label><textarea id="promptInput" rows="8" placeholder="Example: Explain how to structure an offline project plan and acceptance criteria."></textarea><div class="inline-note">◈ AI answers require a loaded local model. No simulated completions.</div><button class="btn primary wide" id="submitTask">✳ &nbsp; Queue task</button></article><article class="panel"><div class="panel-heading"><div><div class="section-kicker">EXECUTION HISTORY</div><h2>Recent responses</h2></div><button class="text-btn" data-go="tasks">All tasks ›</button></div><div id="supervisorResults" class="task-stack"></div></article></div></section>
+    <section class="view active chat-workspace" id="view-supervisor" aria-label="TheOrg chat workspace">
+      <div class="chat-stage">
+        <div class="chat-stage-top">
+          <div class="chat-stage-title"><span class="ui-icon" data-icon="sparkles"></span><span>Local agent chat</span><span class="chat-beta">Independent tasks</span></div>
+          <button class="chat-history-action" type="button" data-go="tasks" title="Open the complete persistent task history"><span class="ui-icon" data-icon="history"></span>Task history</button>
+        </div>
+        <div class="chat-scroll" id="chatScroll">
+          <div class="chat-conversation" id="supervisorResults" role="log" aria-label="Task conversation and agent results" aria-live="polite" aria-relevant="additions text"></div>
+          <div class="chat-welcome" id="chatWelcome">
+            <div class="welcome-icon"><span class="ui-icon" data-icon="blocks"></span></div>
+            <h1>What can I help you work on?</h1>
+            <p>Ask a local specialist to plan, explain, draft, or analyze. Tasks are saved on your device and run only when a compatible local model is available.</p>
+            <div class="starter-grid" aria-label="Example instructions">
+              <button class="prompt-starter" type="button" data-prompt="Create a practical implementation plan for my project with milestones and risks." data-role="planner"><span class="ui-icon" data-icon="route"></span><span><strong>Plan a project</strong><small>Milestones, dependencies, risks</small></span></button>
+              <button class="prompt-starter" type="button" data-prompt="Review this technical idea and suggest a safe architecture and tests." data-role="developer"><span class="ui-icon" data-icon="code-2"></span><span><strong>Explore code</strong><small>Architecture and test ideas</small></span></button>
+              <button class="prompt-starter" type="button" data-prompt="Draft a concise, professional update for my team." data-role="writer"><span class="ui-icon" data-icon="file-text"></span><span><strong>Draft a message</strong><small>Clear writing, ready to edit</small></span></button>
+              <button class="prompt-starter" type="button" data-prompt="Identify risks and create a quality-assurance checklist for a proposed change." data-role="qa"><span class="ui-icon" data-icon="shield-check"></span><span><strong>Review quality</strong><small>Evidence, gaps, safeguards</small></span></button>
+            </div>
+          </div>
+        </div>
+        <form class="chat-composer" id="chatComposer">
+          <label class="visually-hidden" for="promptInput">Message to a local AI specialist</label>
+          <textarea id="promptInput" rows="2" maxlength="12000" placeholder="Message TheOrg…" spellcheck="true"></textarea>
+          <div class="composer-toolbar">
+            <div class="composer-left">
+              <span class="ui-icon composer-sparkle" data-icon="sparkles"></span>
+              <label class="visually-hidden" for="roleSelect">Choose agent specialist</label>
+              <select id="roleSelect" aria-label="Choose agent specialist"></select>
+              <span class="chat-local-label"><span class="ui-icon" data-icon="lock-keyhole"></span>Local tasks</span>
+            </div>
+            <button class="chat-send" id="submitTask" type="submit" title="Queue an independent local task" aria-label="Send task"><span class="ui-icon" data-icon="arrow-up"></span></button>
+          </div>
+        </form>
+        <div class="composer-disclaimer" id="chatDisclaimer">Each message creates an independent local task. Previous responses are not automatically sent as context. No model response is simulated.</div>
+      </div>
+    </section>
     <section class="view" id="view-tasks"><div class="section-header"><div><div class="section-kicker">DURABLE JOBS</div><h1>Task queue</h1><p>Queued, running, completed and failed tasks are stored locally and survive restarts.</p></div><button class="btn secondary" id="refreshTasks">↻ Refresh</button></div><div class="panel"><div id="taskList" class="task-stack"></div></div></section>
     <section class="view" id="view-company">
       <div class="section-header"><div><div class="section-kicker">REVIEW-ONLY MULTI-AGENT EXECUTION</div>
