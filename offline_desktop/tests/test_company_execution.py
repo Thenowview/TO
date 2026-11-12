@@ -190,6 +190,18 @@ class CompanyExecutionTests(unittest.TestCase):
                             cancel_event=event)
         executable.assert_not_called()
 
+    def test_incompatible_opencode_version_is_rejected_before_execution(self):
+        class StubVersion:
+            returncode=0
+            stdout="opencode 1.18.10"
+            stderr=""
+        with patch.object(adapter.subprocess,"run",return_value=StubVersion()):
+            with self.assertRaisesRegex(core.EngineError,"requires OpenCode V2"):
+                adapter._require_v2("/mock/opencode")
+        StubVersion.stdout="opencode 2.2.5"
+        with patch.object(adapter.subprocess,"run",return_value=StubVersion()):
+            self.assertEqual(adapter._require_v2("/mock/opencode"),"opencode 2.2.5")
+
     def test_qa_rejects_outside_or_missing_attempt_workspace(self):
         order=self._create()
         ident,stage=self._complete_job(order)
@@ -217,6 +229,7 @@ class CompanyExecutionTests(unittest.TestCase):
             def wait(self,timeout):return 0
 
         with patch.object(adapter,"_binary",return_value="/mock/opencode"), \
+             patch.object(adapter,"_require_v2",return_value="2.2.5"), \
              patch.object(adapter.subprocess,"Popen",FakeProcess):
             report=adapter.run(stage,"Inspect this synthetic source without modifying files.",
                                edit=False,model="ollama/demo",allow_provider_transfer=True)
@@ -235,6 +248,7 @@ class CompanyExecutionTests(unittest.TestCase):
             def wait(self,timeout):return 0
 
         with patch.object(adapter,"_binary",return_value="/mock/opencode"), \
+             patch.object(adapter,"_require_v2",return_value="2.2.5"), \
              patch.object(adapter.subprocess,"Popen",FakeProcess):
             report=adapter.run(stage,"Read synthetic code and identify potential concerns.",
                                edit=False,model="ollama/demo",allow_provider_transfer=True)
