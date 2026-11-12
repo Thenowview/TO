@@ -1,5 +1,7 @@
 # TheOrg — Chat-first UI and hardware-aware Models acceptance
 
+> **November 12 update:** The newer design closure in [CHAT_DESIGN_GAP_CLOSURE_2026-11-12.md](CHAT_DESIGN_GAP_CLOSURE_2026-11-12.md) adds explicitly opt-in, bounded same-session context, full local task-history search, editable drafts/independent branches, and a read-only Code Studio inspector. Earlier statements below describing all tasks as independent apply when optional session context is OFF. Actual Windows visual QA and latest-head CI remain pending.
+
 **Review branch:** `feat/agent-execution-handoffs-independent-qa`
 **Status:** source changes committed; latest Windows source-only CI and clean-device UI acceptance still required.
 **Visual direction:** a calm, spacious chat-first workspace inspired by familiar modern coding/chat clients. All assets and icons are authored locally; do not imply affiliation with OpenAI, Codex, Claude or ChatGPT.
