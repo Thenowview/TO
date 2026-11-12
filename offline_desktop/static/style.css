@@ -149,3 +149,24 @@ main:has(#view-supervisor.active){height:calc(100dvh - 68px);min-height:430px;ma
 /* Keep both icon and descriptive label visible in the compact sidebar. */
 .nav-button .nav-copy{width:auto;flex:1;text-align:left;font-size:inherit;min-width:0}
 .nav-button .nav-copy b,.nav-button .nav-copy small{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+
+/* Hardware-aware model selection — precise, non-promissory advisory surfaces. */
+.hardware-advisor{border:1px solid #3c454b;background:linear-gradient(140deg,#20282a,#202226);border-radius:18px;padding:23px;margin-bottom:23px}
+.hardware-advisor-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.hardware-advisor h2{margin:7px 0 6px;font-size:19px;letter-spacing:-.35px}
+.hardware-advisor-heading p{max-width:680px;color:#b8bec3;font-size:12px;line-height:1.6;margin:0}
+.hardware-advisor .btn{white-space:nowrap}
+.hardware-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:22px}
+.hardware-metric{border:1px solid #3e4649;border-radius:13px;background:#242a2e;padding:16px;display:flex;gap:13px;min-width:0;align-items:flex-start}
+.hardware-metric.highlighted{border-color:#55766c;background:#25332e}
+.hardware-metric>.ui-icon{display:flex;color:#c5e2db;background:#333f3b;width:34px;height:34px;border-radius:10px;align-items:center;justify-content:center}
+.hardware-metric>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hardware-metric small{font-size:10px;color:#acb6b9;font-weight:630;letter-spacing:.55px}
+.hardware-metric strong{font-size:19px;line-height:1.3;letter-spacing:-.4px;overflow-wrap:anywhere}
+.hardware-metric span:not(.ui-icon){font-size:10px;color:#acb2b9;line-height:1.45;overflow-wrap:anywhere}
+.hardware-advisor .inline-note{background:#1c2627;border:1px solid #3b4b47;color:#b7c5c1;margin:18px 0 0;line-height:1.6}
+#modelBenchmark:disabled{opacity:.46;cursor:not-allowed}
+#modelBenchmarkLock{font-size:11px;line-height:1.6;background:#25292d}
+@media(max-width:1050px){.hardware-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.hardware-metric.highlighted{grid-column:1/-1}}
+@media(max-width:560px){.hardware-advisor{padding:16px}.hardware-advisor-heading{flex-direction:column}.hardware-metrics{grid-template-columns:1fr}.hardware-metric.highlighted{grid-column:auto}.hardware-metric strong{font-size:17px}}
