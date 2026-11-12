@@ -4,12 +4,13 @@
 
 ## What is now changed in the PR #23 review branch
 
-- Seven existing workflow files target only `[self-hosted, windows, x64, theorg-win]`. They require the owner to select **Run workflow**, set `confirm_self_hosted=true`, and choose the trusted review branch; no pull_request or push triggers are enabled in these branch versions.
+- Eight existing workflow files target only `[self-hosted, windows, x64, theorg-win]`. They require the owner to select **Run workflow**, set `confirm_self_hosted=true`, and choose the trusted review branch; no pull_request or push triggers are enabled in these branch versions.
 - This is **manual release acceptance**, not automatic continuous CI. The change prevents unreviewed PR code from automatically running on a persistent private PC. It does **not** make required checks pass or bypass branch protection.
 - The primary entry point is the existing **TheOrg Chrome and Windows Bridge CI** workflow, whose original workflow file also exists on `main`. The review-branch version runs `tools/Test-TheOrg-Source-Local.ps1`, with an optional `build_unsigned_windows_candidate` flag.
-- The other six workflows remain as separate opt-in source/package checks. Existing test/build commands are retained; Linux-only Bash steps were converted to Windows PowerShell where necessary. Build dependencies must be installed on the local runner.
+- Six other build workflows remain as separate opt-in source/package checks. Existing test/build commands are retained; Linux-only Bash steps were converted to Windows PowerShell where necessary. Build dependencies must be installed on the local runner.
 - No workflows upload artifacts into GitHub Actions artifact storage, helping preserve the $0 Actions storage budget. Candidate archives, test evidence and signed-off receipts (if created) remain **only in the local runner's workspace**. GitHub run summaries are not release artifacts.
 - No workflow merges, deploys, changes billing, uses a write-scoped GITHUB_TOKEN, or certifies live provider/model acceptance.
+- The **eighth workflow**, historical merged-branch pruning, was discovered with an automatic main push trigger, GitHub-hosted Ubuntu runner, and contents:write/delete behavior. Its review-branch version is now a manual-only **non-destructive no-op**, requesting only contents:read. No branch deletion will be permitted until a separate reviewed post-merge cleanup plan is approved.
 
 ## Owner action: register a free Windows x64 self-hosted runner
 
