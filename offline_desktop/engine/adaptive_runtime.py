@@ -12,9 +12,14 @@ import secrets
 import sys
 from engine import core, device_capabilities
 
-REGISTRY = (Path(getattr(sys, "_MEIPASS")) / "config" / "adaptive-model-registry.json"
-            if hasattr(sys, "_MEIPASS")
-            else Path(__file__).resolve().parents[2] / "config" / "adaptive-model-registry.json")
+_CODEBASE = Path(__file__).resolve().parents[1]
+# Source repo: root/config; standalone source archive: TheOrg/config;
+# frozen EXE: PyInstaller temporary config. Only one canonical file is read.
+_CANDIDATES = ([Path(getattr(sys, "_MEIPASS")) / "config" / "adaptive-model-registry.json"]
+               if hasattr(sys, "_MEIPASS") else
+               [_CODEBASE / "config" / "adaptive-model-registry.json",
+                _CODEBASE.parent / "config" / "adaptive-model-registry.json"])
+REGISTRY = next((p for p in _CANDIDATES if p.is_file()), _CANDIDATES[0])
 _TIERS = ("nano", "lite", "advanced")
 _MAX_TEXT = 10000
 _MAX_RECALL = 5
