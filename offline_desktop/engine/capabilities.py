@@ -123,9 +123,11 @@ def approve_and_execute(ident,digest,confirmed=False):
     # operation has possibly run. Ambiguous outcomes are never auto-retried.
     try:
         serialized=json.dumps(result,ensure_ascii=False)
-    except (TypeError,ValueError):
+        byte_length=len(serialized.encode('utf-8'))
+    except (TypeError,ValueError,UnicodeError):
         serialized=''
-    if not serialized or len(serialized.encode('utf-8'))>5000:
+        byte_length=0
+    if not serialized or byte_length>5000:
         result={'ok':False,'error':
                 'Capability execution outcome is unverified: result evidence was '
                 'unserializable or exceeded the audit limit. Inspect manually; do not retry automatically.',
