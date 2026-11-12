@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import browser_bridge, company_memory
+from engine import browser_bridge, company_memory, epmo
 from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime, operating_desk, reviewed_knowledge, answer_flow, office_agents
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
@@ -54,6 +54,8 @@ class Handler(BaseHTTPRequestHandler):
                         'coding_projects':len(core.records('SELECT id FROM code_projects')),'coding_git_available':core.git_binary() is not None})
                 elif path=='/api/device/capabilities':
                     self._json({'capabilities':device_capabilities.detect()})
+                elif path=='/api/company/epmo':
+                    self._json(epmo.overview())
                 elif path=='/api/company/setup':
                     self._json(company_memory.current())
                 elif path=='/api/answer-flow':
@@ -258,6 +260,10 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/browser-bridge/finish':
                 self._json(browser_bridge.finish(payload.get('client_id'),payload.get('id'),payload.get('lease'),
                     payload.get('answer',''),payload.get('sources',[]),payload.get('error','')))
+            elif path=='/api/company/epmo/import':
+                self._json(epmo.import_projects(payload.get('snapshot'),payload.get('confirmed')))
+            elif path=='/api/company/epmo/link':
+                self._json(epmo.link(payload.get('task_id'),payload.get('project_id'),payload.get('confirmed')))
             elif path=='/api/company/setup':
                 self._json(company_memory.approve(payload.get('plan'),payload.get('revision'),payload.get('confirmed')))
             elif path=='/api/answer-flow/settings':

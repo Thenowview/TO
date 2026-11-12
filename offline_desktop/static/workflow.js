@@ -144,5 +144,47 @@
   setup.append(approve);
   setup.addEventListener('toggle',()=>{if(setup.open&&revision===null)loadPlan();});
   host.insertBefore(setup,root);
+  const epmo=el('details');epmo.className='office-workflow';
+  epmo.append(el('summary','EPMO projects'),el('p','Import a project response from your authorized EPMO workspace and link a local task.'));
+  const snapshot=field(epmo,'EPMO project response JSON',true);snapshot.maxLength=100000;
+  const result=el('p');result.setAttribute('role','status');
+  const projectSelect=el('select'),taskSelect=el('select');
+  for(const [label,input] of [['EPMO project',projectSelect],['TheOrg task',taskSelect]]){
+    const wrapper=el('label',label);wrapper.append(input);epmo.append(wrapper);
+  }
+  const linked=el('ul');
+  async function loadProjects(){
+    const [data,taskData]=await Promise.all([api('company/epmo'),api('tasks')]);
+    const tasks=taskData.tasks;
+    const option=(id,label)=>{const item=el('option',label);item.value=id;return item;};
+    projectSelect.replaceChildren(option('','Choose a project'),...data.projects.map(p=>option(p.id,p.code+' · '+p.name+' · '+p.progress+'%')));
+    taskSelect.replaceChildren(option('','Choose a task'),...tasks.map(t=>option(t.id,t.prompt.slice(0,100))));
+    linked.replaceChildren(...data.links.map(link=>{
+      const project=data.projects.find(p=>p.id===link.project_id);
+      const task=tasks.find(t=>t.id===link.task_id);
+      return el('li',project.code+' · '+(task?.prompt.slice(0,100)||link.task_id)+' · '+link.status);
+    }));
+  }
+  function epmoAction(label,action){
+    const control=el('button',label);control.type='button';
+    control.onclick=async()=>{
+      control.disabled=true;
+      try{result.textContent=await action();await loadProjects();}
+      catch(error){result.textContent=error.message;}
+      finally{control.disabled=false;}
+    };
+    return control;
+  }
+  epmo.append(epmoAction('Import projects',async()=>{
+    const data=await api('company/epmo/import',{snapshot:JSON.parse(snapshot.value),confirmed:true});
+    snapshot.value='';
+    return 'Imported '+data.imported+' projects.'+(data.has_more_pages?' More pages are available in EPMO.':'');
+  }),epmoAction('Link task to project',async()=>{
+    if(!projectSelect.value||!taskSelect.value)throw Error('Choose a project and task.');
+    await api('company/epmo/link',{project_id:projectSelect.value,task_id:taskSelect.value,confirmed:true});
+    return 'Task linked.';
+  }),result,linked);
+  epmo.addEventListener('toggle',()=>{if(epmo.open)loadProjects().catch(error=>{result.textContent=error.message;});});
+  host.insertBefore(epmo,root);
   root.addEventListener('toggle',()=>{if(root.open)refresh();});setInterval(()=>{if(root.open&&!root.contains(document.activeElement))refresh();},5000);
 })();
