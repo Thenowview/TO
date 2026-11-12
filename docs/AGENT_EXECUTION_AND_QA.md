@@ -20,6 +20,10 @@ Owner instruction → SQLite company order → ordered agent tasks and explicit 
 - Maximum four local OpenCode agent or QA processes running simultaneously. The Chrome provider queue is separate, so a cross-runtime unified limit is not yet implemented.
 - TheOrg stages bounded text source, max 240 files, 8 MiB total and 256 KiB per file. It excludes hidden paths, obvious credentials, Git internals, node_modules and symlinks.
 - Model output and handoff payloads are always untrusted and cannot grant permissions.
+- OpenCode V2 rule configuration uses the current ordered `permissions` array and action names (`shell`, `subagent`, `execute`); do not substitute older V1 `permission`/`bash` syntax. The exact installed OpenCode version still requires a real integration test.
+- Source-only read-only runs that modify any copied source file are marked **failed**, even if the CLI exits with status zero. Structured provider error events and files or symlinks outside the approved output inventory also prevent submission for QA.
+- OpenCode timeouts attempt to terminate the child process tree, with best-effort semantics (not a process-isolation guarantee).
+- Source verification, AI QA, Code Studio drafts and exports must use the exact company/order/job/attempt path; absent paths, external paths and symlinked parents are rejected. QA cannot scan the desktop working directory when an attempt path is missing.
 - OpenCode V2 permission policy denies shell commands, Code Mode execution, external directories, web search/fetch, skills and subagents. Developer isolated-edit jobs may modify the COPY, never the original project.
 - **Important:** OpenCode runs as a native process under the signed-in OS user. Its config rules are not OS isolation. Use a VM/container to handle untrusted code and avoid sensitive workspace material.
 - External provider transfer is expressly authorized separately on each dispatch; model costs, provider privacy and credentials remain external.
@@ -79,7 +83,7 @@ A local hash alone does not prove authenticity. Preserve required open-source co
 
 ## Final acceptance campaign — after integration
 
-- Python source tests: malformed inputs, company isolation, dependency rules, concurrent slot exhaustion, crash recovery, export path safety and approvals.
+- Python source tests: malformed inputs, company isolation, dependency rules, concurrent slot exhaustion, crash recovery, export path safety and approvals; synthetic regressions for read-only file mutation, structured provider errors and invalid staging locations. Added tests are not a claim that CI or Windows integration passed.
 - Static JS syntax, dashboard element references, full UI navigation.
 - Real OpenCode V2 CLI command and policy enforcement on a synthetic project.
 - Model produces a real read-only response, then an isolated source change; original source untouched.
