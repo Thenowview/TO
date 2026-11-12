@@ -48,6 +48,21 @@ for(const name of workflows){
     }
   });
 }
+test("Every Windows PowerShell workflow step sets only a process-scoped execution policy",()=>{
+  for(const name of workflows){
+    const source=fs.readFileSync(path.join(ROOT,".github","workflows",name),"utf8");
+    const shells=source.match(/^\s*shell:\s*powershell[^\r\n]*/gm)||[];
+    assert.ok(shells.length>0,"No declared PowerShell shell in "+name);
+    for(const shell of shells){
+      assert.match(shell,/-NoProfile\b/,"Disable ambient profile scripts: "+name);
+      assert.match(shell,/-ExecutionPolicy RemoteSigned -File \{0\}/,
+        "Use process-local execution policy in "+name);
+    }
+    assert.doesNotMatch(source,/Set-ExecutionPolicy/,
+      "Do not set persistent machine/user policy in "+name);
+  }
+});
+
 test("Production release policy remains fail closed",()=>{
   const policy=JSON.parse(fs.readFileSync(path.join(ROOT,"config","release-gates.json"),"utf8"));
   assert.equal(policy.productionReady,false);
