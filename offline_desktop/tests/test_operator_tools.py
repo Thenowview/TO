@@ -54,6 +54,10 @@ class OperatorToolTests(unittest.TestCase):
                 powershell.assert_not_called()
                 other = operator_tools.plan("Erase private directories")
                 self.assertEqual(other["tasks"][0]["effect"], "manual_scoping_required")
+                local = operator_tools.plan("Run tests for the trusted local project")
+                names = [entry["tool"] for entry in local["tasks"]]
+                self.assertIn("windows.source.verify", names)
+                self.assertNotIn("github.workflow.source_dispatch", names)
 
     def test_disabled_by_default_and_bounded_arguments(self):
         with patch.dict(os.environ, FLAGS):
