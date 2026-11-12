@@ -157,6 +157,57 @@ class CompanyExecutionTests(unittest.TestCase):
         self.assertEqual(company.requeue(job["id"],confirmed=True)["status"],"queued")
         self.assertEqual(company.cancel_queued(job["id"],confirmed=True)["status"],"cancelled")
 
+    def test_qa_rejects_outside_or_missing_attempt_workspace(self):
+        order=self._create()
+        ident,stage=self._complete_job(order)
+        self.assertTrue(company.structural_qa(ident)["structural_pass"])
+        with core.conn() as db:
+            db.execute("UPDATE company_jobs SET staging_path=? WHERE id=?",
+                       (str(self.project),ident))
+        check=company.structural_qa(ident)
+        self.assertFalse(check["structural_pass"])
+        self.assertTrue(any("staging" in x.lower() for x in check["findings"]))
+        with self.assertRaises(core.EngineError):
+            company.export_accepted(ident,confirmed=True)
+        with core.conn() as db:
+            db.execute("UPDATE company_jobs SET staging_path='' WHERE id=?",(ident,))
+        self.assertFalse(company.structural_qa(ident)["structural_pass"])
+
+    def test_read_only_agent_changes_fail_even_with_zero_exit(self):
+        stage=core.WORKSPACE/"temp"/"readonly"
+        adapter.make_copy(self.project,stage)
+
+        class FakeProcess:
+            def __init__(self,*args,**kwargs):
+                Path(kwargs["cwd"]).joinpath("main.py").write_text("mutated\\n",encoding="utf-8")
+                kwargs["stdout"].write(b'{"type":"text","part":{"type":"text","text":"done"}}\\n')
+            def wait(self,timeout):return 0
+
+        with patch.object(adapter,"_binary",return_value="/mock/opencode"), \\
+             patch.object(adapter.subprocess,"Popen",FakeProcess):
+            report=adapter.run(stage,"Inspect this synthetic source without modifying files.",
+                               edit=False,model="ollama/demo",allow_provider_transfer=True)
+        self.assertEqual(report["exit_code"],0)
+        self.assertEqual(report["status"],"failed")
+        self.assertEqual(report["changed_count"],1)
+        self.assertTrue(report["safety_findings"])
+
+    def test_structured_agent_errors_fail_even_with_zero_exit(self):
+        stage=core.WORKSPACE/"temp"/"errors"
+        adapter.make_copy(self.project,stage)
+
+        class FakeProcess:
+            def __init__(self,*args,**kwargs):
+                kwargs["stdout"].write(b'{"type":"error","error":{"name":"ProviderError"}}\\n')
+            def wait(self,timeout):return 0
+
+        with patch.object(adapter,"_binary",return_value="/mock/opencode"), \\
+             patch.object(adapter.subprocess,"Popen",FakeProcess):
+            report=adapter.run(stage,"Read synthetic code and identify potential concerns.",
+                               edit=False,model="ollama/demo",allow_provider_transfer=True)
+        self.assertEqual(report["status"],"failed")
+        self.assertEqual(report["provider_error_event_count"],1)
+
     def test_adapter_policy_and_bounded_source_copy(self):
         protected=adapter._policy(False)["permissions"]
         self.assertTrue(any(x["action"]=="shell" and x["effect"]=="deny" for x in protected))
