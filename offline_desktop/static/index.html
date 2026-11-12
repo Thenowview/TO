@@ -107,8 +107,14 @@
             <button class="chat-history-action" id="sessionRename" type="button" title="Rename selected session" hidden>Rename</button>
             <button class="chat-history-action" id="sessionArchive" type="button" title="Archive selected session without cancelling tasks" hidden>Archive</button>
             <button class="chat-history-action" type="button" id="chatAllTasks" title="Show all local tasks"><span class="ui-icon" data-icon="history"></span>All tasks</button>
+            <button class="chat-history-action" id="chatContextToggle" type="button" aria-pressed="false" title="Enable bounded context from earlier completed tasks in this session" hidden>Context off</button>
             <button class="chat-history-action chat-detail-toggle" id="chatDetailsToggle" type="button" aria-controls="chatDetailsPanel" aria-expanded="false" title="Show task details and evidence">Details</button>
           </div>
+        </div>
+        <div class="chat-filters">
+          <label for="chatMessageSearch" class="visually-hidden">Search tasks and responses in the current view</label>
+          <input id="chatMessageSearch" type="search" maxlength="120" placeholder="Search messages in this view…" autocomplete="off">
+          <span id="chatSearchStatus" role="status" aria-live="polite">Showing recent tasks</span>
         </div>
         <div class="chat-scroll" id="chatScroll">
           <div class="chat-conversation" id="supervisorResults" role="log" aria-label="Task messages and verified agent results" aria-live="polite" aria-relevant="additions text"></div>
@@ -138,11 +144,16 @@
             <button class="chat-send" id="submitTask" type="submit" title="Queue an independent local task" aria-label="Send task"><span class="ui-icon" data-icon="arrow-up"></span></button>
           </div>
         </form>
+        <div class="composer-state" id="chatComposerStatus" role="status" aria-live="polite">Ready to queue a local task</div>
         <div class="composer-disclaimer" id="chatDisclaimer">Tasks are stored locally. Sessions organize work but do not automatically give agents previous-message context. Every result reflects real task status.</div>
         <div class="chat-keyboard-help">Enter to send · Shift+Enter for newline · Ctrl/⌘+K to focus</div>
       </div>
       <aside id="chatDetailsPanel" class="chat-details-panel" aria-label="Selected task details" hidden>
-        <div class="chat-details-header"><h2>Task details</h2><button type="button" id="chatDetailsClose" class="quiet-icon-button" aria-label="Close task details">✕</button></div>
+        <div class="chat-details-header"><h2>Execution inspector</h2><button type="button" id="chatDetailsClose" class="quiet-icon-button" aria-label="Close task details">✕</button></div>
+        <div class="chat-details-tabs" role="group" aria-label="Inspector category">
+          <button class="chat-details-tab selected" type="button" id="chatInspectorTask" aria-pressed="true">Task</button>
+          <button class="chat-details-tab" type="button" id="chatInspectorCode" aria-pressed="false">Code changes</button>
+        </div>
         <div id="chatDetailsContent" class="chat-details-content"><p>Select a task to inspect its status and evidence.</p></div>
       </aside>
     </section>
