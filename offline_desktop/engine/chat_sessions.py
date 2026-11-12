@@ -6,6 +6,7 @@ into model context or authorize tools. No provider calls or model-generated titl
 from __future__ import annotations
 import secrets
 import sqlite3
+import re
 from engine import core
 
 MAX_TITLE = 100
@@ -197,3 +198,53 @@ def context_for_new_task(session_id):
             "Model output (unverified): "+item["output"][:650].replace("\x00"," ")
         )
     return "\n\n".join(snippets)[:3200]
+
+
+def search_history(query, session_id=None):
+    """Read-only search across stored tasks, independent of the 100-task UI page.
+
+    Searches only the local SQLite database, never an external provider. Results
+    return bounded snippets, exclude private context snapshots and are capped.
+    """
+    if type(query) is not str or not 2 <= len(query.strip()) <= 120:
+        raise core.EngineError("Search query must contain 2–120 characters.")
+    if session_id is not None:
+        session_id=_validated_id(session_id)
+        with core.conn() as db:
+            found=db.execute("SELECT 1 FROM chat_sessions WHERE id=?",(session_id,)).fetchone()
+            if found is None:
+                raise core.EngineError("Local session not found.")
+    where = """(instr(lower(t.prompt),lower(?))>0
+                OR instr(lower(t.output),lower(?))>0)"""
+    params=[query.strip(),query.strip()]
+    if session_id:
+        where+=" AND st.session_id=?"
+        params.append(session_id)
+    with core.conn() as db:
+        rows=db.execute(f"""
+            SELECT t.id,t.role,t.prompt,t.status,t.error,t.created,t.updated,
+                   substr(t.output,1,2000) AS output,
+                   CASE WHEN length(t.output)>2000 THEN 1 ELSE 0 END AS output_truncated,
+                   CASE WHEN length(t.context_snapshot)>0 THEN 1 ELSE 0 END AS has_context,
+                   st.session_id
+            FROM tasks t LEFT JOIN chat_session_tasks st ON st.task_id=t.id
+            WHERE {where} ORDER BY t.created DESC,t.id DESC LIMIT 25
+        """,params).fetchall()
+    return {"query":query.strip(),"session_id":session_id,"matches":[dict(r) for r in rows],
+            "limit":25,"source":"local_sqlite_only","remote_search_performed":False}
+
+
+def task_details(task_id):
+    """Exact local task read for a selected search result; never include context."""
+    if type(task_id) is not str or not re.fullmatch(r"[0-9a-f]{16}",task_id):
+        raise core.EngineError("Invalid local task identifier.")
+    with core.conn() as db:
+        row=db.execute("""
+            SELECT t.id,t.role,t.prompt,t.status,t.output,t.error,t.created,t.updated,
+                   CASE WHEN length(t.context_snapshot)>0 THEN 1 ELSE 0 END AS has_context,
+                   st.session_id
+            FROM tasks t LEFT JOIN chat_session_tasks st ON st.task_id=t.id WHERE t.id=?
+        """,(task_id,)).fetchone()
+        if row is None:
+            raise core.EngineError("Local task not found.")
+        return dict(row)
