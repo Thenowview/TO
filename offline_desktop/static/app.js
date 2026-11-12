@@ -505,6 +505,28 @@
   async function loadAdaptive(){
     const data=await request('adaptive');
     const root=$('adaptiveEditionList');root.replaceChildren();
+    const choice=data.adaptive.automatic||{}, mode=data.adaptive.choice_mode||'auto';
+    const autoCard=element('article','adaptive-edition-card'+(mode==='auto'?' selected':''));
+    autoCard.append(element('div','adaptive-edition-label','AUTO — recommended'));
+    autoCard.append(element('h3','','Let TheOrg choose'));
+    autoCard.append(element('p','',
+      'Current choice: '+(choice.name||'TheOrg Adaptive 1')+
+      (choice.model?' · '+choice.model:'')+'. '+(choice.reason||'Hardware check unavailable.')));
+    autoCard.append(element('div','adaptive-edition-state',
+      mode==='auto'?'Automatic selection enabled':'Manual edition selected'));
+    autoCard.append(element('p','muted',
+      'Rechecks available RAM and installed GGUF files. No model download, inference startup, training or remote connection happens automatically.'));
+    const autoButton=element('button','btn secondary',mode==='auto'?'Auto enabled':'Enable automatic selection');
+    autoButton.type='button';autoButton.disabled=mode==='auto';
+    autoButton.addEventListener('click',async()=>{
+      if(!confirm('Let TheOrg select the safest edition from current RAM and installed local models? No model starts automatically.'))return;
+      autoButton.disabled=true;
+      try{await request('adaptive/select',{method:'POST',body:{tier:'auto',confirmed:true}});
+          await Promise.all([loadAdaptive(),loadModels()]);
+          showToast('Automatic edition selection enabled. Inference still requires your approval.');
+      }catch(e){showToast(e.message,true);autoButton.disabled=false;}
+    });
+    autoCard.append(autoButton);root.append(autoCard);
     for(const tier of data.adaptive.options||[]){
       const card=element('article','adaptive-edition-card'+(tier.selected?' selected':''));
       card.append(element('div','adaptive-edition-label','Adaptive '+({nano:'1',lite:'2',advanced:'3'}[tier.id]||'')));
@@ -514,10 +536,10 @@
         :tier.id==='lite'
           ?'For smaller PCs. Optional 0.8B/2B model weights, subject to memory checks.'
           :'For capable PCs. Optional 4B/9B models with hardware preflight.'));
-      card.append(element('div','adaptive-edition-state',tier.selected?'Selected':tier.eligible_by_ram?'RAM estimate passes':'RAM estimate insufficient'));
+      card.append(element('div','adaptive-edition-state',mode!=='auto'&&tier.selected?'Manually selected':mode==='auto'&&tier.selected?'Auto recommended':tier.eligible_by_ram?'RAM estimate passes':'RAM estimate insufficient'));
       card.append(element('div','muted',tier.note||''));
-      const choose=element('button','btn secondary',tier.selected?'Selected':'Select edition');
-      choose.type='button';choose.disabled=tier.selected||!tier.eligible_by_ram;
+      const choose=element('button','btn secondary',mode!=='auto'&&tier.selected?'Selected':'Select edition');
+      choose.type='button';choose.disabled=(mode!=='auto'&&tier.selected)||!tier.eligible_by_ram;
       choose.addEventListener('click',async()=>{
         if(!confirm('Choose '+tier.name+'? This changes the local edition policy but does not download or start a model.'))return;
         choose.disabled=true;
