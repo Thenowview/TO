@@ -17,7 +17,7 @@ const workflows=[
 ];
 for(const name of workflows){
   test("No GitHub-hosted compute, automatic PR execution or uploaded artifacts: "+name,()=>{
-    const source=fs.readFileSync(path.join(ROOT,".github","workflows",name),"utf8");
+    const source=fs.readFileSync(path.join(ROOT,".github","workflows",name),"utf8").replace(/\r\n/g,"\n");
     assert.match(source,/^on:\s*\n\s{2}workflow_dispatch:/m);
     assert.doesNotMatch(source,/^\s{2}(?:pull_request|push|schedule):/m);
     assert.match(source,/confirm_self_hosted:/);
