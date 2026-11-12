@@ -16,7 +16,12 @@ function Issue([string]$message) {
 }
 function Tool([string]$name) {
   $entry=Get-Command $name -ErrorAction SilentlyContinue
-  if(-not $entry){Issue ("Missing required tool: "+$name);return $null}
+  if(-not $entry){
+    Issue ("Missing required tool in this runner process PATH: "+$name+
+      ". Install it for the Windows account running run.cmd, then CLOSE and RESTART the runner terminal.")
+    return $null
+  }
+  Write-Host ("FOUND "+$name+" executable (source: "+$entry.CommandType+").")
   return $entry
 }
 if([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT -or -not [Environment]::Is64BitOperatingSystem) {
@@ -84,5 +89,10 @@ if($RequireRunnerRegistration){
   }
 }
 foreach($message in $warnings){Write-Warning $message}
-if($failures.Count){throw ("Runner preflight failed: "+$failures.Count+" item(s). No runner was started.")}
+if($failures.Count){
+  Write-Host 'NEXT: Review the exact FAILED/Missing tool warnings above.'
+  Write-Host 'For PATH issues, restart run.cmd from a NEW PowerShell window after installing Python, Node, or Git.'
+  Write-Host 'No code tests or Windows build ran; the runner preflight did not pass.'
+  throw ("Runner preflight failed: "+$failures.Count+" item(s). Source tests were not started.")
+}
 Write-Host 'PASS TheOrg Windows runner prerequisites. This does NOT prove GitHub runner registration, online status, source tests or Windows builds.'
