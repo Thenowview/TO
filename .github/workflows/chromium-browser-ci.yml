@@ -27,7 +27,7 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Compile standalone Windows bridge and test
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           dotnet publish engine/bridge/TheOrg.Bridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out/bridge
           if ($LASTEXITCODE -ne 0) { throw 'Bridge compile failed' }
@@ -36,7 +36,7 @@ jobs:
           python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
           if ($LASTEXITCODE -ne 0) { throw 'Native Messaging failed' }
       - name: Obtain official Chromium snapshot - fail if Google Chrome
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $ErrorActionPreference='Stop'
           New-Item -ItemType Directory -Force out/browser | Out-Null
@@ -66,7 +66,7 @@ jobs:
           ) | Set-Content out/browser/BROWSER_SOURCE.txt -Encoding utf8
           Remove-Item out/browser/chrome-win.zip
       - name: Preserve Chromium license and distribution notices
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $ErrorActionPreference='Stop'
           Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/chromium/chromium/main/LICENSE' -OutFile 'out/browser/LICENSE'
@@ -81,7 +81,7 @@ jobs:
           Before public redistribution, produce and audit full notices for this exact Chromium revision.
           '@ | Set-Content -LiteralPath 'out/browser/LICENSES.chromium.html' -Encoding UTF8
       - name: Generate branded desktop icon and compile NSIS
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           Add-Type -AssemblyName System.Drawing
           New-Item -ItemType Directory -Force out/branding,out/installer | Out-Null
@@ -99,7 +99,7 @@ jobs:
           & $makensis /V2 tools/TheOrgChromium.nsi
           if ($LASTEXITCODE -ne 0) { throw 'NSIS build failed' }
       - name: Silent install, native messaging registration and uninstall smoke test
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $exe=(Resolve-Path out/installer/TheOrg-Browser-Chromium-Win-x64-unsigned.exe).Path
           $res=Start-Process $exe -ArgumentList '/S' -Wait -PassThru
@@ -126,7 +126,7 @@ jobs:
           if ($u.ExitCode -ne 0 -or (Test-Path $browser) -or (Test-Path $key)) { throw 'Uninstall failed' }
           Write-Host 'PASS package installation and Chromium host isolation. Real GUI acceptance remains pending.'
       - name: Record binary fingerprints and upload complete installer
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           foreach($p in @('out/installer/TheOrg-Browser-Chromium-Win-x64-unsigned.exe','out/bridge/TheOrg.Bridge.exe','out/browser/chrome-win/chrome.exe')) {
             $hash=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()
