@@ -45,7 +45,25 @@ if($PrebuiltEngineExe){
   finally{Pop-Location}
   Copy-Item -LiteralPath (Join-Path $Repo 'offline_desktop\dist\TheOrg.exe') -Destination $Exe
 }
-& $Exe --self-test;CheckExit 'Real packaged engine self-test'
+# Engine self-test creates SQLite and an access token. Isolate and remove those
+# artifacts OUTSIDE the package; never ship a build-machine token/database.
+$SmokeRoot=Join-Path $Output '.engine-selftest'
+if(Test-Path -LiteralPath $SmokeRoot){Remove-Item -LiteralPath $SmokeRoot -Recurse -Force}
+$envNames=@('THEORG_DATA_DIR','THEORG_WORKSPACE','THEORG_MODELS','THEORG_SKIP_SHORTCUT')
+$oldEnvironment=@{}
+foreach($name in $envNames){$oldEnvironment[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
+try {
+  [Environment]::SetEnvironmentVariable('THEORG_DATA_DIR',(Join-Path $SmokeRoot 'data'),'Process')
+  [Environment]::SetEnvironmentVariable('THEORG_WORKSPACE',(Join-Path $SmokeRoot 'workspace'),'Process')
+  [Environment]::SetEnvironmentVariable('THEORG_MODELS',(Join-Path $SmokeRoot 'models'),'Process')
+  [Environment]::SetEnvironmentVariable('THEORG_SKIP_SHORTCUT','1','Process')
+  & $Exe --self-test
+  CheckExit 'Real packaged engine self-test'
+} finally {
+  foreach($name in $envNames){[Environment]::SetEnvironmentVariable($name,$oldEnvironment[$name],'Process')}
+  if(Test-Path -LiteralPath $SmokeRoot){Remove-Item -LiteralPath $SmokeRoot -Recurse -Force}
+}
+
 
 $BridgeOut=Join-Path $Output '.bridge-publish'
 if(Test-Path $BridgeOut){Remove-Item $BridgeOut -Recurse -Force}
