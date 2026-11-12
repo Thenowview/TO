@@ -161,8 +161,12 @@ def approve_and_execute(ident,digest,confirmed=False):
         if hashlib.sha256(raw.encode()).hexdigest()!=digest:
             raise core.EngineError('Stored operator request changed after approval; refuse execution.')
         output=_execute(name,clean)
-        if (name=='windows.source.verify' and isinstance(output,dict) and
-                output.get('source_tests_passed') is not True):
+        success_check={
+            'windows.source.verify':'source_tests_passed',
+            'windows.window.focus':'focus_confirmed',
+            'google.readonly.probe':'read_probe_verified',
+        }.get(name)
+        if success_check and (not isinstance(output,dict) or output.get(success_check) is not True):
             result={'ok':False,'result':output};status='failed'
         else:
             result={'ok':True,'result':output};status='completed'
