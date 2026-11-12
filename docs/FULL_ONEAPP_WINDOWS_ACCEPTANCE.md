@@ -24,6 +24,8 @@ Use a trusted local checkout of the draft PR #22 branch:
 
 Build-machine prerequisites: Windows 10/11 x64, **full** Python 3.12+ x64 with pip, Node.js 22, .NET 8 **SDK**, internet access to fetch pinned build tools. These are *build-machine* dependencies only, **not required on the final Windows target**. The Python **embeddable ZIP** in Google Drive is for embedding/extraction, not a replacement for the full compiler environment.
 
+**Simplest local path:** extract or check out this draft branch on Windows and double-click **BUILD-THEORG-WINDOWS.cmd** in the repository root. It runs the same verified-build candidate process and leaves the build transcript under out\full-oneapp-local-build.log. This does not auto-install build prerequisites.
+
 In PowerShell, from the repository root:
 
 ~~~powershell
