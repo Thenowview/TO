@@ -60,7 +60,12 @@ class GoogleReadOnlyTests(unittest.TestCase):
             with self.subTest(provider=provider):
                 response = MagicMock()
                 response.status = 200
-                response.read.return_value = b'{"labels":[{"id":"private"}],"files":[]}'
+                body = {
+                    "gmail": {"labels": [{"id": "private"}]},
+                    "drive": {"files": [{"id": "private"}]},
+                    "calendar": {"items": [{"id": "private"}]}
+                }[provider]
+                response.read.return_value = json.dumps(body).encode("utf-8")
                 response.__enter__.return_value = response
                 response.__exit__.return_value = False
                 opener = MagicMock()
@@ -83,6 +88,21 @@ class GoogleReadOnlyTests(unittest.TestCase):
                 self.assertTrue(req.full_url.startswith("https://"))
                 self.assertEqual(req.get_header("Authorization"), "Bearer " + token)
                 self.assertEqual(opener.open.call_args.kwargs["timeout"], 12)
+
+    def test_malformed_success_body_cannot_fabricate_authorized_read(self):
+        response = MagicMock()
+        response.status = 200
+        response.read.return_value = b'{"message":"success"}'
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        opener = MagicMock()
+        opener.open.return_value = response
+        with patch.object(google_readonly, "_read_windows_credential",
+                          return_value="A" * 32), patch.object(
+                google_readonly.urllib.request, "build_opener",
+                return_value=opener):
+            with self.assertRaisesRegex(core.EngineError, "resource shape"):
+                google_readonly.probe("drive")
 
     def test_http_denial_is_explicit_not_fake_connected(self):
         response_error = urllib.error.HTTPError(
