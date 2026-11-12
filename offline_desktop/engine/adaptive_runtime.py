@@ -54,15 +54,87 @@ def init_schema():
         """)
 
 
+def preference():
+    """User's chosen policy. Auto is the default on new installations."""
+    mode = core.setting("adaptive_tier", "auto")
+    return mode if mode in (*_TIERS, "auto") else "auto"
+
+
+def recommend_for_device(total_bytes, available_bytes, models, runtime_present, *, check_headers=True):
+    """Side-effect-free choice: real installed GGUF + CPU RAM headroom required.
+
+    Never downloads weights, launches inference, connects remotely or trains.
+    This is *not* evidence that the model will successfully run.
+    """
+    result = {"tier": "nano", "name": "TheOrg Adaptive 1", "model": None,
+              "reason": "Model-free fallback; no safely loadable local model.",
+              "model_started": False, "auto_download": False, "remote_enabled": False}
+    gib = 1024 ** 3
+    mib = 1024 ** 2
+    if (type(total_bytes) is not int or type(available_bytes) is not int
+            or total_bytes <= 0 or available_bytes <= 0):
+        result["reason"] = "Available RAM or installed RAM is unknown; using Nano."
+        return result
+    if not runtime_present:
+        result["reason"] = "Compatible local llama.cpp runtime not found; using Nano."
+        return result
+    candidates = []
+    for item in models or []:
+        try:
+            size, path, name = item.get("bytes"), item.get("path"), item.get("name")
+            if (type(size) is not int or not 4096 <= size <= 32*gib
+                    or not isinstance(path, str) or not isinstance(name, str)):
+                continue
+            candidate = Path(path)
+            if check_headers:
+                if candidate.is_symlink() or not candidate.is_file() or candidate.stat().st_size != size:
+                    continue
+                with candidate.open("rb") as handle:
+                    if handle.read(4) != b"GGUF":
+                        continue
+            # Conservative CPU-only estimate, including memory reserved for OS.
+            required = int(size*1.2 + gib) + 768*mib
+            if available_bytes < required:
+                continue
+            if size <= 2*gib and total_bytes >= 4*gib:
+                edition = "lite"
+            elif size > 2*gib and total_bytes >= 16*gib:
+                edition = "advanced"
+            else:
+                continue
+            candidates.append((edition, size, name, required))
+        except (OSError, ValueError, OverflowError, TypeError):
+            continue
+    if not candidates:
+        return result
+    advanced = [item for item in candidates if item[0] == "advanced"]
+    tier, size, model_name, minimum = min(advanced or candidates, key=lambda item:(item[1],item[2]))
+    return {"tier": tier, "name": "TheOrg Adaptive 3" if tier == "advanced" else "TheOrg Adaptive 2",
+            "model": model_name, "estimated_bytes_with_reserve": minimum,
+            "reason": "Installed GGUF header and estimated CPU RAM pass; inference still unverified.",
+            "model_started": False, "auto_download": False, "remote_enabled": False}
+
+
+def automatic_choice(total_bytes=None, available_bytes=None):
+    hardware = device_capabilities.detect(total_bytes=total_bytes, available_bytes=available_bytes)
+    return recommend_for_device(hardware.get("total_ram_bytes"),
+                                hardware.get("available_ram_bytes"),
+                                core.local_models(), bool(core.llama_binary()))
+
+
 def selected():
-    mode = core.setting("adaptive_tier", "nano")
-    return mode if mode in _TIERS else "nano"
+    mode = preference()
+    return automatic_choice()["tier"] if mode == "auto" else mode
 
 
 def readiness(available_bytes=None, total_bytes=None):
     details = device_capabilities.detect(total_bytes=total_bytes, available_bytes=available_bytes)
     data = registry()
-    current = selected()
+    auto = recommend_for_device(details.get("total_ram_bytes"),
+                                details.get("available_ram_bytes"),
+                                core.local_models(), bool(core.llama_binary()))
+    mode = preference()
+    current = auto["tier"] if mode == "auto" else mode
     options = []
     for tier in data["tiers"]:
         name = tier["id"]
@@ -80,26 +152,28 @@ def readiness(available_bytes=None, total_bytes=None):
             "platforms": tier["platforms"],
             "note": ("Model-free tools are available on this edition."
                      if name == "nano" else
-                     "Estimated RAM fit only; a valid installed GGUF and successful real inference are required.")
+                     "RAM estimate only; an installed model and real inference verification are needed.")
         })
-    return {"selected": current, "options": options, "hardware": details,
+    return {"selected": current, "choice_mode": mode, "automatic": auto,
+            "options": options, "hardware": details,
             "fallback": "nano", "automatic_training": False,
-            "automatic_web_access": False,
-            "warning": "Edition selection is configuration, not proof of inference or a deployable installer."}
+            "automatic_web_access": False, "automatic_model_start": False,
+            "warning": "Auto selects an edition; it never launches a model or transmits tasks without approval."}
 
 
 def select(tier):
-    if tier not in _TIERS or type(tier) is not str:
-        raise core.EngineError("Choose Nano, Lite or Advanced.")
-    if tier != "nano":
+    if type(tier) is not str or tier not in (*_TIERS, "auto"):
+        raise core.EngineError("Choose Auto, Nano, Lite or Advanced.")
+    if tier not in ("nano", "auto"):
         option = next(t for t in readiness()["options"] if t["id"] == tier)
         if not option["eligible_by_ram"]:
             raise core.EngineError("Insufficient measured RAM for this edition; Nano remains available.")
     core.set_setting("adaptive_tier", tier)
     core.invalidate_model_probe()
-    core.audit("adaptive.edition_selected", {"tier": tier})
-    return {"selected": tier, "inference_verified": False,
-            "no_model_started": True, "requires_explicit_model_probe": tier != "nano"}
+    core.audit("adaptive.edition_selected", {"policy": tier, "resolved": selected()})
+    return {"selected": selected(), "choice_mode": tier,
+            "inference_verified": False, "no_model_started": True,
+            "requires_explicit_model_probe": selected() != "nano"}
 
 
 def _tokens(value):
