@@ -15,7 +15,7 @@ $Checks = @(
 )
 foreach($program in @('python','node')){
   if(-not (Get-Command $program -ErrorAction SilentlyContinue)){
-    throw "Missing $program: install on the Windows developer PC; nothing was installed by this script."
+    throw "Missing ${program}: install on the Windows developer PC; nothing was installed by this script."
   }
 }
 foreach($check in $Checks){
