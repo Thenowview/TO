@@ -144,7 +144,7 @@ def _require_v2(executable: str) -> str:
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise core.EngineError("Unable to verify the OpenCode V2 CLI version.") from exc
     version = (proc.stdout or proc.stderr).strip()[:150]
-    if proc.returncode != 0 or not re.search(r"(?<![\\d.])v?2\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?(?!\\d)", version):
+    if proc.returncode != 0 or not re.search(r"(?<![\d.])v?2\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?(?!\d)", version):
         raise core.EngineError("TheOrg requires OpenCode V2 with ordered permissions; installed CLI was not verified as V2.")
     return version
 
