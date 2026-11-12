@@ -120,6 +120,8 @@
     if(view==='models'){
       loadModels().catch(e=>showToast(e.message,true));
       loadAdaptive().catch(e=>showToast(e.message,true));
+      loadOperatingDesk().catch(e=>showToast(e.message,true));
+      loadKnowledgeCandidates().catch(e=>showToast(e.message,true));
     }
     if(view==='tasks'||view==='supervisor')loadTasks().catch(e=>showToast(e.message,true));
     if(view==='files')loadFiles();if(view==='memory')loadMemories();if(view==='settings')loadAudit();
@@ -498,6 +500,17 @@
         }catch(e){showToast(e.message,true);}
         finally{branch.disabled=false;}
       });actions.append(branch);
+      if(job.status==='completed'&&job.output){
+        const remember=element('button','chat-action-button','Suggest as knowledge');
+        remember.type='button';remember.title='Create an unverified candidate; separate owner review required.';
+        remember.addEventListener('click',async()=>{
+          if(!confirm('Save this completed task output as an UNVERIFIED local knowledge candidate? Approval requires independent evidence.'))return;
+          remember.disabled=true;
+          try{await request('adaptive/solutions/from-task',{method:'POST',body:{task_id:job.id,confirmed:true}});
+              showToast('Unverified knowledge candidate saved. Review it under Models.');}
+          catch(e){showToast(e.message,true);remember.disabled=false;}
+        });actions.append(remember);
+      }
       if(job.output){
         const copy=element('button','chat-action-button','Copy response');
         copy.type='button';
@@ -630,6 +643,90 @@
         'No sufficiently close verified local solution. Suggested path: '+resolution.route+
         '. External agents and websites require separate approval.'));
     }catch(e){target.append(element('p','muted',e.message));}
+  }
+  async function loadOperatingDesk(){
+    const target=$('operatingStatus');target.textContent='Reading local work counts…';
+    try{
+      const {desk}=await request('operating/overview');
+      const parts=Object.entries(desk.workspaces||{}).map(([name,state])=>{
+        const total=typeof state==='number'?state:Object.values(state).reduce((a,b)=>a+Number(b||0),0);
+        return name.replaceAll('_',' ')+': '+total;
+      });
+      target.textContent='Adaptive '+desk.adaptive.selected+' ('+desk.adaptive.policy+') · '+parts.join(' · ')+
+        '. Source counts only; model inference and agent execution not implied.';
+    }catch(e){target.textContent='Local operating desk unavailable: '+e.message;}
+  }
+  async function routeOperatingInstruction(){
+    const instruction=$('operatingInstruction').value.trim();
+    const target=$('operatingRouteResult');
+    if(instruction.length<3)return showToast('Enter at least three characters.',true);
+    target.textContent='Checking reviewed knowledge and on-device policy…';
+    try{
+      const {route}=await request('operating/route',{method:'POST',body:{instruction,role:'supervisor'}});
+      target.textContent='Adaptive '+route.tier+' · '+route.route+' · '+route.recommended_next_action+
+        ' No task queued or tool executed.';
+    }catch(e){target.textContent='Route unavailable: '+e.message;}
+  }
+  async function loadKnowledgeCandidates(){
+    const target=$('knowledgeCandidates');target.replaceChildren(element('p','muted','Loading local candidates…'));
+    try{
+      const {solutions}=await request('adaptive/solutions');
+      target.replaceChildren();
+      const candidates=(solutions||[]).filter(x=>x.status==='candidate');
+      if(!candidates.length){target.append(element('p','muted','No pending candidates. Completed task results may be suggested for review.'));return;}
+      for(const item of candidates.slice(0,30)){
+        const card=element('article','task-card');
+        card.append(element('strong','',item.question),element('p','muted','Unverified · '+item.origin+' · '+item.updated));
+        const accept=element('button','btn secondary','Review and approve');accept.type='button';
+        accept.addEventListener('click',async()=>{
+          const evidence=prompt('Enter your OWN verification evidence (at least 10 characters) for this specific solution. Imported evidence is NOT inherited:');
+          if(evidence===null)return;
+          if(evidence.trim().length<10)return showToast('Evidence must contain at least 10 characters.',true);
+          if(!confirm('Confirm that you independently checked this solution? Approval makes it eligible for local recall; no model is trained.'))return;
+          accept.disabled=true;
+          try{
+            await request('adaptive/solutions/review',{method:'POST',body:{id:item.id,approved:true,evidence,confirmed:true}});
+            await loadKnowledgeCandidates();showToast('Solution reviewed and saved locally.');
+          }catch(e){showToast(e.message,true);accept.disabled=false;}
+        });
+        const reject=element('button','btn secondary','Reject');reject.type='button';
+        reject.addEventListener('click',async()=>{
+          if(!confirm('Reject this candidate? Its history is preserved.'))return;
+          reject.disabled=true;
+          try{await request('adaptive/solutions/review',{method:'POST',body:{id:item.id,approved:false,evidence:'',confirmed:true}});
+              await loadKnowledgeCandidates();}
+          catch(e){showToast(e.message,true);reject.disabled=false;}
+        });
+        card.append(accept,reject);target.append(card);
+      }
+    }catch(e){target.replaceChildren(element('p','chat-error-text',e.message));}
+  }
+  async function exportReviewedKnowledge(){
+    if(!confirm('Export up to 12 verified solutions to a LOCAL JSON file? Examine the text for private data before sharing. Tasks, stored notes and tokens are not separately exported.'))return;
+    const target=$('knowledgeTransferStatus');target.textContent='Preparing owner-approved local knowledge export…';
+    try{
+      const {knowledge}=await request('adaptive/knowledge/export',{method:'POST',body:{confirmed:true,limit:12}});
+      const file=new Blob([JSON.stringify({bundle:knowledge.bundle,sha256:knowledge.sha256},null,2)],{type:'application/json'});
+      const href=URL.createObjectURL(file), a=document.createElement('a');
+      a.href=href;a.download='TheOrg-reviewed-knowledge.json';document.body.append(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(href),1200);
+      target.textContent=knowledge.bundle.entries.length+' reviewed solutions exported locally; SHA-256 is not a signature.';
+    }catch(e){target.textContent='Export failed: '+e.message;}
+  }
+  async function importReviewedKnowledge(){
+    const target=$('knowledgeTransferStatus'),file=$('knowledgeImportFile').files?.[0];
+    if(!file)return showToast('Choose an exported JSON file first.',true);
+    if(file.size>125000)return showToast('Knowledge file exceeds the 125 KB safety limit.',true);
+    try{
+      const data=JSON.parse(await file.text());
+      if(!data||typeof data!=='object'||!data.bundle||!data.sha256)throw new Error('Invalid knowledge file.');
+      const {validation}=await request('adaptive/knowledge/validate',{method:'POST',body:data});
+      target.textContent=validation.count+' entries validated. All will be unverified candidates.';
+      if(!confirm('Import '+validation.count+' entries as UNVERIFIED local candidates? No old knowledge is deleted or automatically approved.'))return;
+      const result=await request('adaptive/knowledge/import',{method:'POST',body:{...data,confirmed:true}});
+      target.textContent=result.import.created_candidates+' candidates imported; '+result.import.duplicates_skipped+' duplicates skipped. Owner review required.';
+      await loadKnowledgeCandidates();
+    }catch(e){target.textContent='Import rejected: '+e.message;}
   }
   async function loadModels(){
     const data=await request('models');modelData=data;
@@ -1155,6 +1252,11 @@
   $('modelProbe').addEventListener('click',probeModelGeneration);
   $('refreshHardware').addEventListener('click',()=>loadModels().catch(e=>showToast(e.message,true)));
   $('adaptiveFind').addEventListener('click',searchAdaptive);
+  $('operatingRefresh').addEventListener('click',loadOperatingDesk);
+  $('operatingRoute').addEventListener('click',routeOperatingInstruction);
+  $('knowledgeRefresh').addEventListener('click',loadKnowledgeCandidates);
+  $('knowledgeExport').addEventListener('click',exportReviewedKnowledge);
+  $('knowledgeImport').addEventListener('click',importReviewedKnowledge);
   $('adaptiveQuery').addEventListener('keydown',e=>{
     if(e.key==='Enter'){e.preventDefault();searchAdaptive();}
   });
