@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -209,6 +209,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({'review':coordination.create(payload.get('project_id'),payload.get('objective'),payload.get('scope'))},202)
             elif path=='/api/agents/reviews/resume':
                 self._json({'review':coordination.resume(payload.get('id'),payload.get('confirmed'))})
+            elif path=='/api/operator/plan':
+                self._json({'plan':operator_tools.plan(payload.get('instruction'))})
             elif path=='/api/capabilities/prepare':
                 self._json({'request':capabilities.prepare(payload.get('capability'),payload.get('arguments',{}))},201)
             elif path=='/api/capabilities/execute':
