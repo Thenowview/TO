@@ -87,6 +87,32 @@ class ApiTests(unittest.TestCase):
                             for item in providers))
         self.assertNotIn('access_token',raw.decode('utf-8'))
 
+    def test_models_api_exposes_honest_hardware_and_locked_benchmark(self):
+        from unittest.mock import patch
+        fake_hardware={'available_ram_bytes':8*1024**3,'total_ram_bytes':16*1024**3,
+                       'platform':'Windows','cpu_cores':8}
+        fake_gpu={'detected':False,'total_vram_bytes':None,'available_vram_bytes':None,
+                  'source':'not_detected'}
+        with patch.object(app.device_capabilities,'detect',return_value=fake_hardware),patch.object(
+                app.device_capabilities,'detect_gpu_memory',return_value=fake_gpu),patch.object(
+                app.core,'available_backends',return_value={'llamacpp':False,'ollama':[]}),patch.object(
+                app.core,'active_backend',return_value=(None,None)):
+            code,_,body=self.get('/api/models')
+        self.assertEqual(code,200)
+        result=json.loads(body)
+        self.assertEqual(result['hardware']['available_ram_bytes'],8*1024**3)
+        self.assertFalse(result['hardware']['gpu']['detected'])
+        self.assertFalse(result['recommendation']['automatic_download_or_model_start'])
+        self.assertFalse(result['inference_probe']['benchmark_unlocked'])
+
+        core.invalidate_model_probe()
+        with patch.object(app.core,'active_backend',return_value=('llamacpp','fake')),patch.object(
+                app.core,'infer') as inference:
+            code,body=self.post('/api/models/benchmark',{'confirmed':True})
+            self.assertEqual(code,400)
+            self.assertIn('Benchmark locked',body['error'])
+            inference.assert_not_called()
+
     def test_authenticated_status(self):
         status,h,b=self.get('/api/status')
         self.assertEqual(status,200);d=json.loads(b)
