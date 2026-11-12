@@ -7,7 +7,7 @@ $Repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $ResultDir = Join-Path $Repo 'out\source-verification'
 $Checks = @(
   @{Name='Python regression tests'; Program='python'; Args=@('-m','unittest','discover','-s','offline_desktop/tests','-t','offline_desktop','-q')},
-  @{Name='Node agent and UI tests'; Program='node'; Args=@('--test','tests/company-agent-directory.test.cjs','tests/provider-capacity.test.cjs','tests/supervisor-starters.test.cjs','tests/ui-contract.test.cjs','tests/company-ui-contract.test.cjs','tests/task-manager.test.cjs','tests/release-gates.test.cjs','tests/release-audit.test.cjs','tests/selfhosted-ci-contract.test.cjs','tests/operator-ui-contract.test.cjs','tests/chat-first-ui-contract.test.cjs')},
+  @{Name='Node agent and UI tests'; Program='node'; Args=@('--test','tests/company-agent-directory.test.cjs','tests/provider-capacity.test.cjs','tests/supervisor-starters.test.cjs','tests/ui-contract.test.cjs','tests/company-ui-contract.test.cjs','tests/task-manager.test.cjs','tests/release-gates.test.cjs','tests/release-audit.test.cjs','tests/selfhosted-ci-contract.test.cjs','tests/operator-ui-contract.test.cjs','tests/chat-first-ui-contract.test.cjs','tests/chat-experience.test.cjs')},
   @{Name='Agent playbooks syntax'; Program='node'; Args=@('--check','apps/chrome-extension/agent-playbooks.js')},
   @{Name='Task manager syntax'; Program='node'; Args=@('--check','apps/chrome-extension/task-manager.js')},
   @{Name='Supervisor plan syntax'; Program='node'; Args=@('--check','apps/chrome-extension/supervisor-plan.js')},
