@@ -13,6 +13,7 @@ CATALOG={
  'windows.source.verify': {'kind':'desktop','description':'Run fixed source tests in an explicitly trusted local checkout at an approved commit SHA.'},
  'github.runner.status': {'kind':'github','description':'Read runner Online/Idle and labels from authenticated GitHub API.'},
  'github.workflow.status': {'kind':'github','description':'Read recent CI runs from authenticated GitHub API.'},
+ 'github.workflow.result': {'kind':'github','description':'Verify the exact reviewed commit passed trusted preflight and source tests using GitHub job step evidence.'},
  'github.workflow.source_dispatch': {'kind':'github','description':'Trigger source-only CI on a reviewed commit; no builds, merge or deployment.'},
 }
 def init_schema():
@@ -35,7 +36,7 @@ def enabled(name):
     if name=='desktop.runner.inspect':return os.environ.get('THEORG_ENABLE_RUNNER_DIAGNOSTICS')=='1'
     if name=='windows.powershell.inspect':return os.environ.get('THEORG_ENABLE_WINDOWS_INSPECTION')=='1'
     if name=='windows.source.verify':return os.environ.get('THEORG_ENABLE_LOCAL_SOURCE_TESTS')=='1'
-    if name in ('github.runner.status','github.workflow.status'):
+    if name in ('github.runner.status','github.workflow.status','github.workflow.result'):
         return os.environ.get('THEORG_ENABLE_GITHUB_READONLY')=='1'
     if name=='github.workflow.source_dispatch':
         return os.environ.get('THEORG_ENABLE_GITHUB_ACTIONS')=='1'
