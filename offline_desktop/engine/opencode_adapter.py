@@ -15,6 +15,8 @@ import signal
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
 from typing import Any
 
 from engine import core
@@ -170,7 +172,8 @@ def _stop_process_tree(proc: subprocess.Popen) -> None:
 
 
 def run(staged: Path, instruction: str, *, edit: bool, model: str,
-        allow_provider_transfer: bool, deadline_seconds: int = 180) -> dict:
+        allow_provider_transfer: bool, deadline_seconds: int = 180,
+        cancel_event: threading.Event | None = None) -> dict:
     """Run only after app-side explicit authorization, never automatically.
 
     Any provider may receive project context. An authorized user must explicitly
@@ -184,6 +187,8 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
         raise core.EngineError("Choose an explicit provider/model identifier.")
     if type(deadline_seconds) is not int or not 20 <= deadline_seconds <= MAX_SECONDS:
         raise core.EngineError("Execution timeout outside permitted bounds.")
+    if cancel_event is not None and cancel_event.is_set():
+        raise core.EngineError("OpenCode execution cancelled before launch.")
     if not staged.is_dir() or staged.is_symlink():
         raise core.EngineError("Staged source directory missing.")
     # An overwrite of an existing global project config must not loosen policy.
@@ -217,11 +222,20 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
                       else {"start_new_session": True})
             proc = subprocess.Popen(argv, cwd=str(staged), env=env, stdin=subprocess.DEVNULL,
                                     stdout=log, stderr=subprocess.STDOUT, **kwargs)
-            try:
-                exit_code = proc.wait(timeout=deadline_seconds)
-            except subprocess.TimeoutExpired:
-                _stop_process_tree(proc)
-                raise core.EngineError("OpenCode timed out; process tree terminated on a best-effort basis; work remains unverified.")
+            deadline = time.monotonic() + deadline_seconds
+            while True:
+                if cancel_event is not None and cancel_event.is_set():
+                    _stop_process_tree(proc)
+                    raise core.EngineError("OpenCode execution cancelled by owner; process tree termination requested.")
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    _stop_process_tree(proc)
+                    raise core.EngineError("OpenCode timed out; process tree terminated on a best-effort basis; work remains unverified.")
+                try:
+                    exit_code = proc.wait(timeout=min(0.5, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
             log.seek(0, 2)
             length = log.tell()
             log.seek(max(0, length - MAX_OUTPUT))
