@@ -57,10 +57,12 @@ def plan(instruction: str) -> dict:
                       "effect": "authenticated_remote_read"})
         tasks.append({"tool": "github.workflow.status", "arguments": {},
                       "effect": "authenticated_remote_read"})
-    if any(word in words for word in ("run tests", "run ci", "dispatch", "trigger workflow")):
+    if any(phrase in words for phrase in ("run tests", "source tests", "run ci")):
         tasks.append({"tool": "windows.source.verify",
                       "arguments": {"expected_sha": "<reviewed-commit-sha>"},
                       "effect": "approved_local_code_execution"})
+    if (any(phrase in words for phrase in ("run tests", "run ci", "dispatch", "trigger workflow")) and
+            any(phrase in words for phrase in ("github", "workflow", " ci", "ci "))):
         tasks.append({"tool": "github.workflow.source_dispatch",
                       "arguments": {"expected_sha": "<reviewed-commit-sha>"},
                       "effect": "remote_job_execution"})
