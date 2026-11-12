@@ -14,18 +14,51 @@ class StructuredModelBenchTests(unittest.TestCase):
         self.addCleanup(self.restore)
         root=Path(self.tmp.name);core.DATA=root/'data';core.DB=core.DATA/'db.sqlite3';core.WORKSPACE=root/'workspace';core.MODELS=root/'models'
         core.init()
-    def restore(self):core.DB,core.DATA,core.WORKSPACE,core.MODELS=self.old
+        core.invalidate_model_probe()
+    def restore(self):
+        core.invalidate_model_probe()
+        core.DB,core.DATA,core.WORKSPACE,core.MODELS=self.old
     def test_matching_response_passes_one_schema_challenge(self):
         with patch.object(core,'active_backend',return_value=('llamacpp','test')),patch.object(core,'infer',return_value=json.dumps({'product':'TheOrg','result':42,'flags':[True,False]})) as call:
+            with patch.object(core,'local_http_json',return_value={'choices':[{'message':{'content':'ready'}}]}):
+                core.probe_local_model()  # synthetic positive local HTTP fixture; not real GGUF proof
             result=core.benchmark_local_model()
         self.assertTrue(result['structured_output_pass'])
         self.assertEqual(result['quality_claim'][:4],'none')
         self.assertEqual(call.call_args.kwargs['max_tokens'],180)
     def test_mismatched_or_invalid_response_fails(self):
         with patch.object(core,'active_backend',return_value=('llamacpp','test')):
+            with patch.object(core,'local_http_json',return_value={'choices':[{'message':{'content':'ready'}}]}):
+                core.probe_local_model()
             for response in ('not json',json.dumps({'product':'TheOrg','result':'42','flags':[True,False]})):
                 with self.subTest(response=response),patch.object(core,'infer',return_value=response):
                     self.assertFalse(core.benchmark_local_model()['structured_output_pass'])
+    def test_benchmark_requires_fresh_successful_real_generation_probe(self):
+        with patch.object(core,'active_backend',return_value=('llamacpp','test')):
+            with self.assertRaisesRegex(core.EngineError,'Benchmark locked'):
+                core.benchmark_local_model()
+            with patch.object(core,'local_http_json',return_value={'choices':[{'message':{'content':'ready'}}]}):
+                core.probe_local_model()
+            self.assertTrue(core.inference_probe_status()['benchmark_unlocked'])
+            core._recent_model_probe['checked_at']-=301
+            self.assertFalse(core.inference_probe_status()['benchmark_unlocked'])
+            with self.assertRaisesRegex(core.EngineError,'Benchmark locked'):
+                core.benchmark_local_model()
+            with patch.object(core,'local_http_json',return_value={'choices':[{'message':{'content':'ready'}}]}):
+                core.probe_local_model()
+            core.invalidate_model_probe()
+            self.assertFalse(core.inference_probe_status()['benchmark_unlocked'])
+
+    def test_failed_probe_clears_prior_benchmark_permission(self):
+        with patch.object(core,'active_backend',return_value=('llamacpp','test')):
+            with patch.object(core,'local_http_json',return_value={'choices':[{'message':{'content':'ready'}}]}):
+                core.probe_local_model()
+            self.assertTrue(core.inference_probe_status()['benchmark_unlocked'])
+            with patch.object(core,'local_http_json',return_value={'choices':[{'message':{'content':' '}}]}):
+                with self.assertRaisesRegex(core.EngineError,'empty'):
+                    core.probe_local_model()
+            self.assertFalse(core.inference_probe_status()['benchmark_unlocked'])
+
     def test_no_model_rejected(self):
         with patch.object(core,'active_backend',return_value=(None,None)):
             with self.assertRaisesRegex(core.EngineError,'Start a compatible local model'):
