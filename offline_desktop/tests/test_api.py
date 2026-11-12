@@ -56,6 +56,24 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.get('/app.js')[0],200)
         self.assertEqual(self.get('/api/status',auth=False)[0],401)
         self.assertEqual(self.get('/../app.py')[0],404)
+    def test_operator_preview_is_authenticated_and_never_executes_tools(self):
+        from unittest.mock import patch
+        code,body=self.post('/api/operator/plan',
+            {'instruction':'Check GitHub runner and run tests'},auth=False)
+        self.assertEqual(code,401)
+        with patch.object(app.operator_tools,'_gh') as gh, patch.object(
+                app.operator_tools,'_powershell') as powershell:
+            code,body=self.post('/api/operator/plan',
+                {'instruction':'Check GitHub runner and run tests'})
+        self.assertEqual(code,200,body)
+        self.assertTrue(body['plan']['draft_only'])
+        self.assertFalse(body['plan']['actions_executed'])
+        self.assertFalse(body['plan']['external_actions_authorized'])
+        gh.assert_not_called()
+        powershell.assert_not_called()
+        self.assertEqual(self.post('/api/operator/plan',
+            {'instruction':'x'})[0],400)
+
     def test_authenticated_status(self):
         status,h,b=self.get('/api/status')
         self.assertEqual(status,200);d=json.loads(b)
