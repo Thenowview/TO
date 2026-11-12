@@ -59,4 +59,54 @@ class AutomaticEditionTests(unittest.TestCase):
         self.assertEqual(result["choice_mode"],"auto")
         start.assert_not_called()
 
+
+    def test_start_recommended_never_runs_without_consent(self):
+        with patch.object(core,"start_local_model") as start:
+            with self.assertRaisesRegex(core.EngineError,"Explicit permission"):
+                adaptive_runtime.start_recommended()
+            start.assert_not_called()
+
+    def test_start_recommended_keeps_nano_when_no_safe_model(self):
+        with patch.object(adaptive_runtime,"automatic_choice",
+                          return_value={"tier":"nano","model":None}),\
+             patch.object(core,"start_local_model") as start:
+            with self.assertRaisesRegex(core.EngineError,"Adaptive 1 remains active"):
+                adaptive_runtime.start_recommended(confirmed=True)
+            start.assert_not_called()
+
+    def test_start_recommended_rechecks_preflight_before_launch(self):
+        with patch.object(adaptive_runtime,"automatic_choice",
+                          return_value={"tier":"lite","model":"small.gguf"}),\
+             patch.object(core,"model_start_preflight",
+                          return_value={"ram_check_passed":False,"runtime_available":True}),\
+             patch.object(core,"start_local_model") as start:
+            with self.assertRaisesRegex(core.EngineError,"readiness changed"):
+                adaptive_runtime.start_recommended(confirmed=True)
+            start.assert_not_called()
+
+    def test_start_recommended_requires_verified_metadata(self):
+        with patch.object(adaptive_runtime,"automatic_choice",
+                          return_value={"tier":"lite","model":"small.gguf"}),\
+             patch.object(core,"model_start_preflight",
+                          return_value={"ram_check_passed":True,"runtime_available":True,
+                                        "metadata":{"metadata_recognized":False}}),\
+             patch.object(core,"start_local_model") as start:
+            with self.assertRaisesRegex(core.EngineError,"metadata verification"):
+                adaptive_runtime.start_recommended(confirmed=True)
+            start.assert_not_called()
+
+    def test_start_recommended_returns_unverified_until_real_probe(self):
+        with patch.object(adaptive_runtime,"automatic_choice",
+                          return_value={"tier":"lite","model":"small.gguf"}),\
+             patch.object(core,"model_start_preflight",
+                          return_value={"ram_check_passed":True,"runtime_available":True,
+                                        "metadata":{"metadata_recognized":True}}),\
+             patch.object(core,"start_local_model",
+                          return_value={"started":True,"pid":123}) as start:
+            result=adaptive_runtime.start_recommended(confirmed=True)
+            self.assertEqual(result["edition"],"lite")
+            self.assertFalse(result["inference_verified"])
+            self.assertTrue(result["requires_real_probe"])
+            start.assert_called_once_with("small.gguf")
+
 if __name__ == "__main__":unittest.main()
