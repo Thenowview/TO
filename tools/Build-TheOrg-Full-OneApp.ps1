@@ -106,6 +106,7 @@ if($ChromeArchive){
   $BundledBrowser=$true
 }
 $BundledOpenCode=$false
+$BundledOpenCodeVersion=''
 if($OpenCodeArchive){
   AssertFile $OpenCodeArchive
   if($OpenCodeArchive -notlike '*.zip' -or $OpenCodeSha256 -notmatch '^[0-9a-fA-F]{64}$' -or
@@ -115,10 +116,17 @@ if($OpenCodeArchive){
   $CliExtract=Join-Path $Output '.opencode-extracted'
   if(Test-Path $CliExtract){Remove-Item -LiteralPath $CliExtract -Recurse -Force}
   Expand-Archive -LiteralPath $OpenCodeArchive -DestinationPath $CliExtract -Force
-  $ExeMatches=@(Get-ChildItem -LiteralPath $CliExtract -Recurse -Filter 'opencode.exe' -File)
-  if($ExeMatches.Count -ne 1){throw 'OpenCode CLI ZIP must contain exactly one opencode.exe'}
+  $ExeMatches=@(Get-ChildItem -LiteralPath $CliExtract -Recurse -File | Where-Object {
+    $_.Name -in @('opencode2.exe','opencode.exe')
+  })
+  if($ExeMatches.Count -ne 1){throw 'OpenCode CLI ZIP must contain exactly one OpenCode V2 executable'}
+  $BundledOpenCodeVersion=((& $ExeMatches[0].FullName --version) | Out-String).Trim()
+  CheckExit 'Bundled OpenCode CLI version preflight'
+  if($BundledOpenCodeVersion -notmatch '(?<![0-9.])v?2\.[0-9]+\.[0-9]+'){
+    throw 'TheOrg requires a verified OpenCode V2 CLI with ordered permissions'
+  }
   Copy-Item -LiteralPath $ExeMatches[0].DirectoryName -Destination (Join-Path $Stage 'opencode') -Recurse
-  AssertFile (Join-Path $Stage 'opencode\opencode.exe')
+  AssertFile (Join-Path $Stage 'opencode\'+$ExeMatches[0].Name)
   $OpenCodeLicense=Join-Path $Repo 'third_party\opencode\LICENSE'
   AssertFile $OpenCodeLicense
   Copy-Item -LiteralPath $OpenCodeLicense -Destination (Join-Path $Stage 'opencode\LICENSE')
@@ -162,6 +170,7 @@ $Receipt=@{
   bridge_self_contained=$true
   bundled_browser=$BundledBrowser
   bundled_opencode_cli=$BundledOpenCode
+  bundled_opencode_cli_version=$BundledOpenCodeVersion
   bundled_model_archive=$BundledModel
   four_agent_source_tests=(!$SkipTests)
   real_model_inference_tested=$false
