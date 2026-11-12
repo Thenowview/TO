@@ -8,6 +8,8 @@ $ResultDir = Join-Path $Repo 'out\source-verification'
 $Checks = @(
   @{Name='Memory model-preflight isolation (4 regression cases)'; Program='python'; Args=@('-m','unittest','discover','-s','offline_desktop/tests','-t','offline_desktop','-p','test_v010_preflight.py','-v')},
   @{Name='Python regression tests'; Program='python'; Args=@('-m','unittest','discover','-s','offline_desktop/tests','-t','offline_desktop','-q')},
+  @{Name='Adaptive clean source integrity manifest'; Program='python'; Args=@('tools/adaptive_integrity.py','create','--output','out/adaptive/manifest.json')},
+  @{Name='Adaptive source integrity hash verification'; Program='python'; Args=@('tools/adaptive_integrity.py','verify','--manifest','out/adaptive/manifest.json')},
   @{Name='Node agent and UI tests'; Program='node'; Args=@('--test','tests/company-agent-directory.test.cjs','tests/provider-capacity.test.cjs','tests/supervisor-starters.test.cjs','tests/ui-contract.test.cjs','tests/company-ui-contract.test.cjs','tests/task-manager.test.cjs','tests/release-gates.test.cjs','tests/release-audit.test.cjs','tests/selfhosted-ci-contract.test.cjs','tests/operator-ui-contract.test.cjs','tests/chat-first-ui-contract.test.cjs','tests/chat-experience.test.cjs','tests/adaptive-tier-contract.test.cjs')},
   @{Name='Agent playbooks syntax'; Program='node'; Args=@('--check','apps/chrome-extension/agent-playbooks.js')},
   @{Name='Task manager syntax'; Program='node'; Args=@('--check','apps/chrome-extension/task-manager.js')},
