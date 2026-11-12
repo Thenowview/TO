@@ -283,7 +283,25 @@
     }
     const note=element('p','chat-evidence-notice',
       'Task status and text come from the local SQLite task record. Completion does not prove real-world tool execution, verified sources or successful changes unless separate evidence is shown.');
-    target.append(section,note);
+    target.append(section);
+    const timeline=element('ol','chat-execution-timeline');
+    const queueItem=element('li','');
+    queueItem.append(element('strong','','Queued locally'));
+    queueItem.append(element('span','',job.created||'Creation time unavailable'));
+    timeline.append(queueItem);
+    if(job.status!=='queued'){
+      const update=element('li','');
+      update.append(element('strong','', 'Last recorded status: '+(job.status||'unknown')));
+      update.append(element('span','',job.updated||'Time unavailable'));
+      timeline.append(update);
+    }
+    if(job.output){
+      const captured=element('li','');
+      captured.append(element('strong','','Local response stored'));
+      captured.append(element('span','','Text only; no independent external tool evidence implied'));
+      timeline.append(captured);
+    }
+    target.append(element('h3','chat-evidence-subhead','Recorded activity'),timeline,note);
     if(job.output){
       target.append(element('h3','chat-evidence-subhead','Recorded response'));
       target.append(element('pre','chat-evidence-response',String(job.output).slice(0,12000)));
@@ -477,6 +495,24 @@
         const copy=element('button','chat-action-button','Copy response');
         copy.type='button';
         copy.addEventListener('click',()=>clipboardCopy(job.output,copy));actions.append(copy);
+      }
+      if(job.status==='interrupted'){
+        const retry=element('button','chat-action-button','Retry interrupted');
+        retry.type='button';
+        retry.addEventListener('click',async()=>{
+          if(!confirm('Retry this interrupted local task? This queues another local inference attempt; it does not authorize tools or external services.'))return;
+          retry.disabled=true;
+          try{
+            await request('tasks/retry',{method:'POST',body:{id:job.id,confirmed:true}});
+            await loadTasks();showToast('Interrupted task requeued locally.');
+          }catch(e){showToast(e.message,true);retry.disabled=false;}
+        });
+        actions.append(retry);
+      }
+      if(job.status==='failed'){
+        const models=element('button','chat-action-button','Check local models');
+        models.type='button';models.addEventListener('click',()=>changeView('models'));
+        actions.append(models);
       }
       if(job.status==='queued'){
         const cancel=element('button','chat-action-button','Cancel');
