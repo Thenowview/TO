@@ -10,12 +10,24 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      confirm_self_hosted:
+        description: 'Use my own Windows runner (no GitHub-hosted compute)'
+        type: boolean
+        required: true
+        default: false
+      build_unsigned_windows_candidate:
+        description: 'After source tests, compile unsigned Windows candidate locally (may download build dependencies)'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   js-syntax:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +76,7 @@ jobs:
           node -e "const fs=require('fs'); for(const p of ['apps/chrome-extension/manifest.json','config/agent-profiles.json','config/plugin-gateway-targets.json','config/release-gates.json']){JSON.parse(fs.readFileSync(p,'utf8'));console.log('VALID '+p)}"
 
   windows-bridge:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -189,3 +202,32 @@ jobs:
           path: out/bridge/
           if-no-files-found: error
           retention-days: 30
+
+  self-hosted-windows-source:
+    # Manual dispatch only. Never run untrusted PR code on a persistent private PC.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_self_hosted }}
+    runs-on: [self-hosted, windows, x64, theorg-win]
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout operator-selected trusted branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify source on local Windows runner
+        shell: pwsh
+        run: |
+          ./tools/Test-TheOrg-Source-Local.ps1
+      - name: Optional unsigned Windows build on local machine
+        if: ${{ inputs.build_unsigned_windows_candidate }}
+        shell: pwsh
+        run: |
+          ./tools/Build-TheOrg-Windows-Local.ps1
+          ./tools/Build-TheOrg-Windows-Local.ps1 -CheckOnly
+      - name: Record verification scope
+        if: always()
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY 'Self-hosted Windows check only. No merge or deployment. No GitHub-hosted compute used.'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY 'Source tests are not proof of live AI provider execution or a clean-machine install.'
