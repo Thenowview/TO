@@ -170,3 +170,26 @@ main:has(#view-supervisor.active){height:calc(100dvh - 68px);min-height:430px;ma
 #modelBenchmarkLock{font-size:11px;line-height:1.6;background:#25292d}
 @media(max-width:1050px){.hardware-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.hardware-metric.highlighted{grid-column:1/-1}}
 @media(max-width:560px){.hardware-advisor{padding:16px}.hardware-advisor-heading{flex-direction:column}.hardware-metrics{grid-template-columns:1fr}.hardware-metric.highlighted{grid-column:auto}.hardware-metric strong{font-size:17px}}
+
+
+/* One app, three Adaptive editions — tier selection never grants model access. */
+.adaptive-editions{border:1px solid #3b424b;background:#1e2528;border-radius:18px;padding:23px;margin-bottom:22px}
+.adaptive-head h2{font-size:20px;margin:6px 0 8px;letter-spacing:-.45px}
+.adaptive-head p{font-size:12px;line-height:1.7;color:#bac2c7;margin:0 0 18px;max-width:730px}
+.adaptive-edition-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.adaptive-edition-card{border:1px solid #3e4850;background:#252a30;border-radius:14px;padding:17px;min-width:0;display:flex;flex-direction:column;gap:11px}
+.adaptive-edition-card.selected{border-color:#7fb2a2;box-shadow:0 0 0 1px #7fb2a233;background:#263630}
+.adaptive-edition-label{font-size:10px;letter-spacing:.6px;color:#c6e4da;font-weight:650}
+.adaptive-edition-card h3{font-size:22px;letter-spacing:-.6px;margin:0}
+.adaptive-edition-card p{font-size:11px;color:#b7c0c8;line-height:1.6;margin:0;flex:1}
+.adaptive-edition-state{font-size:10px;font-weight:600;color:#d5dfdf}
+.adaptive-edition-card .muted{font-size:10px;line-height:1.55}
+.adaptive-edition-card button{margin-top:auto}
+.adaptive-edition-card button:disabled{opacity:.55;cursor:not-allowed}
+.adaptive-learning{border-top:1px solid #3a4549;margin-top:19px;padding-top:18px}
+.adaptive-learning h3{font-size:14px;margin:0 0 6px}
+.adaptive-learning p{font-size:11px;color:#b9c4c5;line-height:1.6;margin:0 0 12px}
+.adaptive-learning input{max-width:510px;margin-right:8px}
+.adaptive-learning .task-stack{margin-top:12px}
+@media(max-width:1050px){.adaptive-edition-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.adaptive-edition-card:last-child{grid-column:1/-1}}
+@media(max-width:560px){.adaptive-editions{padding:16px}.adaptive-edition-grid{grid-template-columns:1fr}.adaptive-edition-card:last-child{grid-column:auto}.adaptive-learning input{max-width:100%;width:100%;margin-bottom:10px}}
