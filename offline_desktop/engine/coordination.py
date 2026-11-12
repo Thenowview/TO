@@ -45,9 +45,10 @@ def _encode_steps(steps):
         raise core.EngineError('Advisory step evidence must be a list.')
     try:
         encoded=json.dumps(steps,ensure_ascii=False)
-    except (TypeError,ValueError) as exc:
-        raise core.EngineError('Advisory step evidence cannot be serialized.') from exc
-    if len(encoded.encode('utf-8'))>48000:
+        length=len(encoded.encode('utf-8'))
+    except (TypeError,ValueError,UnicodeError) as exc:
+        raise core.EngineError('Advisory step evidence cannot be serialized as UTF-8.') from exc
+    if length>48000:
         raise core.EngineError('Advisory step evidence exceeds the bounded audit limit.')
     return encoded
 
