@@ -258,6 +258,41 @@ class CompanyExecutionTests(unittest.TestCase):
         self.assertEqual(report["status"],"failed")
         self.assertEqual(report["provider_error_event_count"],1)
 
+    def test_plain_language_preview_is_editable_and_never_authorizes_execution(self):
+        plan=company.preview_instruction_plan("demo",self.project_id,
+            "Build a simple synthetic dashboard to summarize local tasks.")
+        self.assertTrue(plan["draft_only"])
+        self.assertTrue(plan["source_edit_proposed"])
+        self.assertFalse(plan["external_actions_authorized"])
+        self.assertFalse(plan["model_called"])
+        self.assertEqual([t["role"] for t in plan["tasks"]],
+                         ["planner","developer","qa_auditor","security_officer"])
+        self.assertEqual(plan["tasks"][2]["depends_on"],[1])
+        guarded=company.preview_instruction_plan("demo",self.project_id,
+            "Build and deploy to production now.")
+        self.assertTrue(guarded["needs_manual_scoping"])
+        self.assertFalse(guarded["source_edit_proposed"])
+        self.assertTrue(all(t["mode"]=="read_only" for t in guarded["tasks"]))
+
+    def test_accepted_dependency_inherits_actual_reviewed_source(self):
+        order=self._create()
+        parent_id,stage=self._complete_job(order)
+        company.review(parent_id,"accept",
+            "Inspected the synthetic output and checked the exact local file SHA256 digest.",
+            reviewer_role="qa_auditor",confirmed=True)
+        child=company._read_job(order["jobs"][1]["id"])
+        inherited,source_job=company._approved_execution_source(child,self.project)
+        self.assertEqual(source_job,parent_id)
+        self.assertEqual(inherited,stage)
+        self.assertEqual((inherited/"main.py").read_text(encoding="utf-8"),"new\\n")
+
+    def test_unreviewed_dependency_source_is_never_inherited(self):
+        order=self._create()
+        parent_id,_=self._complete_job(order)
+        child=company._read_job(order["jobs"][1]["id"])
+        with self.assertRaisesRegex(core.EngineError,"QA-accepted"):
+            company._approved_execution_source(child,self.project)
+
     def test_adapter_policy_and_bounded_source_copy(self):
         protected=adapter._policy(False)["permissions"]
         self.assertTrue(any(x["action"]=="shell" and x["effect"]=="deny" for x in protected))
