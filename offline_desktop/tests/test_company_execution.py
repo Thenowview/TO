@@ -301,6 +301,18 @@ class CompanyExecutionTests(unittest.TestCase):
         self.assertEqual(inherited,stage)
         self.assertEqual((inherited/"main.py").read_text(encoding="utf-8"),"new\n")
 
+    def test_stale_original_project_blocks_cumulative_code_plan(self):
+        order=self._create()
+        job_id,_=self._complete_job(order)
+        company.review(job_id,"accept",
+            "Reviewed the staged content and its complete SHA-256 integrity evidence.",
+            reviewer_role="qa_auditor",confirmed=True)
+        (self.project/"main.py").write_text("someone else changed source",encoding="utf-8")
+        with patch.object(coding,"propose") as proposed:
+            with self.assertRaisesRegex(core.EngineError,"Original project has changed"):
+                company.create_code_plan(job_id,confirmed=True)
+        proposed.assert_not_called()
+
     def test_unreviewed_dependency_source_is_never_inherited(self):
         order=self._create()
         parent_id,_=self._complete_job(order)
