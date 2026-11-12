@@ -326,12 +326,15 @@
     const value=$('chatMessageSearch').value.trim();
     if(value.length<2)return showToast('Enter at least two characters to search saved local tasks.',true);
     const panel=$('chatHistoryResults'),target=$('chatHistoryMatches');
-    panel.hidden=false;target.replaceChildren(element('p','muted','Searching saved local tasks…'));
+    panel.hidden=false;
+    panel.focus();
+    target.replaceChildren(element('p','muted','Searching saved local tasks…'));
     const url='chat/search?q='+encodeURIComponent(value)+
        (activeSessionId?'&session_id='+encodeURIComponent(activeSessionId):'');
     try{
       const response=await request(url),data=response.search;
       if(serial!==chatSearchRequest)return;
+      text($('chatSearchStatus'),data.matches.length+' saved matches found locally');
       target.replaceChildren();
       if(!data.matches?.length){
         target.append(element('p','muted','No saved tasks match. Try a more specific phrase.'));
@@ -1013,10 +1016,15 @@
   $('chatCloseSearch').addEventListener('click',()=>{
     chatSearchRequest++;
     $('chatHistoryResults').hidden=true;$('chatHistoryMatches').replaceChildren();
+    $('chatMessageSearch').focus();
   });
   $('chatMessageSearch').addEventListener('keydown',event=>{
     if(event.key==='Enter'){event.preventDefault();searchSavedTasks();}
-    if(event.key==='Escape'){$('chatMessageSearch').value='';renderChatMessages();}
+    if(event.key==='Escape'){
+      chatSearchRequest++;
+      $('chatHistoryResults').hidden=true;
+      $('chatMessageSearch').value='';renderChatMessages();
+    }
   });
   $('chatContextToggle').addEventListener('click',async()=>{
     const session=currentChatSession();
