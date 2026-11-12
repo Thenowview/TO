@@ -73,10 +73,22 @@ jobs:
           $ErrorActionPreference='Stop'
           ./out/full-oneapp/TheOrg/Start-TheOrg-Full.ps1 -CheckOnly
           if ($LASTEXITCODE -ne 0) { throw 'Launcher check failed' }
-          ./out/full-oneapp/TheOrg/TheOrg.exe --self-test
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged engine failed' }
-          ./out/full-oneapp/TheOrg/TheOrg.Bridge.exe --self-test
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged native host failed' }
+          # Self-test writes tokens/SQLite: use runner TEMP, never the packaged folder.
+          $smoke = Join-Path $env:RUNNER_TEMP 'theorg-final-verify'
+          $env:THEORG_DATA_DIR = Join-Path $smoke 'data'
+          $env:THEORG_WORKSPACE = Join-Path $smoke 'workspace'
+          $env:THEORG_MODELS = Join-Path $smoke 'models'
+          $env:THEORG_SKIP_SHORTCUT = '1'
+          try {
+            ./out/full-oneapp/TheOrg/TheOrg.exe --self-test
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged engine failed' }
+            ./out/full-oneapp/TheOrg/TheOrg.Bridge.exe --self-test
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged native host failed' }
+          } finally {
+            if (Test-Path $smoke) { Remove-Item $smoke -Recurse -Force }
+            Remove-Item Env:THEORG_DATA_DIR,Env:THEORG_WORKSPACE,Env:THEORG_MODELS,Env:THEORG_SKIP_SHORTCUT -ErrorAction SilentlyContinue
+          }
+          if (Test-Path ./out/full-oneapp/TheOrg/.theorg) { throw 'Runtime state found in distributable package' }
       - name: Create unsigned candidate archive
         shell: pwsh
         run: |
