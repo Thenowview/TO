@@ -16,10 +16,51 @@
       localStorage.removeItem(tokenKey);
     }
   }
-  let activeView = 'overview';
+  let activeView = 'supervisor';
   let companyAgentProfiles=[];
   let jobs = [], modelData = {}, engineStatus = {};
-  const labels = {overview:'Workspace overview',supervisor:'AI Supervisor',operator:'Windows Operator',tasks:'Task queue',coding:'Code Studio',company:'Company agents',models:'Local models',files:'Workspace files',memory:'Memory vault',settings:'System & security'};
+  const labels = {overview:'Overview',supervisor:'Chat',operator:'Windows Operator',tasks:'Task queue',coding:'Code Studio',company:'Agent team',models:'Models',files:'Files',memory:'Memory',settings:'Settings'};
+
+  /* Original, dependency-free line icon set. Icons are pure local SVG,
+     never downloaded or constructed from model-provided markup. */
+  const iconShapes = {
+    'square-pen':[['rect',{x:3,y:3,width:15,height:18,rx:2}],['path',{d:'m12 7 5 5'}],['path',{d:'m15 4 4 4'}],['path',{d:'M18 2 22 6 13 15 9 16 10 12Z'}]],
+    'messages-square':[['path',{d:'M21 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 3v-6a7.5 7.5 0 0 1 7.5-7.5'}],['path',{d:'M3 13a6 6 0 0 1-1-3.5A7.5 7.5 0 0 1 9.5 2h7A5.5 5.5 0 0 1 22 7.5V12'}]],
+    'list-checks':[['path',{d:'m3 6 2 2 4-4 M12 6h9 M3 14l2 2 4-4 M12 14h9 M3 21h18'}]],
+    'code-2':[['path',{d:'m8 17-5-5 5-5 M16 7l5 5-5 5 M14 4l-4 16'}]],
+    'monitor-cog':[['rect',{x:2,y:3,width:20,height:15,rx:2}],['path',{d:'M8 22h8 M12 18v4 M14 8l1 1 1-1 1 1-1 1 1 1-1 1-1-1-1 1-1-1 1-1z'}]],
+    'users':[['path',{d:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M16 3.2a4 4 0 0 1 0 7.6 M22 21v-2a4 4 0 0 0-3-3.85'}],['circle',{cx:9,cy:7,r:4}]],
+    'cpu':[['rect',{x:5,y:5,width:14,height:14,rx:2}],['rect',{x:9,y:9,width:6,height:6,rx:1}],['path',{d:'M9 1v4 M15 1v4 M9 19v4 M15 19v4 M1 9h4 M1 15h4 M19 9h4 M19 15h4'}]],
+    'folder-open':[['path',{d:'M2 7V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v3 M3 21l3-10h17l-3 10H3Z'}]],
+    'book-open':[['path',{d:'M12 7v14 M3 18.5a9 9 0 0 1 9 2.5 9 9 0 0 1 9-2.5V4a9 9 0 0 0-9 2.5A9 9 0 0 0 3 4v14.5Z'}]],
+    'layout-dashboard':[['rect',{x:3,y:3,width:7,height:9,rx:1}],['rect',{x:14,y:3,width:7,height:5,rx:1}],['rect',{x:14,y:12,width:7,height:9,rx:1}],['rect',{x:3,y:16,width:7,height:5,rx:1}]],
+    'settings-2':[['path',{d:'M4 7h16 M4 17h16'}],['circle',{cx:8,cy:7,r:2}],['circle',{cx:16,cy:17,r:2}]],
+    'blocks':[['rect',{x:3,y:3,width:7,height:7,rx:2}],['rect',{x:14,y:3,width:7,height:7,rx:2}],['rect',{x:3,y:14,width:7,height:7,rx:2}],['path',{d:'M17.5 14v7 M14 17.5h7'}]],
+    'panel-left':[['rect',{x:3,y:3,width:18,height:18,rx:2}],['path',{d:'M9 3v18'}]],
+    'refresh-cw':[['path',{d:'M20 11a8 8 0 0 0-14-5L3 9 M3 4v5h5 M4 13a8 8 0 0 0 14 5l3-3 M21 20v-5h-5'}]],
+    'sparkles':[['path',{d:'m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3Z M5 18l.5 1.5L7 20l-1.5.5L5 22l-.5-1.5L3 20l1.5-.5L5 18Z'}]],
+    'history':[['path',{d:'M3 12a9 9 0 1 0 2.7-6.4L3 8 M3 3v5h5 M12 7v5l3 2'}]],
+    'route':[['circle',{cx:6,cy:19,r:2}],['path',{d:'M9 19h7a5 5 0 0 0 0-10h-8A4 4 0 0 1 8 1h10'}],['circle',{cx:19,cy:3,r:2}]],
+    'file-text':[['path',{d:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z M14 2v6h6 M8 13h8 M8 17h6'}]],
+    'shield-check':[['path',{d:'m12 22 2.5-1c5-2 7-6 7-11V5l-9.5-3L2.5 5v5c0 5 2 9 7 11L12 22Z M8 12l2.5 2.5L16 9'}]],
+    'arrow-up':[['path',{d:'M12 19V5 M5 12l7-7 7 7'}]],
+    'lock-keyhole':[['rect',{x:4,y:10,width:16,height:12,rx:2}],['path',{d:'M8 10V7a4 4 0 0 1 8 0v3'}],['circle',{cx:12,cy:16,r:1}]]
+  };
+  function hydrateIcons(){
+    const NS='http://www.w3.org/2000/svg';
+    document.querySelectorAll('[data-icon]').forEach(node=>{
+      const specs=iconShapes[node.dataset.icon];if(!specs)return;
+      const svg=document.createElementNS(NS,'svg');
+      for(const [key,value] of Object.entries({viewBox:'0 0 24 24',width:20,height:20,fill:'none',stroke:'currentColor','stroke-width':1.75,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'}))svg.setAttribute(key,String(value));
+      for(const [tag,attrs] of specs){
+        const shape=document.createElementNS(NS,tag);
+        for(const [k,v] of Object.entries(attrs))shape.setAttribute(k,String(v));
+        svg.append(shape);
+      }
+      node.replaceChildren(svg);
+    });
+  }
+  hydrateIcons();
 
   function text(node, value){ node.textContent = String(value ?? ''); return node; }
   function element(tag, className, value) {
@@ -123,7 +164,44 @@
     list.append(readyRow('GGUF model files',data.model_files>0,(data.model_files||0)+' available'));
     list.append(readyRow('llama-server binary',data.llama_binary, data.llama_binary?'FOUND':'OPTIONAL'));
   }
-  async function loadTasks(){const data=await request('tasks');jobs=data.tasks||[];renderTasks($('taskList'));renderTasks($('supervisorResults'),6);}
+  function renderChatMessages(){
+    const feed=$('supervisorResults'),scroll=$('chatScroll'),welcome=$('chatWelcome');
+    if(!feed||!scroll||!welcome)return;
+    const nearBottom=scroll.scrollHeight-scroll.scrollTop-scroll.clientHeight<150;
+    feed.replaceChildren();
+    const recent=jobs.slice(0,30).reverse();
+    welcome.hidden=recent.length>0;
+    for(const job of recent){
+      const user=element('article','chat-message chat-user');
+      const userBody=element('div','chat-message-body');
+      userBody.append(element('p','chat-prompt',job.prompt));
+      const userMeta=element('div','chat-message-meta',
+        (job.created||'Local task')+' · '+(job.role||'Agent'));
+      userBody.append(userMeta);user.append(userBody);feed.append(user);
+      const reply=element('article','chat-message chat-assistant');
+      const badge=element('div','chat-avatar');badge.append(element('span','', 'T'));
+      const body=element('div','chat-message-body');
+      const label=element('div','chat-response-head');
+      label.append(element('strong','', 'TheOrg · '+(job.role||'Agent')),pill(job.status));
+      body.append(label);
+      if(job.output)body.append(element('pre','chat-response-text',job.output));
+      else if(job.error)body.append(element('p','chat-error-text',job.error));
+      else body.append(element('p','chat-pending-text',
+        job.status==='queued'?'Waiting for a local model worker…':
+        job.status==='running'?'Running locally; checking for results…':
+        job.status==='cancelled'?'Task cancelled.':'No verified model response available.'));
+      if(job.status==='queued'){
+        const cancel=element('button','chat-cancel','Cancel task');
+        cancel.addEventListener('click',()=>request('tasks/cancel',{
+          method:'POST',body:{id:job.id}
+        }).then(loadTasks).catch(e=>showToast(e.message,true)));
+        body.append(cancel);
+      }
+      reply.append(badge,body);feed.append(reply);
+    }
+    if(nearBottom)scroll.scrollTop=scroll.scrollHeight;
+  }
+  async function loadTasks(){const data=await request('tasks');jobs=data.tasks||[];renderTasks($('taskList'));renderChatMessages();}
   function runtimeCard(title,detail,ready){const c=element('div','runtime-card'),left=element('div');left.append(element('strong','',title),element('small','',detail));c.append(left,pill(ready?'completed':'failed'));return c;}
   async function loadModels(){
     const data=await request('models');modelData=data;
@@ -436,12 +514,42 @@
   $('unlockBtn').addEventListener('click',unlock);
   $('tokenInput').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
   $('changeToken').addEventListener('click',()=>{localStorage.removeItem(tokenKey);sessionStorage.removeItem(tokenKey);token='';lock();});
-  $('submitTask').addEventListener('click',async()=>{
-    const prompt=$('promptInput').value.trim();if(!prompt){showToast('Enter a task instruction.',true);return;}
+  $('chatComposer').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const prompt=$('promptInput').value.trim();
+    if(!prompt)return showToast('Enter an instruction for the local specialist.',true);
     const btn=$('submitTask');btn.disabled=true;
-    try{const r=await request('tasks',{method:'POST',body:{prompt,role:$('roleSelect').value}});
-      showToast('Task queued: '+r.id.slice(0,8));$('promptInput').value='';await loadTasks();changeView('tasks');}
-    catch(e){showToast(e.message,true);}finally{btn.disabled=false;}
+    try{
+      const r=await request('tasks',{method:'POST',body:{prompt,role:$('roleSelect').value}});
+      $('promptInput').value='';
+      showToast('Task queued locally · '+r.id.slice(0,8));
+      await loadTasks();$('chatScroll').scrollTop=$('chatScroll').scrollHeight;
+    }catch(error){showToast(error.message,true);}
+    finally{btn.disabled=false;$('promptInput').focus();}
+  });
+  $('promptInput').addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
+      e.preventDefault();
+      if(typeof $('chatComposer').requestSubmit==='function')$('chatComposer').requestSubmit();
+      else $('submitTask').click();
+    }
+  });
+  $('newChatButton').addEventListener('click',()=>{
+    changeView('supervisor');$('promptInput').value='';$('promptInput').focus();
+    showToast('Ready for a new independent task. Previous tasks remain in history.');
+  });
+  document.querySelectorAll('.prompt-starter').forEach(button=>
+    button.addEventListener('click',()=>{
+      changeView('supervisor');
+      $('promptInput').value=button.dataset.prompt||'';
+      if([...$('roleSelect').options].some(x=>x.value===button.dataset.role))
+        $('roleSelect').value=button.dataset.role;
+      $('promptInput').focus();
+    }));
+  document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();changeView('supervisor');$('promptInput').focus();
+    }
   });
   $('importModel').addEventListener('click',importModel);
   $('modelBenchmark').addEventListener('click',async()=>{const target=$('modelProbeResult');text(target,'Testing local model output...');try{const r=await request('models/benchmark',{method:'POST',body:{confirmed:true}});text(target,JSON.stringify(r.benchmark,null,2));}catch(e){text(target,'Benchmark unavailable: '+e.message);}});
