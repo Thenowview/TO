@@ -36,10 +36,25 @@ function VerifyStagedPayload {
   AssertFile (Join-Path $Stage 'SHA256SUMS.txt')
   & (Join-Path $Stage 'Start-TheOrg-Full.ps1') -CheckOnly
   FailIfExit 'Portable payload integrity check'
-  & (Join-Path $Stage 'TheOrg.exe') --self-test
-  FailIfExit 'TheOrg executable self-test'
+  # Never create an access token or SQLite database in the candidate folder.
+  $testRoot=Join-Path $Output '.local-verify'
+  $names=@('THEORG_DATA_DIR','THEORG_WORKSPACE','THEORG_MODELS','THEORG_SKIP_SHORTCUT')
+  $saved=@{}
+  foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
+  try {
+    [Environment]::SetEnvironmentVariable('THEORG_DATA_DIR',(Join-Path $testRoot 'data'),'Process')
+    [Environment]::SetEnvironmentVariable('THEORG_WORKSPACE',(Join-Path $testRoot 'workspace'),'Process')
+    [Environment]::SetEnvironmentVariable('THEORG_MODELS',(Join-Path $testRoot 'models'),'Process')
+    [Environment]::SetEnvironmentVariable('THEORG_SKIP_SHORTCUT','1','Process')
+    & (Join-Path $Stage 'TheOrg.exe') --self-test
+    FailIfExit 'TheOrg executable self-test'
+  } finally {
+    foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
+    if(Test-Path -LiteralPath $testRoot){Remove-Item -LiteralPath $testRoot -Recurse -Force}
+  }
   & (Join-Path $Stage 'TheOrg.Bridge.exe') --self-test
   FailIfExit 'Windows Native Messaging bridge self-test'
+  if(Test-Path -LiteralPath (Join-Path $Stage '.theorg')){throw 'Private engine data found inside distributable folder'}
 }
 if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) {
   throw 'This builder must run on Windows x64. It cannot compile a Windows executable on Linux or macOS.'
