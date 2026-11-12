@@ -14,6 +14,7 @@
     <button class="nav-button" data-view="supervisor"><span>✳</span><b>AI Supervisor</b></button>
     <button class="nav-button" data-view="tasks"><span>☷</span><b>Task queue</b></button>
     <button class="nav-button" data-view="coding"><span>⌘</span><b>Code Studio</b></button>
+    <button class="nav-button" data-view="company"><span>◎</span><b>Company agents</b></button>
     <button class="nav-button" data-view="models"><span>◉</span><b>Local models</b></button>
     <button class="nav-button" data-view="files"><span>▤</span><b>Workspace files</b></button>
     <button class="nav-button" data-view="memory"><span>▧</span><b>Memory vault</b></button>
@@ -31,6 +32,39 @@
     </section>
     <section class="view" id="view-supervisor"><div class="section-header"><div><div class="section-kicker">AGENT OPERATIONS</div><h1>AI Supervisor</h1><p>Instructions are routed only to local model servers. Tool actions require independent approval.</p></div></div><div class="two-col supervisor-grid"><article class="panel"><h2>New instruction</h2><p class="muted">Choose a specialist and enter the work to perform.</p><label for="roleSelect">Agent role</label><select id="roleSelect"></select><label for="promptInput">Instruction</label><textarea id="promptInput" rows="8" placeholder="Example: Explain how to structure an offline project plan and acceptance criteria."></textarea><div class="inline-note">◈ AI answers require a loaded local model. No simulated completions.</div><button class="btn primary wide" id="submitTask">✳ &nbsp; Queue task</button></article><article class="panel"><div class="panel-heading"><div><div class="section-kicker">EXECUTION HISTORY</div><h2>Recent responses</h2></div><button class="text-btn" data-go="tasks">All tasks ›</button></div><div id="supervisorResults" class="task-stack"></div></article></div></section>
     <section class="view" id="view-tasks"><div class="section-header"><div><div class="section-kicker">DURABLE JOBS</div><h1>Task queue</h1><p>Queued, running, completed and failed tasks are stored locally and survive restarts.</p></div><button class="btn secondary" id="refreshTasks">↻ Refresh</button></div><div class="panel"><div id="taskList" class="task-stack"></div></div></section>
+    <section class="view" id="view-company">
+      <div class="section-header"><div><div class="section-kicker">REVIEW-ONLY MULTI-AGENT EXECUTION</div>
+        <h1>Company work orders</h1>
+        <p>OpenCode is an optional separately installed runtime. Each approved job runs against a separate copy of a local project. Four active local jobs maximum; no source merges or deployments.</p>
+      </div><button class="btn secondary" id="companyRefresh">↻ Refresh</button></div>
+      <div class="two-col">
+        <article class="panel"><div class="section-kicker">NEW WORK ORDER</div><h2>Assign specialists</h2>
+          <label for="companyName">Company workspace ID</label><input id="companyName" maxlength="40" value="demo" pattern="[a-z][a-z0-9_-]+">
+          <label for="companyProject">Local Code Studio project</label><select id="companyProject"><option value="">Select existing local project</option></select>
+          <label for="companyObjective">Owner objective</label><textarea id="companyObjective" rows="3" maxlength="1600" placeholder="What should this team deliver?"></textarea>
+          <label for="companyTasks">Ordered agent tasks (JSON)</label>
+          <textarea id="companyTasks" rows="12" spellcheck="false">[
+  {"role":"planner","instruction":"Review the project structure and propose a safe implementation plan.","mode":"read_only"},
+  {"role":"developer","instruction":"Implement one well-scoped code change in the isolated project copy.","mode":"isolated_edit","depends_on":[0]},
+  {"role":"qa","instruction":"Review the plan and source evidence; identify defects and test gaps.","mode":"read_only","depends_on":[1]}
+]</textarea>
+          <p class="muted">Dependencies reference previous task numbers starting at 0. Every execution and external data transfer needs separate approval. Findings are never accepted without QA review.</p>
+          <button class="btn primary wide" id="companyCreate">Create draft work order</button>
+        </article>
+        <article class="panel"><div class="section-kicker">EXTERNAL RUNTIME</div><h2>OpenCode connection</h2>
+          <div id="companyRuntime" class="inline-note">Checking optional OpenCode CLI…</div>
+          <label for="companyModel">Exact OpenCode provider/model</label>
+          <input id="companyModel" placeholder="provider/model-id" maxlength="110" autocomplete="off">
+          <p class="muted">Some models transmit source context to an external AI provider. Never choose a provider without checking privacy, cost and account authorization. OpenCode is not an OS sandbox.</p>
+          <div class="separator"></div><h2>Execution boundaries</h2>
+          <div class="inline-note">No shell commands, web tools, subagents, deployment, external directory access, or automatic production writes in TheOrg's configured policy. This is not a security boundary against malicious native processes.</div>
+          <div class="inline-note">An independent QA verdict requires structural integrity evidence and a separate QA/security review. Reviewer identity is self-attested; verification of identity is not implemented.</div>
+        </article>
+      </div>
+      <article class="panel"><div class="panel-heading"><div><div class="section-kicker">PERSISTENT WORK</div><h2>Orders, handoffs and QA</h2></div></div>
+        <div id="companyOrderList" class="task-stack"></div>
+      </article>
+    </section>
     <section class="view" id="view-coding">
       <div class="section-header"><div><div class="section-kicker">PERMISSION-CONTROLLED DEVELOPMENT</div><h1>Code Studio</h1><p>Local Git projects, reviewable proposals, exact file diffs, separately approved test execution and evidence-based commits. No shell or push access.</p></div></div>
       <div class="two-col">
