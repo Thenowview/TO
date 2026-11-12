@@ -205,6 +205,29 @@
   function runtimeCard(title,detail,ready){const c=element('div','runtime-card'),left=element('div');left.append(element('strong','',title),element('small','',detail));c.append(left,pill(ready?'completed':'failed'));return c;}
   async function loadModels(){
     const data=await request('models');modelData=data;
+    const hardware=data.hardware||{},gpu=hardware.gpu||{},suggestion=data.recommendation||{};
+    const memorySize=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0
+      ?fmtSize(n):'Unknown';
+    text($('modelAvailableRAM'),memorySize(hardware.available_ram_bytes));
+    text($('modelTotalRAM'),'Total RAM: '+memorySize(hardware.total_ram_bytes));
+    text($('modelAvailableVRAM'),gpu.detected
+      ?memorySize(gpu.available_vram_bytes):'Not detected');
+    text($('modelGpuName'),gpu.detected
+      ?(gpu.device_name||'NVIDIA GPU')+' · total '+memorySize(gpu.total_vram_bytes)
+      :'VRAM unavailable — CPU sizing remains available');
+    text($('modelRecommendation'),suggestion.recommendation||'Not available');
+    text($('modelRecommendationSpec'),suggestion.suggested_model_class||'No automatic choice');
+    text($('modelAdvisorNote'),
+      (suggestion.reason||'No hardware advice available.')+
+      (suggestion.recommended_installed_file
+        ?' · Installed GGUF candidate: '+suggestion.recommended_installed_file+'.'
+        :' · No locally installed file has an estimated RAM fit.')+
+      ' This is not a runtime or quality certification. GPU offload is unverified.');
+    const allowed=data.inference_probe?.benchmark_unlocked===true;
+    $('modelBenchmark').disabled=!allowed;
+    text($('modelBenchmarkLock'),allowed
+      ?'Benchmark enabled: a real local generation probe succeeded recently for this selected model. Quality is still unverified.'
+      :'Benchmark locked: first test real local generation on the selected model. Eligibility expires after five minutes or a model change.');
     const runtimes=$('runtimeList');runtimes.replaceChildren(
       runtimeCard('llama.cpp local server','127.0.0.1:8081 · '+(data.backends?.llamacpp?'Ready':'Not responding'),Boolean(data.backends?.llamacpp)),
       runtimeCard('Browser-only Chrome AI','Optional Prompt API · not an agent backend',Boolean(window.LanguageModel))
@@ -245,7 +268,12 @@
       const data=await request('models/probe',{method:'POST',body:{confirmed:true}});
       const probe=data.probe;
       text(output,`Actual endpoint response (${probe.elapsed_seconds}s): ${probe.response_excerpt} — ${probe.verification}`);
-    } catch(error) { text(output,'Probe failed: '+error.message);showToast(error.message,true); }
+      await loadModels();
+    } catch(error) {
+      $('modelBenchmark').disabled=true;
+      text($('modelBenchmarkLock'),'Benchmark locked: the latest real inference probe failed.');
+      text(output,'Probe failed: '+error.message);showToast(error.message,true);
+    }
   }
   async function exportLocalBundle(){
     if(!chosenCodeProject){showToast('Choose a project first.',true);return;}
@@ -552,8 +580,21 @@
     }
   });
   $('importModel').addEventListener('click',importModel);
-  $('modelBenchmark').addEventListener('click',async()=>{const target=$('modelProbeResult');text(target,'Testing local model output...');try{const r=await request('models/benchmark',{method:'POST',body:{confirmed:true}});text(target,JSON.stringify(r.benchmark,null,2));}catch(e){text(target,'Benchmark unavailable: '+e.message);}});
+  $('modelBenchmark').addEventListener('click',async()=>{
+    const target=$('modelProbeResult');
+    if(modelData.inference_probe?.benchmark_unlocked!==true){
+      return showToast('Run and pass a real local generation probe before benchmarking.',true);
+    }
+    const button=$('modelBenchmark');button.disabled=true;
+    text(target,'Running a real structured-output check against the selected local model...');
+    try{
+      const r=await request('models/benchmark',{method:'POST',body:{confirmed:true}});
+      text(target,JSON.stringify(r.benchmark,null,2));
+    }catch(e){text(target,'Benchmark unavailable: '+e.message);}
+    finally{await loadModels().catch(()=>{});}
+  });
   $('modelProbe').addEventListener('click',probeModelGeneration);
+  $('refreshHardware').addEventListener('click',()=>loadModels().catch(e=>showToast(e.message,true)));
   $('codeExportBundle').addEventListener('click',exportLocalBundle);
   $('chromeAIRun').addEventListener('click',runChromeAI);
   $('stopModel').addEventListener('click',async()=>{
