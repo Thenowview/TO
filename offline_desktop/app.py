@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -83,6 +83,7 @@ class Handler(BaseHTTPRequestHandler):
                 elif path=='/api/workflows':self._json({'workflows':orchestration.list_workflows()})
                 elif path=='/api/agents/reviews':self._json({'reviews':coordination.list_reviews()})
                 elif path=='/api/capabilities':self._json({'capabilities':capabilities.catalog()})
+                elif path=='/api/integrations':self._json({'integrations':google_readonly.catalog()})
                 elif path=='/api/capabilities/history':self._json({'requests':capabilities.history()})
                 elif path=='/api/tasks':self._json({'tasks':core.tasks()})
                 elif path=='/api/memories':self._json({'memories':core.memories()})
