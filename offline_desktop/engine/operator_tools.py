@@ -63,6 +63,9 @@ def plan(instruction: str) -> dict:
                       "effect": "authenticated_remote_read"})
         tasks.append({"tool": "github.workflow.status", "arguments": {},
                       "effect": "authenticated_remote_read"})
+    if any(phrase in words for phrase in ("window", "desktop", "foreground", "focus")):
+        tasks.append({"tool": "windows.window.list", "arguments": {},
+                      "effect": "local_window_metadata_read"})
     if any(phrase in words for phrase in ("run tests", "source tests", "run ci")):
         tasks.append({"tool": "windows.source.verify",
                       "arguments": {"expected_sha": "<reviewed-commit-sha>"},
@@ -95,6 +98,13 @@ def normalize(name: str, args: dict) -> dict:
         if set(args) != {"location"} or args["location"] not in ("user_downloads", "system_root"):
             raise core.EngineError("Runner console actions require an approved fixed location.")
         return {"location": args["location"]}
+    if name == "windows.window.list":
+        if args:
+            raise core.EngineError("Visible window inventory takes no arguments.")
+        return {}
+    if name == "windows.window.focus":
+        from engine import window_control
+        return window_control.normalize_focus(args)
     if name == "windows.powershell.inspect":
         if set(args) != {"check"} or args["check"] not in _CHECKS:
             raise core.EngineError("Choose an allowlisted read-only PowerShell inspection.")
@@ -287,6 +297,12 @@ def execute(name: str, args: dict) -> dict:
         if name == "desktop.runner.registration_prompt":
             return runner_control.registration_prompt(clean["location"])
         return runner_control.start_registered(clean["location"])
+    if name == "windows.window.list":
+        from engine import window_control
+        return window_control.inspect()
+    if name == "windows.window.focus":
+        from engine import window_control
+        return window_control.focus(clean)
     if name == "windows.powershell.inspect":
         return _powershell(clean["check"])
     if name == "github.runner.status":
