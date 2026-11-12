@@ -27,6 +27,7 @@ ALLOW=(
     "offline_desktop/static/app.js",
     "offline_desktop/static/style.css",
     "offline_desktop/static/chat_experience.css",
+    "offline_desktop/static/design_polish.css",
     "offline_desktop/static/chat_renderer.js",
 )
 SCHEMA="theorg-adaptive-integrity-v1"
