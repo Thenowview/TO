@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -94,6 +94,15 @@ class Handler(BaseHTTPRequestHandler):
                 elif path=='/api/capabilities':self._json({'capabilities':capabilities.catalog()})
                 elif path=='/api/integrations':self._json({'integrations':google_readonly.catalog()})
                 elif path=='/api/capabilities/history':self._json({'requests':capabilities.history()})
+                elif path=='/api/chat/sessions':
+                    query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'sessions':chat_sessions.list_sessions(query.get('archived',['false'])[0]=='true')})
+                elif path=='/api/chat/session/tasks':
+                    query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    ident=query.get('id',[''])[0]
+                    self._json({'session_id':ident,'tasks':chat_sessions.session_tasks(ident)})
+                elif path=='/api/chat/task-map':
+                    self._json({'assignments':chat_sessions.assigned_task_ids()})
                 elif path=='/api/tasks':self._json({'tasks':core.tasks()})
                 elif path=='/api/memories':self._json({'memories':core.memories()})
                 elif path=='/api/files':self._json({'files':core.list_files()})
@@ -208,9 +217,24 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/workflows/cancel':
                 if payload.get('confirmed') is not True:raise core.EngineError('Explicit workflow cancellation required.')
                 orchestration.cancel(payload.get('workflow_id'));self._json({'ok':True})
+            elif path=='/api/chat/sessions':
+                self._json({'session':chat_sessions.create(payload.get('title','New session'))},201)
+            elif path=='/api/chat/sessions/rename':
+                self._json({'session':chat_sessions.rename(payload.get('id'),payload.get('title'))})
+            elif path=='/api/chat/sessions/archive':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Explicit archive/restore confirmation required.')
+                self._json({'session':chat_sessions.archive(payload.get('id'),payload.get('archived',True))})
             elif path=='/api/tasks':
+                session=payload.get('session_id')
+                if session is not None:
+                    chat_sessions._validated_id(session)
+                    with core.conn() as db:
+                        chat_sessions._require_open(db,session)
                 ident=core.enqueue(payload.get('prompt'),payload.get('role','supervisor'))
-                self._json({'ok':True,'id':ident},201)
+                if session is not None:
+                    chat_sessions.attach_task(session,ident)
+                self._json({'ok':True,'id':ident,'session_id':session},201)
             elif path=='/api/tasks/retry':
                 if payload.get('confirmed') is not True:raise core.EngineError('Explicit restart confirmation required.')
                 core.retry_interrupted_task(payload.get('id'));self._json({'ok':True})
@@ -402,6 +426,7 @@ def main():
         coordination.init_schema()
         capabilities.init_schema()
         company_execution.init_schema()
+        chat_sessions.init_schema()
         try:
             # CLI benchmarking also requires a real local generation probe first.
             core.probe_local_model()
@@ -424,6 +449,7 @@ def main():
         coordination.init_schema()
         capabilities.init_schema()
         company_execution.init_schema()
+        chat_sessions.init_schema()
         print('PASS bundled dashboard, engine, SQLite and role registry')
         return 0
     TOKEN=core.init()
@@ -433,6 +459,7 @@ def main():
     coordination.init_schema()
     capabilities.init_schema()
     company_execution.init_schema()
+    chat_sessions.init_schema()
     _create_desktop_shortcut_if_needed()
     if args.host not in ('127.0.0.1','::1','localhost'):
         if os.environ.get('THEORG_ALLOW_LAN_HTTP')!='1':
