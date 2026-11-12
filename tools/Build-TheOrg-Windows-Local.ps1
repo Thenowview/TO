@@ -5,6 +5,8 @@
 param(
   [string]$ChromeArchive = '',
   [string]$ChromeSha256 = '',
+  [string]$OpenCodeArchive = '',
+  [string]$OpenCodeSha256 = '',
   [string]$ModelArchive = '',
   [switch]$ConfirmModelRights,
   [switch]$CheckOnly,
@@ -62,6 +64,9 @@ if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) {
 if ($ChromeArchive -and ($ChromeSha256 -notmatch '^[0-9A-Fa-f]{64}$')) {
   throw 'Supply -ChromeSha256 obtained from a separately verified Chrome archive before bundling it.'
 }
+if ($OpenCodeArchive -and ($OpenCodeSha256 -notmatch '^[0-9A-Fa-f]{64}$')) {
+  throw 'Supply -OpenCodeSha256 from a separately verified OpenCode CLI ZIP before bundling it.'
+}
 if ($ModelArchive -and -not $ConfirmModelRights) {
   throw 'Confirm model license and redistribution rights explicitly with -ConfirmModelRights.'
 }
@@ -106,6 +111,8 @@ try {
   $args = @{
     ChromeArchive = $ChromeArchive
     ChromeSha256 = $ChromeSha256
+    OpenCodeArchive = $OpenCodeArchive
+    OpenCodeSha256 = $OpenCodeSha256
     ModelArchive = $ModelArchive
     ConfirmModelRights = [bool]$ConfirmModelRights
     OutputDirectory = $Output
