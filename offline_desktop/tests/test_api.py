@@ -115,6 +115,36 @@ class ApiTests(unittest.TestCase):
             self.assertIn('Benchmark locked',body['error'])
             inference.assert_not_called()
 
+    def test_chat_context_requires_consent_and_does_not_reexpose_private_snapshot(self):
+        code,created=self.post('/api/chat/sessions',{'title':'Local followups'})
+        self.assertEqual(code,201)
+        session=created['session']['id']
+        first=self.post('/api/tasks',{'session_id':session,'prompt':'Explain regression gates','role':'supervisor'})[1]['id']
+        core.finish_task(first,output='Only source checks can support source verification.')
+        self.assertEqual(self.post('/api/chat/sessions/context',
+            {'id':session,'enabled':True})[0],400)
+        code,response=self.post('/api/chat/sessions/context',
+            {'id':session,'enabled':True,'confirmed':True})
+        self.assertEqual(code,200,response)
+        self.assertTrue(response['session']['include_context'])
+        second=self.post('/api/tasks',
+            {'session_id':session,'prompt':'Continue regression plan','role':'supervisor'})[1]['id']
+        row=core.records('SELECT context_snapshot FROM tasks WHERE id=?',(second,))[0]
+        self.assertIn('Only source checks can support',row['context_snapshot'])
+        code,_,body=self.get('/api/chat/session/tasks?id='+session)
+        visible=json.loads(body)
+        self.assertTrue(visible['tasks'][0]['has_context'])
+        self.assertNotIn('context_snapshot',visible['tasks'][0])
+        self.assertNotIn('context_snapshot',json.loads(self.get('/api/tasks')[2])['tasks'][0])
+        self.assertEqual(self.post('/api/chat/sessions/context',
+            {'id':session,'enabled':False,'confirmed':True})[0],200)
+        third=self.post('/api/tasks',
+            {'session_id':session,'prompt':'New independent request','role':'supervisor'})[1]['id']
+        self.assertEqual(core.records(
+            'SELECT context_snapshot FROM tasks WHERE id=?',(third,))[0]['context_snapshot'],'')
+        self.assertEqual(self.post('/api/chat/sessions/context',
+            {'id':'../bad','enabled':True,'confirmed':True})[0],400)
+
     def test_chat_sessions_persist_and_do_not_inject_model_context(self):
         self.assertEqual(self.get('/api/chat/sessions',auth=False)[0],401)
         status,created=self.post('/api/chat/sessions',{'title':'Design review'})
