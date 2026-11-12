@@ -122,8 +122,20 @@ def _read_job(job_id: str) -> dict:
     if not rows:
         raise core.EngineError("Agent job was not found.")
     job = rows[0]
-    job["depends_on"] = json.loads(job["depends_on"])
-    job["report"] = json.loads(job.pop("report_json"))
+    try:
+        dependencies = json.loads(job["depends_on"])
+        report = json.loads(job.pop("report_json"))
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+        raise core.EngineError(
+            "Stored agent evidence is invalid JSON; do not use it for QA or source promotion."
+        ) from exc
+    if (not isinstance(dependencies, list)
+            or any(not isinstance(dep, str) or not ID.fullmatch(dep)
+                   for dep in dependencies)
+            or not isinstance(report, dict)):
+        raise core.EngineError("Stored agent dependencies or report have an invalid structure.")
+    job["depends_on"] = dependencies
+    job["report"] = report
     token = _CANCEL_EVENTS.get(job_id)
     job["cancellation_requested"] = bool(token and token.is_set()) if job["status"] == "running" else False
     return job
