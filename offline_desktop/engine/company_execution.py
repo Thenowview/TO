@@ -302,6 +302,47 @@ def dispatch(job_id: str, model: str, *, confirmed: bool,
             "note": "Execution is on a copied local project with separately approved provider transfer."}
 
 
+def _approved_execution_source(job: dict, original: Path) -> tuple[Path, str]:
+    """Use the QA-accepted ancestor's source, never an unreviewed sibling edit.
+
+    Sibling dependencies with divergent source snapshots cannot be merged implicitly.
+    An explicit Code Studio diff is required to reconcile parallel edits.
+    """
+    dependencies = job.get("depends_on", [])
+    if not dependencies:
+        return original, ""
+    parents = [_read_job(ident) for ident in dependencies]
+    for parent in parents:
+        if parent["order_id"] != job["order_id"] or parent["status"] != "accepted":
+            raise core.EngineError("Only QA-accepted same-order dependency source can be used.")
+        check = structural_qa(parent["id"])
+        if not check["structural_pass"]:
+            raise core.EngineError("Dependency source integrity failed: " + parent["id"])
+    def ancestor(parent_id: str, candidate_id: str) -> bool:
+        """Check whether parent_id is in candidate_id's accepted dependency chain."""
+        seen = set()
+        pending = list(_read_job(candidate_id)["depends_on"])
+        while pending:
+            item = pending.pop()
+            if item == parent_id:
+                return True
+            if item in seen:
+                continue
+            seen.add(item)
+            ancestor_job = _read_job(item)
+            if ancestor_job["order_id"] != job["order_id"]:
+                raise core.EngineError("Cross-order dependency detected.")
+            pending.extend(ancestor_job["depends_on"])
+        return False
+    selected = max(parents, key=lambda parent: parent["position"])
+    selected_digest = selected["report"].get("final_manifest_sha256")
+    for parent in parents:
+        if parent["id"] != selected["id"] and not ancestor(parent["id"], selected["id"]):
+            if parent["report"].get("final_manifest_sha256") != selected_digest:
+                raise core.EngineError("Parallel agent dependencies changed different source snapshots; manual review and merge are required.")
+    return _validated_stage(selected), selected["id"]
+
+
 def _execute(job_id: str) -> None:
     """Owner-approved runtime invocation. Every failure is recorded, never auto-retried."""
     try:
@@ -311,7 +352,8 @@ def _execute(job_id: str) -> None:
         stage_root = core.WORKSPACE / "theorg_agent_runs" / order["company_id"] / job["order_id"]
         stage_root.mkdir(parents=True, exist_ok=True)
         stage = stage_root / job_id / secrets.token_hex(8)
-        initial = adapter.make_copy(Path(project), stage)
+        source, source_job = _approved_execution_source(job, Path(project))
+        initial = adapter.make_copy(source, stage)
         inbox = read_messages(order["id"], for_job=job_id)
         handoffs = [json.loads(m["payload"]) for m in inbox][-8:]
         profile = next((p for p in company_profiles(order["company_id"])
@@ -331,6 +373,7 @@ def _execute(job_id: str) -> None:
         report = adapter.run(stage, prompt, edit=bool(job["edit_mode"]),
                              model=job["model"], allow_provider_transfer=True,
                              cancel_event=_CANCEL_EVENTS[job_id])
+        report["inherited_from_accepted_job"] = source_job or None
         report["source_file_count"] = len(initial)
         report["source_manifest_sha256"] = hashlib.sha256(
             json.dumps(initial,sort_keys=True).encode()).hexdigest()
