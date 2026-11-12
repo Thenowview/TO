@@ -63,6 +63,11 @@ class IntegrationBoundaryTests(unittest.TestCase):
                        ('[{"role":"invented"}]',item['id']))
         with self.assertRaisesRegex(core.EngineError,'invalid structure'):
             coordination.get(item['id'])
+        coordination._execute(item['id'])
+        unchanged=core.records('SELECT status,steps_json FROM agent_reviews WHERE id=?',
+                               (item['id'],))[0]
+        self.assertEqual(unchanged['status'],'failed')
+        self.assertEqual(unchanged['steps_json'],'[{"role":"invented"}]')
 
     def test_disabled_tools_and_consumed_approvals(self):
         self.assertFalse(any(x['enabled'] for x in capabilities.catalog()))
@@ -78,8 +83,9 @@ class IntegrationBoundaryTests(unittest.TestCase):
                 capabilities.approve_and_execute(p['id'],p['digest'],confirmed=True)
     def test_runner_diagnostic_is_read_only_opt_in_and_not_online_proof(self):
         from pathlib import Path
-        with self.assertRaisesRegex(core.EngineError,'disabled'):
-            capabilities.prepare('desktop.runner.inspect',{'location':'user_downloads'})
+        with patch.dict(os.environ,{'THEORG_ENABLE_RUNNER_DIAGNOSTICS':'0'}):
+            with self.assertRaisesRegex(core.EngineError,'disabled'):
+                capabilities.prepare('desktop.runner.inspect',{'location':'user_downloads'})
         with patch.dict(os.environ,{'THEORG_ENABLE_RUNNER_DIAGNOSTICS':'1'}):
             with self.assertRaisesRegex(core.EngineError,'fixed runner location'):
                 capabilities.prepare('desktop.runner.inspect',{'location':'../../secrets'})
