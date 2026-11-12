@@ -141,3 +141,46 @@ input[type=search]{appearance:none}
   .chat-details-tab.selected,.session-row.selected{outline:2px solid Highlight}
   .chat-send,.chat-jump-button,.btn{border:1px solid ButtonText}
 }
+
+
+/* Full local history search stays bounded, read-only and visually distinct. */
+.chat-search-all{
+  flex:none;border:1px solid #4d5e59;border-radius:10px;background:#2c3a37;
+  color:#d9f1e8;padding:8px 10px;font-size:10.5px;min-height:34px;
+}
+.chat-search-all:hover{background:#40574f}
+.chat-history-results{
+  position:absolute;z-index:6;top:110px;left:50%;transform:translateX(-50%);
+  width:min(840px,calc(100% - 36px));max-height:min(50dvh,430px);
+  overflow:hidden;border:1px solid #4e5b5a;border-radius:15px;background:#22292b;
+  box-shadow:0 18px 60px rgba(0,0,0,.48);
+  display:flex;flex-direction:column;
+}
+.chat-history-results[hidden]{display:none}
+.chat-history-results-head{
+  display:flex;align-items:center;justify-content:space-between;padding:12px 17px;
+  border-bottom:1px solid #3c4948;color:#e8f1ee;font-size:12px;
+}
+#chatHistoryMatches{min-height:0;overflow:auto;padding:11px 15px;scrollbar-color:#55615e transparent}
+.chat-history-match{padding:12px 10px;border-bottom:1px solid #384443;display:grid;gap:7px}
+.chat-history-match:last-child{border-bottom:0}
+.chat-history-match strong{font-size:12px;color:#e9f0ed;line-height:1.45;overflow-wrap:anywhere}
+.chat-history-meta{font-size:10px;color:#a0b0ad}
+.chat-history-excerpt{font-size:11px;line-height:1.55;color:#cad6d2;margin:0;overflow-wrap:anywhere}
+.chat-history-match .chat-action-button{width:max-content;max-width:100%;border:1px solid #495955}
+.chat-evidence-response{
+  white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.65 ui-monospace,Consolas,monospace;
+  color:#d8e5e0;background:#171f20;border:1px solid #374741;border-radius:10px;
+  max-height:320px;overflow:auto;padding:12px;
+}
+#chatHistoryMatches>.muted{padding:14px 6px}
+@media(max-width:850px){
+  .chat-history-results{top:103px;width:calc(100% - 24px);max-height:47dvh}
+  .chat-filters span{display:none}
+}
+@media(max-width:560px){
+  .chat-search-all{padding:7px 8px;font-size:9px;min-height:32px}
+  .chat-filters input{min-width:0}
+  .chat-history-results{top:96px;width:calc(100% - 12px);max-height:52dvh}
+  #chatHistoryMatches{padding:7px 9px}
+}
