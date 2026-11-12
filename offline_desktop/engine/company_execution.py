@@ -133,6 +133,61 @@ def list_orders(company_id: str = "", limit: int = 40) -> list:
     return out
 
 
+def preview_instruction_plan(company_id: str, project_id: str, objective: str) -> dict:
+    """Generate an editable, deterministic work-order draft; no model calls or writes.
+
+    This is rule-based routing, NOT verified AI understanding or permission grant.
+    The owner must edit/review the task list and separately authorize every run.
+    """
+    if not isinstance(company_id,str) or not COMPANY.fullmatch(company_id):
+        raise core.EngineError("Invalid company identifier.")
+    coding._project(project_id)
+    if not isinstance(objective,str) or not 5 <= len(objective.strip()) <= 1600:
+        raise core.EngineError("Objective must be 5–1600 characters.")
+    profiles={p["id"]:p for p in company_profiles(company_id)}
+    normalized=objective.strip()
+    text=normalized.lower()
+    edits=bool(re.search(
+        r"\b(implement|build|fix|repair|create|develop|refactor|modify|write|patch|add|integrate)\b",
+        text))
+    # High-impact external actions never become execution steps from text alone.
+    external=bool(re.search(
+        r"\b(deploy|publish|release|merge|push|delete|remove|production|credentials|password|payment|purchase)\b",
+        text))
+    tasks=[
+        {"role":"planner","instruction":
+         "Assess the owner's objective and local source context. Deliver a bounded implementation or analysis plan; do not execute changes. Objective: "+normalized[:1150],
+         "mode":"read_only"}
+    ]
+    if edits and not external:
+        tasks.append({"role":"developer","instruction":
+                      "Implement a bounded change ONLY in the isolated local project copy following the approved planner handoff. Do not deploy, merge, push, install dependencies, or use credentials. Objective: "+normalized[:1100],
+                      "mode":"isolated_edit","depends_on":[0]})
+        tasks.append({"role":"qa_auditor","instruction":
+                      "Independently review the QA-accepted developer source copy and evidence. Identify defects, security concerns and missing tests; never claim tests were run unless evidenced.",
+                      "mode":"read_only","depends_on":[1]})
+        tasks.append({"role":"security_officer","instruction":
+                      "Review assurance handoffs, dependency provenance, source integrity, and unresolved security risks. Report a read-only recommendation.",
+                      "mode":"read_only","depends_on":[2]})
+    else:
+        tasks.append({"role":"researcher","instruction":
+                      "Perform read-only source analysis and research using only the approved local snapshot. Give evidence and limitations for: "+normalized[:1100],
+                      "mode":"read_only","depends_on":[0]})
+        tasks.append({"role":"qa_auditor","instruction":
+                      "Review and challenge the planner and research findings. Report unanswered questions, missing evidence and risk without modifying source.",
+                      "mode":"read_only","depends_on":[1]})
+    blocked=[t["role"] for t in tasks if profiles[t["role"]]["enabled"] is not True]
+    if blocked:
+        raise core.EngineError("Draft includes disabled company agents: "+", ".join(blocked))
+    return {"tasks":tasks, "draft_only":True, "source_edit_proposed":edits and not external,
+            "external_actions_authorized":False, "model_called":False,
+            "owner_must_review":True, "separate_execution_approval":True,
+            "needs_manual_scoping":external,
+            "warning":("Objective contains high-impact actions: the preview is READ ONLY. "
+                       "Revise and explicitly scope a safe implementation before dispatch."
+                       if external else "Rule-based suggestion only; verify every role and dependency.")}
+
+
 def create_order(company_id: str, project_id: str, objective: str,
                  tasks: list[dict], *, confirmed: bool) -> dict:
     if confirmed is not True:
