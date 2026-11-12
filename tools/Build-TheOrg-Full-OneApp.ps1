@@ -123,6 +123,12 @@ No production deployment or unapproved account changes.
 This is not a signed Windows release until full QA is completed.
 '@
 [IO.File]::WriteAllText((Join-Path $Stage 'README-FIRST.txt'),$Help)
+# A distributed package must not contain build-machine secrets or state.
+$unexpected=@(Get-ChildItem -LiteralPath $Stage -Recurse -File | Where-Object {
+  $_.Name -in @('access-token.txt','theorg.sqlite3') -or
+  $_.FullName -match '[\\/]\.theorg[\\/]'
+})
+if($unexpected.Count -gt 0){throw 'Build generated private runtime state in release payload; refusing to package'}
 $Receipt=@{
   schema='theorg-self-contained-windows-v1'
   executable='TheOrg.exe'
