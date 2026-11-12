@@ -84,6 +84,10 @@ def init_schema() -> None:
           created TEXT NOT NULL, FOREIGN KEY(job_id) REFERENCES company_jobs(id));
         CREATE INDEX IF NOT EXISTS company_qa_job_idx ON company_qa(job_id,created);
         """)
+        # Recover interrupted independent review slots after an unclean restart.
+        db.execute("""UPDATE company_qa
+          SET verdict='interrupted', findings='Application restarted during AI QA'
+          WHERE reviewer_role='ai_qa' AND verdict='running'""")
         # On restart no previously running external request is automatically resent.
         db.execute("""UPDATE company_jobs SET status='interrupted',
           error='App restarted; fresh owner authorization and review required',
