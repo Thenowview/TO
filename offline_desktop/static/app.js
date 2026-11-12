@@ -116,7 +116,11 @@
     if(view==='coding')loadCodeStudio().catch(e=>showToast(e.message,true));
     if(view==='company')loadCompany().catch(e=>showToast(e.message,true));
     if(view==='operator')loadOperator().catch(e=>showToast(e.message,true));
-    if(view==='models')loadModels();if(view==='tasks'||view==='supervisor')loadTasks();
+    if(view==='models'){
+      loadModels().catch(e=>showToast(e.message,true));
+      loadAdaptive().catch(e=>showToast(e.message,true));
+    }
+    if(view==='tasks'||view==='supervisor')loadTasks();
     if(view==='files')loadFiles();if(view==='memory')loadMemories();if(view==='settings')loadAudit();
   }
   function appendEmpty(node,message){ node.replaceChildren(element('div','empty',message)); }
@@ -348,6 +352,51 @@
     renderTasks($('taskList'));renderChatMessages();
   }
   function runtimeCard(title,detail,ready){const c=element('div','runtime-card'),left=element('div');left.append(element('strong','',title),element('small','',detail));c.append(left,pill(ready?'completed':'failed'));return c;}
+  async function loadAdaptive(){
+    const data=await request('adaptive');
+    const root=$('adaptiveEditionList');root.replaceChildren();
+    for(const tier of data.adaptive.options||[]){
+      const card=element('article','adaptive-edition-card'+(tier.selected?' selected':''));
+      card.append(element('div','adaptive-edition-label','Adaptive '+({nano:'1',lite:'2',advanced:'3'}[tier.id]||'')));
+      card.append(element('h3','',tier.label));
+      card.append(element('p','',tier.id==='nano'
+        ?'Model-free operation, local tools and verified knowledge recall.'
+        :tier.id==='lite'
+          ?'For smaller PCs. Optional 0.8B/2B model weights, subject to memory checks.'
+          :'For capable PCs. Optional 4B/9B models with hardware preflight.'));
+      card.append(element('div','adaptive-edition-state',tier.selected?'Selected':tier.eligible_by_ram?'RAM estimate passes':'RAM estimate insufficient'));
+      card.append(element('div','muted',tier.note||''));
+      const choose=element('button','btn secondary',tier.selected?'Selected':'Select edition');
+      choose.type='button';choose.disabled=tier.selected||!tier.eligible_by_ram;
+      choose.addEventListener('click',async()=>{
+        if(!confirm('Choose '+tier.name+'? This changes the local edition policy but does not download or start a model.'))return;
+        choose.disabled=true;
+        try{
+          await request('adaptive/select',{method:'POST',body:{tier:tier.id,confirmed:true}});
+          await Promise.all([loadAdaptive(),loadModels()]);
+          showToast('Adaptive '+tier.label+' selected. Inference remains unverified.');
+        }catch(e){showToast(e.message,true);choose.disabled=false;}
+      });
+      card.append(choose);root.append(card);
+    }
+  }
+  async function searchAdaptive(){
+    const query=$('adaptiveQuery').value.trim();
+    if(query.length<3)return showToast('Enter at least three characters.',true);
+    const target=$('adaptiveResults');target.replaceChildren();
+    try{
+      const {resolution}=await request('adaptive/resolve',{method:'POST',body:{query}});
+      if(resolution.solution){
+        const p=element('div','task-card');
+        p.append(element('strong','', 'Previously verified local solution'));
+        p.append(element('p','',resolution.solution.answer));
+        p.append(element('small','', 'Evidence: '+resolution.solution.evidence));
+        target.append(p);
+      }else target.append(element('p','muted',
+        'No sufficiently close verified local solution. Suggested path: '+resolution.route+
+        '. External agents and websites require separate approval.'));
+    }catch(e){target.append(element('p','muted',e.message));}
+  }
   async function loadModels(){
     const data=await request('models');modelData=data;
     const hardware=data.hardware||{},gpu=hardware.gpu||{},suggestion=data.recommendation||{};
@@ -812,6 +861,10 @@
   });
   $('modelProbe').addEventListener('click',probeModelGeneration);
   $('refreshHardware').addEventListener('click',()=>loadModels().catch(e=>showToast(e.message,true)));
+  $('adaptiveFind').addEventListener('click',searchAdaptive);
+  $('adaptiveQuery').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();searchAdaptive();}
+  });
   $('codeExportBundle').addEventListener('click',exportLocalBundle);
   $('chromeAIRun').addEventListener('click',runChromeAI);
   $('stopModel').addEventListener('click',async()=>{
