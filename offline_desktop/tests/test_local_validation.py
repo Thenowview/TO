@@ -54,13 +54,22 @@ class LocalVerificationTests(unittest.TestCase):
         with patch.object(local_validation, "_git", side_effect=[
             str(self.root), self.sha, " M tools/Test-TheOrg-Source-Local.ps1"
         ]):
-            with self.assertRaisesRegex(core.EngineError, "modified tracked"):
+            with self.assertRaisesRegex(core.EngineError, "modified or untracked"):
                 local_validation._checked_checkout(self.root, self.sha)
         with patch.object(local_validation, "_git", side_effect=[
             str(self.root), self.sha, ""
         ]) as check:
             local_validation._checked_checkout(self.root, self.sha)
         self.assertEqual(check.call_count, 3)
+        with patch.object(local_validation, "_git", side_effect=[
+            str(self.root), self.sha, "?? offline_desktop/tests/rogue.py"
+        ]):
+            with self.assertRaisesRegex(core.EngineError, "untracked source"):
+                local_validation._checked_checkout(self.root, self.sha)
+        with patch.object(local_validation, "_git", side_effect=[
+            str(self.root), self.sha, "?? out/source-verification/source-results.json"
+        ]):
+            local_validation._checked_checkout(self.root, self.sha)
 
     def test_fixed_tool_rejects_arbitrary_commands_and_missing_sha(self):
         with patch.dict(os.environ, {"THEORG_ENABLE_LOCAL_SOURCE_TESTS": "1"}):
