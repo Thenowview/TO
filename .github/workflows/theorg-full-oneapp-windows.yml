@@ -1,0 +1,80 @@
+name: TheOrg Full OneApp Windows (review-only)
+
+on:
+  pull_request:
+    paths:
+      - 'tools/Build-TheOrg-Full-OneApp.ps1'
+      - 'tools/Start-TheOrg-Full.ps1'
+      - '.github/workflows/theorg-full-oneapp-windows.yml'
+      - 'engine/bridge/**'
+      - 'apps/chrome-extension/**'
+      - 'offline_desktop/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  oneapp-windows:
+    runs-on: windows-latest
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Verify source and company-agent request limit
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest discover -s offline_desktop/tests -t offline_desktop -q
+          if ($LASTEXITCODE -ne 0) { throw 'Offline source tests failed' }
+          node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Supervisor tests failed' }
+          node --check apps/chrome-extension/background.js
+          node --check apps/chrome-extension/provider-page-agent.js
+          node --check apps/chrome-extension/provider-auto-handoff.js
+      - name: Compile self-contained engine and .NET bridge
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          ./tools/Build-TheOrg-Full-OneApp.ps1 -SkipTests
+      - name: Verify actual Windows payload
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          ./out/full-oneapp/TheOrg/Start-TheOrg-Full.ps1 -CheckOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Launcher check failed' }
+          ./out/full-oneapp/TheOrg/TheOrg.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged engine failed' }
+          ./out/full-oneapp/TheOrg/TheOrg.Bridge.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged native host failed' }
+      - name: Create unsigned candidate archive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          Compress-Archive -Path ./out/full-oneapp/TheOrg -DestinationPath ./out/TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip -CompressionLevel Optimal
+          if (-not (Test-Path ./out/TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip)) { throw 'Missing Windows ZIP' }
+          $hash=(Get-FileHash ./out/TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip" | Set-Content ./out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: TheOrg-Full-OneApp-Windows-Unsigned-Candidate
+          path: |
+            out/TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip
+            out/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Do not release unverified binaries
+        if: failure()
+        shell: pwsh
+        run: |
+          Add-Content $env:GITHUB_STEP_SUMMARY 'Full OneApp NOT BUILT or NOT VERIFIED. No binary published.'
