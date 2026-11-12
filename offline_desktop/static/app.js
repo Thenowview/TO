@@ -575,6 +575,28 @@
                 : 'Structural checks failed:\n'+x.assessment.findings.join('\n'));
             }catch(e){showToast(e.message,true)}
           });actions.append(check);
+          const aiQa=element('button','btn secondary','Run separate AI QA review');
+          aiQa.addEventListener('click',async()=>{
+            const model=$('companyModel').value.trim();
+            if(!model)return showToast('Choose an explicit QA provider/model first.',true);
+            if(!confirm('Run a NEW read-only AI reviewer on the staged source? This may transmit source to the selected provider. It does NOT approve the deliverable.'))return;
+            aiQa.disabled=true;
+            try{
+              await request('company/qa/run',{method:'POST',body:{
+                job_id:job.id,model,confirmed:true,data_transfer_confirmed:true
+              }});
+              showToast('Separate AI QA review started. Refresh for findings.');
+            }catch(e){showToast(e.message,true)}
+            finally{aiQa.disabled=false}
+          });actions.append(aiQa);
+          const qaHistory=element('button','btn secondary','View QA findings');
+          qaHistory.addEventListener('click',async()=>{
+            try{
+              const r=await request('company/qa?job_id='+encodeURIComponent(job.id));
+              const findings=r.reviews.map(q=>q.reviewer_role+' · '+q.verdict+'\n'+q.findings);
+              alert(findings.join('\n\n')||'No QA records yet.');
+            }catch(e){showToast(e.message,true)}
+          });actions.append(qaHistory);
           for(const verdict of ['accept','reject']){
             const b=element('button','btn secondary',verdict==='accept'?'Record QA acceptance':'Reject & request repair');
             b.addEventListener('click',async()=>{
