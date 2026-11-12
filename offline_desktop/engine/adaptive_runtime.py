@@ -176,6 +176,36 @@ def select(tier):
             "requires_explicit_model_probe": selected() != "nano"}
 
 
+
+def start_recommended(*, confirmed=False):
+    """Opt-in model start. Auto tier selection alone never executes a model.
+
+    Recompute current free RAM and installed GGUF files immediately before
+    launch, then delegate to core's separate GGUF and RAM preflight checks.
+    No model downloads, remote calls, or training are performed.
+    """
+    if confirmed is not True:
+        raise core.EngineError("Explicit permission is required to start the recommended model.")
+    if preference() != "auto":
+        raise core.EngineError("Enable automatic edition selection first, or start a model manually.")
+    choice = automatic_choice()
+    if choice["tier"] == "nano" or not choice.get("model"):
+        raise core.EngineError("No local model safely meets current RAM and runtime requirements. Adaptive 1 remains active.")
+    # A second, independent check prevents a previously recommended filename
+    # from bypassing the live preflight at the point of model startup.
+    preflight = core.model_start_preflight(choice["model"])
+    if not preflight["ram_check_passed"] or not preflight["runtime_available"]:
+        raise core.EngineError("Memory or inference-runtime readiness changed. Model start cancelled.")
+    metadata = preflight.get("metadata", {})
+    if metadata.get("metadata_recognized") is False:
+        raise core.EngineError("GGUF metadata verification failed. Model start cancelled.")
+    result = core.start_local_model(choice["model"])
+    core.audit("adaptive.recommended_model_started", {"edition": choice["tier"],
+                                                       "model": choice["model"]})
+    return {"edition": choice["tier"], "model": choice["model"], "start": result,
+            "inference_verified": False, "requires_real_probe": True}
+
+
 def _tokens(value):
     return set(_TOKEN.findall(value.lower()))
 
