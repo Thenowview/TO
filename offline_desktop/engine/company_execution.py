@@ -477,3 +477,64 @@ def _run_ai_qa(review_id: str, job_id: str, model: str) -> None:
         core.audit("company.qa.ai_failed",{"job_id":job_id,"review_id":review_id})
     finally:
         _THREADS.pop(review_id,None)
+
+
+def create_code_plan(job_id: str, *, confirmed: bool) -> dict:
+    """Convert independently QA-accepted OpenCode edits into a Code Studio DRAFT.
+
+    Never applies changes, runs tests, commits, or pushes. Existing Code Studio
+    requires a second digest approval and separate apply/test authorization.
+    """
+    if confirmed is not True:
+        raise core.EngineError("Owner must approve creating a proposed Code Studio diff.")
+    job=_read_job(job_id)
+    if job["status"] != "accepted" or not job["edit_mode"]:
+        raise core.EngineError("Only accepted developer isolated edits can become draft plans.")
+    if job["agent_role"] != "developer":
+        raise core.EngineError("Only the assigned developer may propose source changes.")
+    checks=structural_qa(job_id)
+    if not checks["structural_pass"]:
+        raise core.EngineError("Source changed or structural QA no longer passes.")
+    report=job["report"]
+    raw_changes=report.get("changed_files",[])
+    if not 1 <= len(raw_changes) <= coding.MAX_CHANGES:
+        raise core.EngineError("Plan requires 1–6 bounded source modifications.")
+    order=_read_order(job["order_id"])
+    stage=Path(job["staging_path"])
+    expected=(core.WORKSPACE / "theorg_agent_runs" / order["company_id"]
+              / job["order_id"] / job_id).resolve()
+    if stage.is_symlink() or stage.resolve() != expected:
+        raise core.EngineError("Output folder is not inside the approved company order.")
+    repo=coding._project(order["project_id"])
+    edits=[]
+    for change in raw_changes:
+        rel=change.get("path","")
+        source,name=coding._file(repo,rel)
+        expected_old=change.get("before")
+        if source.is_file():
+            old_sha=hashlib.sha256(source.read_bytes()).hexdigest()
+        else:
+            old_sha=None
+        if old_sha != expected_old:
+            raise core.EngineError("Original source changed since agent staging: "+name)
+        target=stage / name
+        if not target.is_file() or target.is_symlink():
+            raise core.EngineError("Deleted or unsafe file cannot be promoted: "+name)
+        raw=target.read_bytes()
+        if len(raw)>coding.MAX_BYTES:
+            raise core.EngineError("Code Studio text size limit exceeded: "+name)
+        if hashlib.sha256(raw).hexdigest()!=change.get("after"):
+            raise core.EngineError("Staged source hash changed since execution: "+name)
+        try:
+            text=raw.decode("utf-8")
+        except UnicodeError as exc:
+            raise core.EngineError("Only UTF-8 text source can become a code plan.") from exc
+        edits.append({"path":name,"content":text})
+    plan=coding.propose(order["project_id"],
+                        ("QA-attested agent proposal: "+job["instruction"])[:1200],
+                        edits,origin="manual")
+    core.audit("company.job.code_plan_created",{"job_id":job_id,"plan_id":plan["id"],
+                                                "project_id":order["project_id"],
+                                                "qa_attested":True})
+    return {"plan":plan,"from_job":job_id,"status":"draft",
+            "requires_digest_approval":True, "original_project_unchanged":True}
