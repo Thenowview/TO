@@ -1,72 +1,59 @@
-# TheOrg — CI recovery, no unexpected charges
+# TheOrg — Zero GitHub-hosted compute acceptance plan
 
-Status as of 2026-11-12: on GitHub-hosted Actions, both Ubuntu and Windows jobs failed before runner assignment, with zero executed steps. This is not a proven Python/Node/PowerShell failure.
+**Status (12 Nov 2026):** GitHub Actions budget is $0 and marked 100% usage blocked, according to the repository owner. Hosted Ubuntu and Windows CI jobs failed before any runner was assigned. This does **not** establish failing source code.
 
-## Verified run evidence
-- PR #23: https://github.com/faisalwrokksa-hub/TO/pull/23
-- Windows OneApp: https://github.com/faisalwrokksa-hub/TO/actions/runs/43206508146 (attempt 2 also failed before any steps)
-- Ubuntu and Windows: https://github.com/faisalwrokksa-hub/TO/actions/runs/43206508148 (both runner IDs zero)
-- Jobs are rejected before checkout. A code or YAML change cannot unblock billing/runner allocation restrictions.
+## What is now changed in the PR #23 review branch
 
-## Owner-only account actions
-1. Open https://github.com/settings/billing and inspect Actions Usage, Budgets and alerts, budget stop rules, unpaid invoices or payment restrictions. Gross usage is not necessarily paid expenditure. Do not raise spending or register a card unless intentionally authorizing it.
-2. Open https://github.com/faisalwrokksa-hub/TO/settings/actions and allow external official actions/reusable workflows, with default GITHUB_TOKEN permissions limited to read repository contents and packages. Do not enable blanket write permissions.
-3. Open the failed Windows run link above and copy the exact banner/error annotation. If billing and Actions settings are healthy but jobs still start with runner ID zero, contact https://support.github.com with both run IDs.
-4. Once account settings are repaired, rerun a small source CI check first. Only launch Windows packaging after source checks and spending approvals.
+- Seven existing workflow files target only `[self-hosted, windows, x64, theorg-win]`. They require the owner to select **Run workflow**, set `confirm_self_hosted=true`, and choose the trusted review branch; no pull_request or push triggers are enabled in these branch versions.
+- This is **manual release acceptance**, not automatic continuous CI. The change prevents unreviewed PR code from automatically running on a persistent private PC. It does **not** make required checks pass or bypass branch protection.
+- The primary entry point is the existing **TheOrg Chrome and Windows Bridge CI** workflow, whose original workflow file also exists on `main`. The review-branch version runs `tools/Test-TheOrg-Source-Local.ps1`, with an optional `build_unsigned_windows_candidate` flag.
+- The other six workflows remain as separate opt-in source/package checks. Existing test/build commands are retained; Linux-only Bash steps were converted to Windows PowerShell where necessary. Build dependencies must be installed on the local runner.
+- No workflows upload artifacts into GitHub Actions artifact storage, helping preserve the $0 Actions storage budget. Candidate archives, test evidence and signed-off receipts (if created) remain **only in the local runner's workspace**. GitHub run summaries are not release artifacts.
+- No workflow merges, deploys, changes billing, uses a write-scoped GITHUB_TOKEN, or certifies live provider/model acceptance.
 
-## Local source-only verification (no GitHub hosted runner)
-Run from PowerShell on an authorized Windows developer PC with Python 3.12+ and Node.js installed:
+## Owner action: register a free Windows x64 self-hosted runner
 
-~~~powershell
-git clone https://github.com/faisalwrokksa-hub/TO.git
-cd TO
-git fetch origin feat/agent-execution-handoffs-independent-qa
-git switch feat/agent-execution-handoffs-independent-qa
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Source-Local.ps1 -CheckOnly
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Source-Local.ps1
-~~~
+1. On a **dedicated, isolated** Windows x64 PC or disposable Windows VM, open https://github.com/faisalwrokksa-hub/TO/settings/actions/runners and select **New self-hosted runner**. Follow GitHub's *currently displayed* official commands for Windows x64 download, checksum verification and registration. Do not share the short-lived registration token.
+2. Register the additional label **theorg-win**, retaining defaults **self-hosted**, **Windows**, **X64**. Run GitHub's `run.cmd` as a restricted nonadministrator account and verify status **Online / Idle**. Keep the PC powered on during tests. The runner initiates outbound HTTPS; don't expose an inbound runner service to the Internet.
+3. For source tests install Python 3.12+, Node.js 20+, Git, and required repo prerequisites. For Windows builds install .NET 8 SDK, NSIS (legacy installer workflows), and any build-machine dependencies documented in `tools/Build-TheOrg-Windows-Local.ps1`. Windows PowerShell is supported by the migrated workflows.
+4. Only run code you reviewed. A persistent self-hosted runner can be compromised by malicious PR code, including in private repositories. Do not run this from your personal admin account, or give the runner production cloud tokens, payment credentials or customer data.
 
-If the repository was already cloned, do not clone again; update the existing local branch. The process-only ExecutionPolicy override does not change system policy; run only scripts you have reviewed in a trusted clone. Tests require no external model, GitHub Actions quota, deployment credentials, installation or Python package download. Results go to out\source-verification\source-results.json. A source check is NOT a production release verification.
+GitHub's self-hosted runner compute is free of GitHub-hosted compute charges, independent of included monthly compute; local electricity, bandwidth and hardware still belong to the operator:
+https://docs.github.com/en/billing/concepts/product-billing/github-actions
+https://docs.github.com/en/actions/reference/security/secure-use
 
-For the full unsigned Windows candidate, separately use the existing builder on the Windows host after source checks:
+## First run — no EXE build
 
-~~~powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-TheOrg-Windows-Local.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-TheOrg-Windows-Local.ps1 -CheckOnly
-~~~
-
-The full build may fetch pinned dependencies; it does not merge or deploy. Inspect the output and test on a clean machine before any distribution.
-
-## Gating pushes, merges and deployment
-- You can push to review branches with repository write permission: this does not need a GitHub-hosted runner.
-- PRs #20, #21, #22, #23 are stacked in that order and still drafts. Fix tests, verify critical integration, then mark ready for review and merge in dependency order. Do not turn off required checks to force merges.
-- Signing, release artifact publication and production deployment are separate, permission-scoped, explicitly approved workflows, not consequences of a successful source check.
-- GitHub Actions concurrency in this PR cancels superseded runs for the same PR/workflow to limit redundant charges; it does not waive checks or fix the current runner allocation problem. Seven different workflows may still cost compute once runners work.
-
-
-## Official free self-hosted Windows runner
-
-GitHub lists self-hosted runners as free, separate from the monthly included compute allowance: https://docs.github.com/en/billing/concepts/product-billing/github-actions. An existing Windows PC still incurs local electricity and maintenance costs. Keep the GitHub Actions budget at $0; no need to make this private repository public.
-
-### Operator installation (GitHub registration is owner-only)
-
-1. Use a trusted, ideally dedicated Windows 10/11 x64 PC or VM. Run under a non-administrator account with no production secrets. No inbound port forwarding is necessary: the runner connects outbound to GitHub over HTTPS.
-2. Open https://github.com/faisalwrokksa-hub/TO/settings/actions/runners and click New self-hosted runner. Select Windows and x64. Follow GitHub's current official download, verification, extraction and registration commands; do not use an outdated fixed runner version.
-3. Place the runner in a folder such as C:\actions-runner. During config.cmd registration, add the custom label theorg-win, retaining default self-hosted, Windows, and X64 labels. The registration token is time limited and must not be shared in chat.
-4. Start run.cmd as the dedicated user. Confirm that the runner shows Online / Idle at GitHub Settings > Actions > Runners. Keep the machine powered on during jobs.
-5. For the source checks install Python 3.12+ x64 and Node.js 20+. For optional unsigned Windows builds, install the .NET 8 SDK and other build-machine prerequisites required by tools/Build-TheOrg-Windows-Local.ps1. Use official, trusted installers.
-6. Do not run untrusted pull requests, unknown branches, production credentials, or privileged commands on a persistent self-hosted machine. Keep the host and runner updated.
-
-### Launch the manual-only workflow
-
-TheOrg's existing bridge-ci.yml is already registered on main, so you can manually dispatch it using the review branch code without merging that branch first.
-
-Open GitHub Actions > TheOrg Chrome and Windows Bridge CI > Run workflow. Select the branch feat/agent-execution-handoffs-independent-qa and enable confirm_self_hosted. Leave build_unsigned_windows_candidate disabled for the first run. If the web UI does not display branch-specific inputs, the official GitHub CLI alternative is:
+Open **Actions → TheOrg Chrome and Windows Bridge CI → Run workflow**.
+Select `feat/agent-execution-handoffs-independent-qa`.
+Set `confirm_self_hosted=true`.
+Keep `build_unsigned_windows_candidate=false`.
+Then inspect the resulting source test run. If the web dropdown doesn't expose the branch-specific inputs, use the installed GitHub CLI from a GitHub-authenticated PC:
 
 ~~~powershell
 gh workflow run bridge-ci.yml --repo faisalwrokksa-hub/TO --ref feat/agent-execution-handoffs-independent-qa -f confirm_self_hosted=true -f build_unsigned_windows_candidate=false
 ~~~
 
-On manual dispatch, existing GitHub-hosted jobs are skipped. The only intended job uses labels self-hosted + windows + x64 + theorg-win, checks source locally and never uploads artifacts or deploys. The optional build flag only creates an unsigned local candidate and may download build dependencies; it does not publish or sign a release.
+The workflow is on `main`, allowing manual selection of the updated branch. A job left queued means no matching runner is online. A red result *with steps executed* is the first real test failure to investigate.
 
-**Important**: The other seven pull-request-triggered workflows still target GitHub-hosted runners. A manual self-hosted check does not automatically satisfy every required status check. Avoid bypassing branch protections or merging untested work; migrate/replace those checks through reviewed PR changes when the self-hosted runner is proven reliable.
+## Second run — optional unsigned Windows build
+
+Only after source tests succeed and build dependencies are installed, rerun the same workflow with `build_unsigned_windows_candidate=true`. This invokes the existing local build and verify scripts. They may download upstream pinned dependencies and create an unsigned archive under `out/full-oneapp/`; they do not upload or deploy it. No clean machine or external AI service execution is proved by a passing build alone.
+
+## Offline source verification without Actions
+
+In PowerShell inside a trusted clone of the review branch:
+
+~~~powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Source-Local.ps1 -CheckOnly
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Source-Local.ps1
+~~~
+
+Source result: `out/source-verification/source-results.json` with actual pass/fail. The output folder is gitignored. If source tests fail, do not label the application as verified.
+
+## Remaining release acceptance
+
+- Validate actual native bridge, Chrome integration, supervisor agent execution, source-edit permissions, dependency handoffs, separate QA acceptance, cancellations, and independent model/provider security boundaries.
+- Verify an actual Windows EXE on a clean Windows machine. Confirm no embedded secrets or personal profile data.
+- The current stacked draft PR sequence is #20 → #21 → #22 → #23. Earlier PR branch versions may still contain hosted-runner workflows until they are separately updated or retargeted. Do not declare those PR checks green based on this branch alone.
+- Only after test evidence and independent review may the owner separately authorize merges in dependency order, artifact signing, distribution and deployment. Avoid bypassing branch protection or claiming test success from a job that never ran.
