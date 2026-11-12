@@ -121,7 +121,7 @@
       loadModels().catch(e=>showToast(e.message,true));
       loadAdaptive().catch(e=>showToast(e.message,true));
     }
-    if(view==='tasks'||view==='supervisor')loadTasks();
+    if(view==='tasks'||view==='supervisor')loadTasks().catch(e=>showToast(e.message,true));
     if(view==='files')loadFiles();if(view==='memory')loadMemories();if(view==='settings')loadAudit();
   }
   function appendEmpty(node,message){ node.replaceChildren(element('div','empty',message)); }
@@ -388,7 +388,9 @@
               JSON.stringify(record.evidence||{note:'No verification evidence recorded'},null,2).slice(0,15000)));
             const go=element('button','btn secondary','Open Code Studio for review');
             go.type='button';go.addEventListener('click',()=>{
-              chosenCodePlan=record;changeView('coding');
+              chosenCodePlan=record;
+              if(record.project_id)chosenCodeProject=record.project_id;
+              changeView('coding');
             });
             body.append(go);card.append(body);
           }catch(e){showToast(e.message,true);}
@@ -888,6 +890,8 @@
     if(!prompt)return showToast('Enter an instruction for the local specialist.',true);
     if(currentChatSession()?.archived)return showToast('Restore this session before adding tasks.',true);
     const btn=$('submitTask');btn.disabled=true;
+    $('chatComposer').setAttribute('aria-busy','true');
+    text($('chatComposerStatus'),'Saving a new local task…');
     let created=null;
     try{
       if(!activeSessionId){
@@ -897,8 +901,9 @@
       const r=await request('tasks',{method:'POST',body:{
         prompt,role:$('roleSelect').value,session_id:activeSessionId
       }});
-      $('promptInput').value='';
+      $('promptInput').value='';resizeChatComposer();
       showToast('Task queued locally · '+r.id.slice(0,8));
+      text($('chatComposerStatus'),'Task queued · '+r.id.slice(0,8)+' · awaiting real local worker');
       const existing=currentChatSession();
       if(created||(existing&&existing.title==='New session'&&Number(existing.task_count)===0)){
         const title=prompt.replace(/\s+/g,' ').slice(0,70)||'New session';
@@ -908,9 +913,20 @@
       }
       await Promise.all([loadChatSessions(),loadTasks()]);
       $('chatScroll').scrollTop=$('chatScroll').scrollHeight;
-    }catch(error){showToast(error.message,true);await loadChatSessions().catch(()=>{});}
-    finally{btn.disabled=!!currentChatSession()?.archived;$('promptInput').focus();}
+    }catch(error){
+      text($('chatComposerStatus'),'Could not save task: '+error.message);
+      showToast(error.message,true);await loadChatSessions().catch(()=>{});
+    }finally{
+      $('chatComposer').removeAttribute('aria-busy');
+      btn.disabled=!!currentChatSession()?.archived;$('promptInput').focus();
+    }
   });
+  function resizeChatComposer(){
+    const input=$('promptInput');
+    input.style.height='auto';
+    input.style.height=Math.min(200,Math.max(52,input.scrollHeight))+'px';
+  }
+  $('promptInput').addEventListener('input',resizeChatComposer);
   $('promptInput').addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
       e.preventDefault();
