@@ -108,6 +108,13 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({'session_id':ident,'tasks':chat_sessions.session_tasks(ident)})
                 elif path=='/api/chat/task-map':
                     self._json({'assignments':chat_sessions.assigned_task_ids()})
+                elif path=='/api/chat/search':
+                    query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'search':chat_sessions.search_history(
+                        query.get('q',[''])[0],query.get('session_id',[None])[0])})
+                elif path=='/api/chat/task':
+                    query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'task':chat_sessions.task_details(query.get('id',[''])[0])})
                 elif path=='/api/tasks':self._json({'tasks':core.tasks()})
                 elif path=='/api/memories':self._json({'memories':core.memories()})
                 elif path=='/api/files':self._json({'files':core.list_files()})
