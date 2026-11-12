@@ -300,4 +300,46 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.post('/api/tasks',{'prompt':'x','role':'missing'})[0],400)
         self.assertEqual(self.post('/api/files/read',{'name':'../../../etc/passwd'})[0],400)
 
+    def test_operating_desk_auth_preview_and_no_dispatch(self):
+        code,_,_=self.get('/api/operating/overview',auth=False)
+        self.assertEqual(code,401)
+        code,_,raw=self.get('/api/operating/overview')
+        self.assertEqual(code,200)
+        desk=json.loads(raw)['desk']
+        self.assertTrue(desk['no_tasks_executed'])
+        self.assertFalse(desk['permissions']['model_auto_launch'])
+        self.assertNotIn('access-token',raw.decode())
+        self.assertEqual(self.post('/api/operating/route',{'instruction':'Review tasks'},auth=False)[0],401)
+        code,reply=self.post('/api/operating/route',{'instruction':'Review tasks','role':'qa'})
+        self.assertEqual(code,200,reply)
+        self.assertFalse(reply['route']['task_enqueued'])
+        self.assertFalse(reply['route']['permission_granted'])
+        self.assertEqual(self.post('/api/operating/route',{'instruction':'x'})[0],400)
+
+    def test_reviewed_knowledge_http_consent_integrity_and_quarantine(self):
+        from engine import adaptive_runtime
+        candidate=adaptive_runtime.propose('Prepare a secure release',
+            'Inspect actual test evidence before any release.')
+        adaptive_runtime.review(candidate['id'],approved=True,
+            evidence='Owner checked a verified source-test report.')
+        url='/api/adaptive/knowledge/export'
+        self.assertEqual(self.post(url,{'confirmed':True},auth=False)[0],401)
+        self.assertEqual(self.post(url,{})[0],400)
+        code,response=self.post(url,{'confirmed':True})
+        self.assertEqual(code,200,response)
+        knowledge=response['knowledge']
+        self.assertFalse(knowledge['bundle']['contains_memories'])
+        data={'bundle':knowledge['bundle'],'sha256':knowledge['sha256']}
+        self.assertEqual(self.post('/api/adaptive/knowledge/validate',data)[0],200)
+        self.assertEqual(self.post('/api/adaptive/knowledge/import',data)[0],400)
+        code,result=self.post('/api/adaptive/knowledge/import',{**data,'confirmed':True})
+        self.assertEqual(code,200,result)
+        self.assertGreaterEqual(result['import']['created_candidates'],1)
+        self.assertTrue(result['import']['review_required'])
+        _,result=self.post('/api/adaptive/knowledge/import',{**data,'confirmed':True})
+        self.assertEqual(result['import']['created_candidates'],0)
+        self.assertFalse(result['import']['automatic_promotion'])
+        changed=json.loads(json.dumps(data));changed['bundle']['entries'][0]['answer']='tampered'
+        self.assertEqual(self.post('/api/adaptive/knowledge/import',{**changed,'confirmed':True})[0],400)
+
 if __name__=='__main__':unittest.main(verbosity=2)
