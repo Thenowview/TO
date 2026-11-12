@@ -112,6 +112,50 @@ class OperatorToolTests(unittest.TestCase):
             with self.assertRaises(core.EngineError):
                 operator_tools._runner_status()
 
+    def test_workflow_result_requires_exact_sha_and_real_passed_steps(self):
+        run = {"head_sha": SHA, "head_branch": operator_tools.REVIEW_BRANCH,
+               "path": ".github/workflows/bridge-ci.yml", "event": "workflow_dispatch",
+               "status": "completed", "conclusion": "success"}
+        job = {"jobs": [{"name": "self-hosted-windows-source",
+                         "status": "completed", "conclusion": "success",
+                         "steps": [
+                            {"name": "Check preinstalled Windows runner tools (no downloads)",
+                             "conclusion": "success"},
+                            {"name": "Verify source on local Windows runner",
+                             "conclusion": "success"}]}]}
+        with patch.object(operator_tools, "_github_json", side_effect=[run, job]) as api:
+            result = operator_tools._workflow_result(43233299196, SHA)
+        self.assertTrue(result["source_tests_verified"])
+        self.assertFalse(result["windows_executable_verified"])
+        self.assertEqual(api.call_count, 2)
+
+        skipped_job = json.loads(json.dumps(job))
+        skipped_job["jobs"][0]["steps"][1]["conclusion"] = "skipped"
+        with patch.object(operator_tools, "_github_json",
+                          side_effect=[run, skipped_job]):
+            result = operator_tools._workflow_result(43233299196, SHA)
+        self.assertFalse(result["source_tests_verified"])
+
+        with patch.object(operator_tools, "_github_json",
+                          return_value={**run, "head_sha": "b" * 40}):
+            with self.assertRaisesRegex(core.EngineError, "approved commit"):
+                operator_tools._workflow_result(43233299196, SHA)
+
+        with patch.object(operator_tools, "_github_json",
+                          return_value={**run, "event": "pull_request"}):
+            with self.assertRaisesRegex(core.EngineError, "manually dispatched"):
+                operator_tools._workflow_result(43233299196, SHA)
+
+        with patch.dict(os.environ, {"THEORG_ENABLE_GITHUB_READONLY": "1"}):
+            self.assertEqual(capabilities.normalize(
+                "github.workflow.result", {"run_id": 43233299196, "expected_sha": SHA}),
+                {"run_id": 43233299196, "expected_sha": SHA})
+            for invalid in ({"run_id": True, "expected_sha": SHA},
+                            {"run_id": 0, "expected_sha": SHA},
+                            {"run_id": 42, "expected_sha": "main"}):
+                with self.assertRaises(core.EngineError):
+                    capabilities.normalize("github.workflow.result", invalid)
+
     def test_dispatch_refuses_stale_branch_and_is_source_only(self):
         with patch.object(operator_tools, "_github_json", return_value={
             "object": {"sha": "b" * 40}
