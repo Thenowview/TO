@@ -27,11 +27,22 @@
 | `github.workflow.status` | Authenticated GitHub API read | `THEORG_ENABLE_GITHUB_READONLY=1` | `{}` |
 | `github.workflow.result` | Verify exact commit, job, preflight and source step | `THEORG_ENABLE_GITHUB_READONLY=1` | `{"run_id":43233299196,"expected_sha":"40-character-reviewed-sha"}` |
 | `windows.source.verify` | Execute fixed local source tests, no build or deploy | `THEORG_ENABLE_LOCAL_SOURCE_TESTS=1` | `{"expected_sha":"40-character-trusted-checkout-sha"}` |
+| `windows.window.list` | Inspect up to 12 visible, titled top-level windows | `THEORG_ENABLE_WINDOW_INSPECTION=1` | `{}` |
+| `windows.window.focus` | Attempt foreground focus for one inspected hwnd+PID+title SHA-256 | `THEORG_ENABLE_WINDOW_FOCUS=1` | `{"hwnd":431,"pid":1111,"title_sha256":"64-character-sha256"}` |
+| `google.readonly.probe` | Probe official Gmail/Drive/Calendar API with private Windows credential, no record content | `THEORG_ENABLE_GOOGLE_READONLY=1` | `{"provider":"gmail"}`, `{"provider":"drive"}`, or `{"provider":"calendar"}` |
 | `github.workflow.source_dispatch` | Dispatch reviewed source-only CI | `THEORG_ENABLE_GITHUB_ACTIONS=1` | `{"expected_sha":"40-character-current-branch-sha"}` |
 
 The GitHub tools require an installed, authenticated official `gh` CLI with appropriate repository scopes and permissions. No credential is requested or stored by the module. GitHub runner status requires the provider to grant the relevant read permission; a 403 is an unavailable result, not proof of Offline status.
 
 The dispatch tool is fixed to `faisalwrokksa-hub/TO`, `bridge-ci.yml`, and `feat/agent-execution-handoffs-independent-qa`. It dispatches `confirm_self_hosted=true`, `build_unsigned_windows_candidate=false`. It compares the full requested commit SHA with the current branch before dispatching. Because branch refs can advance between the check and dispatch, it does not claim race-free execution or completed tests. On uncertain dispatch outcome, it records `needs_review` rather than blindly retrying.
+
+## Windows UI and optional Google integration boundaries
+
+`windows.window.list` uses the local Windows user32 API to enumerate at most 12 visible top-level windows (up to 80 title characters). It does not read window text fields, send input, launch processes, or take screenshots. **Window titles are potentially private data** and are returned only to the approved local caller. `windows.window.focus` requires a fresh, exact window handle, process ID and SHA-256 of the observed title; it checks that identity again and reports whether Windows actually granted focus. It sends no mouse or keyboard input and does not bypass UAC.
+
+`google.readonly.probe` uses fixed official HTTPS GET endpoints for Gmail label metadata, Drive file-list metadata and Calendar list metadata, returning only connection status. No token or returned record content is included in TheOrg's response or SQLite audit. Tokens must be obtained using separately consented Google OAuth flows and provisioned as Generic entries in Windows Credential Manager at `TheOrg/google/gmail-readonly`, `TheOrg/google/drive-readonly`, and `TheOrg/google/calendar-readonly`. TheOrg does **not** automate obtaining/refreshing these tokens; do not copy secrets into prompts or terminal history. The authenticated local `GET /api/integrations` lists the required scopes and always reports unverified status until an individually approved live probe succeeds.
+
+These features are not complete hands-free desktop control, business record editing, or completed external integrations. A user-approved but untested tool still needs runtime and security acceptance on Windows before it is considered reliable.
 
 ## Interactive Windows runner lifecycle
 
