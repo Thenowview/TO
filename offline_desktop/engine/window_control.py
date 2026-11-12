@@ -11,8 +11,8 @@ import re
 
 from engine import core
 
-_MAX_WINDOWS = 40
-_TITLE_LIMIT = 150
+_MAX_WINDOWS = 12
+_TITLE_LIMIT = 80
 _HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
