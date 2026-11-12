@@ -136,17 +136,29 @@ def _binary() -> str:
     return executable
 
 
+def _require_v2(executable: str) -> str:
+    """Fail closed: V1 ignores TheOrg's required ordered V2 permission policy."""
+    try:
+        proc = subprocess.run([executable, "--version"], capture_output=True, text=True,
+                              timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise core.EngineError("Unable to verify the OpenCode V2 CLI version.") from exc
+    version = (proc.stdout or proc.stderr).strip()[:150]
+    if proc.returncode != 0 or not re.search(r"(?<![\\d.])v?2\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?(?!\\d)", version):
+        raise core.EngineError("TheOrg requires OpenCode V2 with ordered permissions; installed CLI was not verified as V2.")
+    return version
+
+
 def installed() -> dict:
     try:
         exe = _binary()
-        proc = subprocess.run([exe, "--version"], capture_output=True, text=True,
-                              timeout=10, check=False)
-        return {"available": proc.returncode == 0,
-                "version": proc.stdout.strip()[:100], "executable": exe,
+        version = _require_v2(exe)
+        return {"available": True, "compatible_v2": True,
+                "version": version[:100], "executable": exe,
                 "mode": "opt-in-external-runtime"}
-    except (OSError, subprocess.TimeoutExpired, core.EngineError) as exc:
-        return {"available": False, "reason": str(exc)[:200],
-                "mode": "opt-in-external-runtime"}
+    except core.EngineError as exc:
+        return {"available": False, "compatible_v2": False,
+                "reason": str(exc)[:200], "mode": "opt-in-external-runtime"}
 
 
 def _stop_process_tree(proc: subprocess.Popen) -> None:
@@ -193,6 +205,7 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
         raise core.EngineError("Staged source directory missing.")
     # An overwrite of an existing global project config must not loosen policy.
     exe = _binary()
+    _require_v2(exe)
     config = _policy(edit)
     policy_path = staged / "opencode.json"
     if policy_path.exists():
