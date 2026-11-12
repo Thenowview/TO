@@ -2,7 +2,7 @@
 /* Company workflow. Retrieved text is data, never HTML or executable code. */
 (() => {
   const el=(tag,text)=>{const n=document.createElement(tag);if(text)n.textContent=text;return n;};
-  const root=el('details');root.className='office-workflow';root.append(el('summary','Company workflow · employees, research, review and lessons'));
+  const root=el('details');root.className='office-workflow';root.append(el('summary','Company task groups · maximum 4 active tasks'));
   const status=el('p'),controls=el('div'),list=el('div');status.setAttribute('role','status');root.append(status,controls,list);
   let busy=false,signature='';
   async function api(path,body){
@@ -14,9 +14,10 @@
   function field(parent,label,multi=false){const l=el('label',label),input=el(multi?'textarea':'input');input.maxLength=multi?10000:2000;l.append(input);parent.append(l);return input;}
   function card(flow,job){
     const c=el('details');c.className='office-task';c.append(el('summary',(job?.prompt||flow.task_id).slice(0,90)+' · '+flow.stage.replaceAll('_',' ')),el('p',(flow.route||'local lookup')+'. '+flow.note));
-    const messages=el('div');c.append(button('View employee handoffs',async()=>{
+    const messages=el('div');messages.className='office-group-chat';c.append(button('Open this task’s group chat',async()=>{
       const d=await api('answer-flow/messages?id='+encodeURIComponent(flow.task_id));messages.replaceChildren();
-      for(const m of d.messages)messages.append(el('strong',m.sender+' → '+m.recipient+' · '+m.kind),el('pre',m.body));
+      messages.append(el('p','Private task group: Manager · assigned specialist · Research · Reviewer. Messages stay within this task.'));
+      for(const m of d.messages){const bubble=el('article');bubble.className='office-group-message';bubble.append(el('strong',m.sender+' → '+m.recipient+' · '+m.kind),el('pre',m.body));messages.append(bubble);}
     }),messages);
     if(job?.output)c.append(button('Save report to local workspace',async()=>{
       const name='deliverables/'+flow.task_id+'.md';
@@ -45,12 +46,13 @@
     if(busy)return;busy=true;
     try{
       const [d,j]=await Promise.all([api('answer-flow'),api('tasks')]);const p=d.policy;
-      status.textContent=(p.enabled?'Managed workflow on. ':'Managed workflow off. ')+(p.provider.configured?'Online API configured. ':'No online API configured; use manual browser handoff. ')+ 'Employees share one model and work sequentially. Evidence and a lesson are required to close.';
+      status.textContent=(p.enabled?'Managed workflow on. ':'Managed workflow off. ')+(p.provider.connected?'Chrome bridge connected. ':p.provider.configured?'Chrome bridge paired; waiting for browser. ':'Chrome bridge needs installation and pairing. ')+ 'Maximum 4 active task groups. Browser research uses your signed-in ChatGPT account, without loading a local model. Evidence and a lesson are required to close.';
       if(!controls.childElementCount){
-        for(const [key,label] of [['enabled','Managed workflow'],['online_fallback','Online research fallback']]){
+        controls.append(button('Prepare Chrome bridge',async()=>{const info=await api('browser-bridge/prepare-extension',{confirmed:true});status.textContent='Chrome extension folder: '+info.folder+'. '+info.instructions;window.alert('Extension files are ready at:\n'+info.folder+'\n\nOpen chrome://extensions, choose Load unpacked, then this folder. Return to TheOrg and click the extension’s Connect button.');}));
+        for(const [key,label] of [['enabled','Managed workflow'],['online_fallback','Use signed-in ChatGPT in Chrome']]){
           const l=el('label',label),c=el('input');c.type='checkbox';c.checked=p[key];l.prepend(c);controls.append(l);
           c.onchange=async()=>{try{
-            if(key==='online_fallback'&&c.checked&&!confirm('Send current questions to your configured provider? Files, saved notes and history stay local. Existing provider usage charges may apply.')){c.checked=false;return;}
+            if(key==='online_fallback'&&c.checked&&!confirm('Let the paired Chrome extension submit current questions in fresh ChatGPT chats using your signed-in account? Local files, saved notes and TheOrg history stay local. Your ChatGPT account limits apply.')){c.checked=false;return;}
             await api('answer-flow/settings',{options:{[key]:c.checked},confirmed:true});await refresh();
           }catch(e){c.checked=!c.checked;status.textContent=e.message;}};
         }

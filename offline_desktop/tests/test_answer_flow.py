@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from engine import core,answer_flow,adaptive_runtime,online_provider,office_agents,runtime_budget
+from engine import core,answer_flow,adaptive_runtime,online_provider,office_agents,runtime_budget,browser_bridge
 
 class WorkflowTests(unittest.TestCase):
     def setUp(self):
@@ -48,17 +48,17 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.row(j['id'])['status'],'cancelled')
     def test_provider_unavailable_waits_without_false_completion(self):
         j=self.job();answer_flow.configure({'online_fallback':True},confirmed=True)
-        with patch.object(online_provider,'complete',side_effect=online_provider.ProviderUnavailable('Provider unavailable')):
+        with patch.object(browser_bridge,'complete',side_effect=online_provider.ProviderUnavailable('Provider unavailable')):
             answer_flow.process(j)
         self.assertEqual(self.row(j['id'])['status'],'awaiting_input')
         self.assertIn('Provider unavailable',self.row(j['id'])['error'])
     def test_unreliable_local_draft_escalates_even_when_confident(self):
         j=self.job();answer_flow.configure({'online_fallback':True},confirmed=True)
-        with patch.object(answer_flow,'_local_answer',return_value='Confident but unsupported answer'),patch.object(online_provider,'complete',return_value={'answer':'Sourced research answer.','sources':[{'url':'https://example.com/facts'}]}) as provider:
+        with patch.object(answer_flow,'_local_answer',return_value='Confident but unsupported answer'),patch.object(browser_bridge,'complete',return_value={'answer':'Sourced research answer.','sources':[{'url':'https://example.com/facts'}]}) as provider:
             answer_flow.process(j)
-        provider.assert_called_once_with(j['prompt'],j['role'],approved=True)
+        provider.assert_called_once_with(j['prompt'],j['role'],j['id'],approved=True)
         self.assertEqual(self.row(j['id'])['status'],'awaiting_review')
-        self.assertEqual(answer_flow.history()[0]['route'],'online-provider')
+        self.assertEqual(answer_flow.history()[0]['route'],'chrome-chatgpt')
     def test_manual_online_handoff_and_no_chat_reading_claim(self):
         j=self.job();answer_flow.process(j)
         r=answer_flow.submit_research(j['id'],'A checked research answer.','https://example.com/source',confirmed=True)
@@ -75,6 +75,11 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(office_agents.route('supervisor','Summarize meeting notes'),'operations')
         self.assertEqual(office_agents.route('security','Draft a customer reply'),'security')
         self.assertFalse(answer_flow.policy()['automatic_browser_chat_reading'])
+    def test_four_active_tasks_limit_and_completed_task_frees_slot(self):
+        ids=[core.enqueue('A regular company task '+str(i),'operations') for i in range(4)]
+        with self.assertRaisesRegex(core.EngineError,'Four company tasks'):core.enqueue('A fifth company task','operations')
+        with core.conn() as db:db.execute("UPDATE tasks SET status='completed' WHERE id=?",(ids[0],))
+        self.assertTrue(core.enqueue('Replacement company task','operations'))
     def test_private_credentials_are_not_learned(self):
         j=self.draft()
         with core.conn() as db:db.execute('UPDATE answer_reviews SET answer=? WHERE task_id=?',('password=private-value',j['id']))

@@ -11,7 +11,7 @@ import re
 import secrets
 import shutil
 import time
-from engine import core, adaptive_runtime, online_provider, office_agents
+from engine import core, adaptive_runtime, online_provider, office_agents, browser_bridge
 
 
 def init_schema():
@@ -34,9 +34,10 @@ def policy():
             'auto_load': core.setting('answer_auto_load', '1') == '1',
             'temporary_cleanup': core.setting('answer_temporary_cleanup', '1') == '1',
             'learning': 'reviewed-memory-only', 'weight_training': False,
-            'provider': online_provider.status(), 'tier': adaptive_runtime.selected(),
+            'provider': browser_bridge.status(), 'tier': adaptive_runtime.selected(),
             'closure':'evidence-and-owner-review', 'employees':['Manager','Assigned worker','Reviewer'],
-            'automatic_browser_chat_reading':False}
+            'max_active_tasks':4,'group_chat_per_task':True,
+            'automatic_browser_chat_reading':browser_bridge.status()['configured']}
 
 
 def configure(options, *, confirmed=False):
@@ -224,14 +225,14 @@ def process(job):
     options = policy()
     task_id = job['id']
     _record(task_id, 'local_lookup')
-    office_agents.assign(job)
+    office_agents.assign(job,use_model=not options['online_fallback'])
     if not _still_running(task_id):return
     # Similarity is an aid to search, never authority to substitute a different answer.
     matches = adaptive_runtime.recall(job['prompt'])['matches'] if len(job['prompt'])<=1000 else []
     # A prior answer is evidence for a draft, not proof it applies to today's task.
     exact = next((m for m in matches if _normal(m['question']) == _normal(job['prompt'])), None) if not job.get('context_snapshot') else None
     answer, route = (exact['answer'], 'reviewed-local-memory') if exact else (None, '')
-    if answer is None:
+    if answer is None and not options['online_fallback']:
         _record(task_id, 'local_model')
         try:
             answer = _local_answer(job, options)
@@ -247,9 +248,10 @@ def process(job):
         _record(task_id, 'online_fallback', note='Only the current question is transmitted; local notes, files and saved history remain local.')
         office_agents.send(task_id,job['role'],'Research','online handoff',job['prompt'])
         try:
-            result = online_provider.complete(job['prompt'], job['role'], approved=True)
-            answer, route = result['answer'], 'online-provider'
+            result = browser_bridge.complete(job['prompt'], job['role'],task_id,approved=True)
+            answer, route = result['answer'], 'chrome-chatgpt'
             sources=result.get('sources',[])
+            office_agents.send(task_id,'Research',job['role'],'research received',answer)
         except online_provider.ProviderUnavailable as error:
             note = str(error)
             answer = None
@@ -266,14 +268,14 @@ def process(job):
         _record(task_id, 'awaiting_input', note=note)
         return
     _record(task_id,'reviewing',route,'Reviewer is assessing the draft; no factual certification is implied.')
-    office_agents.review(job,answer)
+    office_agents.review(job,answer,use_model=not options['online_fallback'])
     if not _still_running(task_id):return
     # Deliver a draft, but never close or learn solely because generation succeeded.
     with core.conn() as db:
         changed = db.execute("UPDATE tasks SET status='awaiting_review',output=?,error='',updated=? WHERE id=? AND status='running'",
                              (answer[:10000], core.utcnow(), task_id)).rowcount
         if changed:
-            source=sources[0]['url'] if route=='online-provider' and sources else (exact.get('source_url','') if exact else '')
+            source=sources[0]['url'] if route=='chrome-chatgpt' and sources else (exact.get('source_url','') if exact else '')
             db.execute('INSERT OR REPLACE INTO answer_reviews(task_id,answer,source_url) VALUES(?,?,?)',
                        (task_id,answer[:10000],source))
     if not changed:

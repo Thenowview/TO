@@ -4,6 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from engine import browser_bridge
 from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime, operating_desk, reviewed_knowledge, answer_flow, office_agents
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
@@ -246,6 +247,15 @@ class Handler(BaseHTTPRequestHandler):
                 if payload.get('confirmed') is not True:
                     raise core.EngineError('Model startup requires separate explicit confirmation.')
                 self._json({'adaptive_start':adaptive_runtime.start_recommended(confirmed=True)})
+            elif path=='/api/browser-bridge/prepare-extension':
+                self._json(browser_bridge.prepare_extension(confirmed=payload.get('confirmed')))
+            elif path=='/api/browser-bridge/pair':
+                self._json({'provider':browser_bridge.pair(payload.get('client_id'),confirmed=payload.get('confirmed'))})
+            elif path=='/api/browser-bridge/claim':
+                self._json(browser_bridge.claim(payload.get('client_id')))
+            elif path=='/api/browser-bridge/finish':
+                self._json(browser_bridge.finish(payload.get('client_id'),payload.get('id'),payload.get('lease'),
+                    payload.get('answer',''),payload.get('sources',[]),payload.get('error','')))
             elif path=='/api/answer-flow/settings':
                 self._json({'policy':answer_flow.configure(payload.get('options'),confirmed=payload.get('confirmed'))})
             elif path=='/api/answer-flow/research':

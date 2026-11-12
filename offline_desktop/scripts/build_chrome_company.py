@@ -39,6 +39,7 @@ def main():
           '--add-data',str(root.parent/'config/adaptive-model-registry.json')+';config',
           '--add-data',str(root/'RELEASE-COMPANY.md')+';release',
           '--add-data',str(root/'licenses')+';licenses',
+          '--add-data',str(root.parent/'chrome_company_bridge')+';chrome-bridge',
           '--add-data',str(a.model.resolve())+';bundled-models',
           '--add-data',str(git.resolve())+';bin/git','--add-binary',str(binary.resolve())+';bin']
     for dll in binary.parent.glob('*.dll'):args+=['--add-binary',str(dll.resolve())+';bin']

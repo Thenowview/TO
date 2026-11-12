@@ -9,3 +9,4 @@
 .office-workflow pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;padding:8px;background:var(--card)}
 .office-workflow a{color:var(--blue);display:inline-block;margin:8px}
 .office-workflow button{margin:4px}
+.office-group-message{margin:9px 0;padding:10px;border-left:3px solid var(--teal);border-radius:6px;background:var(--card)}

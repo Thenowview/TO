@@ -38,10 +38,10 @@ def messages(task_id):
     init_schema()
     return core.records('SELECT sender,recipient,kind,body,created FROM office_messages WHERE task_id=? ORDER BY id LIMIT 60',(task_id,))
 
-def assign(job):
+def assign(job,*,use_model=True):
     send(job['id'],'Manager',job['role'],'assignment',job['prompt'])
     backend,_=core.active_backend()
-    if not backend:return ''
+    if not backend or not use_model:return ''
     try:
         plan=core.infer('Make a concise work brief: deliverable, acceptance checks, dependencies. Do not execute anything. Request: '+job['prompt'],
                         'planner',max_tokens=220,include_memory=False)
@@ -49,11 +49,11 @@ def assign(job):
     send(job['id'],'Manager',job['role'],'work brief',plan)
     return plan
 
-def review(job,answer):
+def review(job,answer,*,use_model=True):
     send(job['id'],job['role'],'Reviewer','draft',answer)
     backend,_=core.active_backend()
-    if not backend:
-        findings='No local reviewer is available. Owner verification is required; this draft is not certified.'
+    if not backend or not use_model:
+        findings='Owner verification is required; no independent factual check has been completed. Check the cited source and actual deliverable before closure.'
     else:
         try:
             findings=core.infer('Review the draft against the request. Identify unsupported claims and missing deliverables. '

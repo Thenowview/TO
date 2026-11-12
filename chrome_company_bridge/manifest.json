@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "TheOrg Company Chrome Bridge",
+  "version": "1.0.0",
+  "description": "Use your signed-in ChatGPT tab for approved TheOrg research tasks. No API key, cookies or browser history access.",
+  "permissions": ["activeTab", "scripting", "storage", "alarms"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*", "https://chatgpt.com/*"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_popup": "popup.html"}
+}

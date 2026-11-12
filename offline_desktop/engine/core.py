@@ -125,7 +125,13 @@ def enqueue(prompt, role, context_snapshot=''):
     if type(context_snapshot) is not str or len(context_snapshot)>3200:
         raise EngineError('Optional conversation context exceeds the 3,200-character limit.')
     ident = secrets.token_hex(8)
+    managed=setting('answer_flow_enabled',os.environ.get('THEORG_ADAPTIVE_FLOW','1' if FROZEN else '0'))=='1'
     with conn() as db:
+        db.execute('BEGIN IMMEDIATE')
+        if managed:
+            count=db.execute("SELECT COUNT(*) FROM tasks WHERE status IN ('queued','running','awaiting_input','awaiting_review','interrupted')").fetchone()[0]
+            if count>=4:
+                raise EngineError('Four company tasks are already active. Complete or cancel one before assigning another.')
         db.execute('INSERT INTO tasks(id,role,prompt,status,created,updated,context_snapshot) VALUES(?,?,?,?,?,?,?)',
                    (ident,role,prompt.strip(),'queued',utcnow(),utcnow(),context_snapshot))
     audit('task.queued',{'id':ident,'role':role,'context_enabled':bool(context_snapshot)})

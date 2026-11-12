@@ -16,10 +16,12 @@ The worker drafts an answer; Reviewer sends advisory findings to Manager.
 Use **View employee handoffs** to inspect their messages. These are sequential
 roles using the same model, not independent models or evidence of factual accuracy.
 
-If local information is insufficient, use **Research in ChatGPT or another source**.
-Open the signed-in site, research the question and paste the answer and HTTPS
-source. Browser research is a MANUAL HANDOFF. This release does not automatically
-read ChatGPT chats, send messages, or perform arbitrary website/desktop actions.
+For stronger reasoning, enable **Use signed-in ChatGPT in Chrome** after pairing
+the companion extension. Approved current questions are submitted to fresh ChatGPT
+chats in your existing Chrome profile. The answer and conversation/source links
+return to TheOrg for review. No local LLM is required for this route. The extension
+does not read unrelated chats, passwords or cookies. It leaves the new task chat
+available as evidence. Manual answer/source submission is also available.
 
 After checking the actual answer/deliverable, provide **Verification evidence** and
 **Lesson learned**. **Verify, save lesson and close** atomically completes the task
@@ -28,22 +30,27 @@ not promoted to trusted recall. Even recalled answers require applicability revi
 Shared working recall reads at most 500 reviewed entries; older entries are marked
 superseded, retained and recoverable. No model weights are trained automatically.
 
-## Optional automatic online research
+## Chrome setup and automatic online research
 
-Only an existing owner-authorized API configuration is used:
-`THEORG_ONLINE_PROVIDER=openai`, `THEORG_ONLINE_MODEL=<your authorized model>`,
-and `OPENAI_API_KEY` in the process environment. Never put keys in a package,
-source control or a task. Restart the engine after configuring its environment.
-Use a model supporting Responses web_search. Enable Online research fallback in
-the workflow. Provider usage can incur charges on the existing account.
+Choose **Prepare Chrome bridge** in the workflow panel. In Chrome's extension
+manager (`chrome://extensions`), enable Developer mode and choose **Load unpacked**
+with the prepared folder. This is a one-time, owner-approved extension install.
+Open the connected local TheOrg tab and use the extension popup's **Connect to
+current TheOrg tab** button. Enable **Use signed-in ChatGPT in Chrome**.
+Your existing ChatGPT account and its usage limits apply. No API key or Codex
+credential is required or copied. Sign-in, consent and website security challenges
+must be handled by the owner; the bridge does not bypass them.
 Only the current question is sent; local files, reference notes and saved chat
 context are excluded. Questions containing probable credentials are blocked.
-An online answer must include HTTPS source citations and still requires review.
-With online fallback enabled, every unreviewed local draft is researched; a small
-model's confidence is not used as proof of reliability. Previously reviewed answers
-still require an applicability check for the new task.
-No API credentials are bundled. Live provider execution is not certified unless
-the release receipt explicitly records it; a ChatGPT browser login is not API setup.
+The returned conversation/source links are evidence pointers, not proof that the
+answer is correct. With browser fallback enabled, unreviewed questions go to
+ChatGPT; a small model's self-confidence is not used as proof of reliability.
+Previously reviewed answers still require an applicability check for the new task.
+ChatGPT's own account memory/personalization settings still apply on its website.
+If Chrome restarts during a request, delivery may be uncertain. The bridge does
+not silently resubmit; inspect the new chat before explicitly retrying. Website
+changes can break composer or response detection; inspect the release receipt for
+the actual browser test. The legacy optional API adapter is not used by this route.
 
 ## Device adaptation and PC access
 
