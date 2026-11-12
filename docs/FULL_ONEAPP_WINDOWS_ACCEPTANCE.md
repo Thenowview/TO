@@ -48,6 +48,18 @@ Expected output if **all real build operations succeed**:
 
 Do not use -SkipSourceTests for acceptance. It is only for diagnosis.
 
+### Where runtime data lives
+
+On first launch, the launcher sets environment paths so neither the distributed ZIP nor the read-only application folder needs to contain user data:
+
+- %LOCALAPPDATA%\TheOrg\EngineData — local SQLite database, private access token and engine logs
+- %LOCALAPPDATA%\TheOrg\workspace — user and company workspaces, output files
+- %LOCALAPPDATA%\TheOrg\models — imported local model files
+- %LOCALAPPDATA%\TheOrg\ChromeProfile — isolated browser profile
+- %LOCALAPPDATA%\TheOrg\NativeMessaging — user-scoped bridge registration
+
+Both build-time and verification-time Python self-tests run with temporary data paths outside the distributable folder and remove their generated data afterward. The build must fail if the staged package contains .theorg, access-token.txt or theorg.sqlite3.
+
 ### Optional browser and GGUF (not required for first build)
 
 Your Drive already separates runtimes and models. **Do not** automatically bundle a user-supplied browser ZIP or GGUF until provenance, checksum and relevant licensing are independently verified.
