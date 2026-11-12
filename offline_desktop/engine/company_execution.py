@@ -616,36 +616,36 @@ def create_code_plan(job_id: str, *, confirmed: bool) -> dict:
     checks=structural_qa(job_id)
     if not checks["structural_pass"]:
         raise core.EngineError("Source changed or structural QA no longer passes.")
-    report=job["report"]
-    raw_changes=report.get("changed_files",[])
-    if not 1 <= len(raw_changes) <= coding.MAX_CHANGES:
-        raise core.EngineError("Plan requires 1–6 bounded source modifications.")
     order=_read_order(job["order_id"])
     stage=_validated_stage(job)
     repo=coding._project(order["project_id"])
+    # Cumulative change proposal: later developers inherit QA-accepted parent
+    # edits, so their own delta is not the complete set of proposed changes.
+    baseline=adapter.manifest(Path(repo))
+    output=adapter.manifest(stage)
+    changed=sorted(path for path in baseline.keys() | output.keys()
+                   if baseline.get(path)!=output.get(path))
+    if not 1 <= len(changed) <= coding.MAX_CHANGES:
+        raise core.EngineError("Cumulative Code Studio proposal requires 1–6 source modifications.")
     edits=[]
-    for change in raw_changes:
-        rel=change.get("path","")
+    for rel in changed:
+        if rel not in output:
+            raise core.EngineError("Deletion requires manual Code Studio review: "+rel)
         source,name=coding._file(repo,rel)
-        expected_old=change.get("before")
-        if source.is_file():
-            old_sha=hashlib.sha256(source.read_bytes()).hexdigest()
-        else:
-            old_sha=None
-        if old_sha != expected_old:
-            raise core.EngineError("Original source changed since agent staging: "+name)
-        target=stage / name
+        current_sha=(hashlib.sha256(source.read_bytes()).hexdigest()
+                     if source.is_file() else None)
+        if current_sha != baseline.get(rel):
+            raise core.EngineError("Original source changed while composing the draft: "+name)
+        target=stage/name
         if not target.is_file() or target.is_symlink():
-            raise core.EngineError("Deleted or unsafe file cannot be promoted: "+name)
+            raise core.EngineError("Deleted or unsafe output cannot be promoted: "+name)
         raw=target.read_bytes()
-        if len(raw)>coding.MAX_BYTES:
-            raise core.EngineError("Code Studio text size limit exceeded: "+name)
-        if hashlib.sha256(raw).hexdigest()!=change.get("after"):
-            raise core.EngineError("Staged source hash changed since execution: "+name)
+        if len(raw)>coding.MAX_BYTES or hashlib.sha256(raw).hexdigest()!=output[rel]:
+            raise core.EngineError("Source output integrity check failed: "+name)
         try:
             text=raw.decode("utf-8")
         except UnicodeError as exc:
-            raise core.EngineError("Only UTF-8 text source can become a code plan.") from exc
+            raise core.EngineError("Only UTF-8 source may become a code plan.") from exc
         edits.append({"path":name,"content":text})
     plan=coding.propose(order["project_id"],
                         ("QA-attested agent proposal: "+job["instruction"])[:1200],
