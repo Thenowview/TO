@@ -408,13 +408,15 @@
     if(!feed||!scroll||!welcome)return;
     const allRecent=activeChatItems().slice(0,100).reverse();
     const term=$('chatMessageSearch').value.trim().toLocaleLowerCase();
-    const recent=term?allRecent.filter(job=>[job.prompt,job.output,job.error,job.role]
-       .some(value=>String(value||'').toLocaleLowerCase().includes(term))):allRecent;
+    // Keep immediate filtering bounded. Search history searches all local records.
+    const recent=term?allRecent.filter(job=>[job.prompt,String(job.output||'').slice(0,2400),
+       job.error,job.role].some(value=>String(value||'').toLocaleLowerCase().includes(term))):allRecent;
     text($('chatSearchStatus'),term
       ?recent.length+' matching task'+(recent.length===1?'':'s')+' in recent history'
       :allRecent.length+' recent task'+(allRecent.length===1?'':'s'));
     const signature=String(activeSessionId||'all')+':'+term+':'+recent.map(job=>
-      [job.id,job.status,job.output||'',job.error||''].join('\x1f')).join('\x1e');
+      [job.id,job.status,job.updated||'',String(job.output||'').length,
+       String(job.error||'').length].join('\x1f')).join('\x1e');
     if(signature===lastChatSignature)return;
     lastChatSignature=signature;
     const nearBottom=scroll.scrollHeight-scroll.scrollTop-scroll.clientHeight<150;
