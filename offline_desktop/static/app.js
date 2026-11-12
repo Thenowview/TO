@@ -22,7 +22,7 @@
   let lastChatSignature = null;
   let chatSessions=[], activeSessionId=null, activeSessionTasks=[];
   let includeArchivedSessions=false, selectedChatTaskId=null;
-  let inspectorTab='task', inspectorCodeRequest=0;
+  let inspectorTab='task', inspectorCodeRequest=0, chatSearchRequest=0;
   const labels = {overview:'Overview',supervisor:'Chat',operator:'Windows Operator',tasks:'Task queue',coding:'Code Studio',company:'Agent team',models:'Models',files:'Files',memory:'Memory',settings:'Settings'};
 
   /* Original, dependency-free line icon set. Icons are pure local SVG,
@@ -229,6 +229,7 @@
     renderSessionList();setSessionTitle();
   }
   async function selectChatSession(id){
+    chatSearchRequest++;
     $('chatMessageSearch').value='';
     $('chatHistoryResults').hidden=true;
     $('chatHistoryMatches').replaceChildren();
@@ -321,6 +322,7 @@
     if(window.matchMedia('(max-width:1050px)').matches)panel.focus?.();
   }
   async function searchSavedTasks(){
+    const serial=++chatSearchRequest;
     const value=$('chatMessageSearch').value.trim();
     if(value.length<2)return showToast('Enter at least two characters to search saved local tasks.',true);
     const panel=$('chatHistoryResults'),target=$('chatHistoryMatches');
@@ -329,6 +331,7 @@
        (activeSessionId?'&session_id='+encodeURIComponent(activeSessionId):'');
     try{
       const response=await request(url),data=response.search;
+      if(serial!==chatSearchRequest)return;
       target.replaceChildren();
       if(!data.matches?.length){
         target.append(element('p','muted','No saved tasks match. Try a more specific phrase.'));
@@ -360,7 +363,8 @@
         row.append(button);target.append(row);
       }
     }catch(e){
-      target.replaceChildren(element('p','chat-error-text','History search unavailable: '+e.message));
+      if(serial===chatSearchRequest)
+        target.replaceChildren(element('p','chat-error-text','History search unavailable: '+e.message));
     }
   }
   async function renderCodeInspector(){
@@ -1007,6 +1011,7 @@
   $('chatMessageSearch').addEventListener('input',renderChatMessages);
   $('chatSearchAll').addEventListener('click',searchSavedTasks);
   $('chatCloseSearch').addEventListener('click',()=>{
+    chatSearchRequest++;
     $('chatHistoryResults').hidden=true;$('chatHistoryMatches').replaceChildren();
   });
   $('chatMessageSearch').addEventListener('keydown',event=>{
