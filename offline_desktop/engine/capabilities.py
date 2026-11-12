@@ -10,6 +10,7 @@ CATALOG={
  'desktop.workspace.open': {'kind':'desktop','description':'Open only the dedicated TheOrg workspace in Windows Explorer.'},
  'desktop.runner.inspect': {'kind':'desktop','description':'Read-only check of approved GitHub runner installation files; does not inspect tokens or prove online status.'},
  'windows.powershell.inspect': {'kind':'desktop','description':'Execute a fixed, read-only PowerShell inspection; arbitrary commands prohibited.'},
+ 'windows.source.verify': {'kind':'desktop','description':'Run fixed source tests in an explicitly trusted local checkout at an approved commit SHA.'},
  'github.runner.status': {'kind':'github','description':'Read runner Online/Idle and labels from authenticated GitHub API.'},
  'github.workflow.status': {'kind':'github','description':'Read recent CI runs from authenticated GitHub API.'},
  'github.workflow.source_dispatch': {'kind':'github','description':'Trigger source-only CI on a reviewed commit; no builds, merge or deployment.'},
@@ -33,6 +34,7 @@ def enabled(name):
     if name=='desktop.workspace.open':return os.environ.get('THEORG_ENABLE_OS_ACTIONS')=='1'
     if name=='desktop.runner.inspect':return os.environ.get('THEORG_ENABLE_RUNNER_DIAGNOSTICS')=='1'
     if name=='windows.powershell.inspect':return os.environ.get('THEORG_ENABLE_WINDOWS_INSPECTION')=='1'
+    if name=='windows.source.verify':return os.environ.get('THEORG_ENABLE_LOCAL_SOURCE_TESTS')=='1'
     if name in ('github.runner.status','github.workflow.status'):
         return os.environ.get('THEORG_ENABLE_GITHUB_READONLY')=='1'
     if name=='github.workflow.source_dispatch':
@@ -53,7 +55,7 @@ def normalize(name,args):
         if set(args)!={'location'} or args['location'] not in ('user_downloads','system_root'):
             raise core.EngineError('Choose a fixed runner location: user_downloads or system_root.')
         return {'location':args['location']}
-    if name.startswith('github.') or name=='windows.powershell.inspect':
+    if name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify'):
         from engine import operator_tools
         return operator_tools.normalize(name,args)
     if set(args)!={'file','actions'} or type(args['file']) is not str:
@@ -114,7 +116,7 @@ def _execute(name,args):
         result=_runner_probe(root)
         result['location']=args['location']
         return result
-    if name.startswith('github.') or name=='windows.powershell.inspect':
+    if name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify'):
         from engine import operator_tools
         return operator_tools.execute(name,args)
     raise core.EngineError('Unknown capability execution')
@@ -149,7 +151,7 @@ def approve_and_execute(ident,digest,confirmed=False):
     except Exception as e:
         # GitHub might accept a dispatch even if the client loses its response.
         # Record uncertainty and require operator inspection; never auto-retry.
-        uncertain=name=='github.workflow.source_dispatch'
+        uncertain=name in ('github.workflow.source_dispatch','windows.source.verify')
         result={'ok':False,'error':str(e)[:350]}
         if uncertain:
             result['execution_outcome']='unverified'
