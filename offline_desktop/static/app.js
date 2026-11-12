@@ -557,7 +557,18 @@
         if(job.error)jobBox.append(element('div','inline-note',job.error));
         if(job.report?.summary)jobBox.append(element('pre','',job.report.summary.slice(0,2800)));
         if(job.report?.changed_count)jobBox.append(element('small','',job.report.changed_count+' changed files (isolated copy only)'));
+        if(job.report?.inherited_from_accepted_job)jobBox.append(element('small','',
+          'Input source inherited from QA-accepted job '+job.report.inherited_from_accepted_job.slice(0,10)));
+        if(job.report?.project_baseline_manifest_sha256)jobBox.append(element('small','',
+          'Original project baseline SHA-256: '+job.report.project_baseline_manifest_sha256.slice(0,16)+'…'));
         const actions=element('div','button-row');
+        if(job.report?.changed_files?.length){
+          const paths=element('button','btn secondary','Inspect changed source hashes');
+          paths.addEventListener('click',()=>{
+            const lines=job.report.changed_files.map(x=>x.path+'\\n  Before: '+(x.before||'new')+'\\n  After: '+(x.after||'deleted'));
+            alert(lines.join('\\n\\n'));
+          });actions.append(paths);
+        }
         if(job.status==='queued'){
           const b=element('button','btn secondary','Approve & run');
           b.addEventListener('click',async()=>{
