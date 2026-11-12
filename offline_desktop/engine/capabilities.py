@@ -9,6 +9,10 @@ CATALOG={
  'browser.local.inspect': {'kind':'browser','description':'Inspect approved workspace HTML offline in disposable Chromium.'},
  'desktop.workspace.open': {'kind':'desktop','description':'Open only the dedicated TheOrg workspace in Windows Explorer.'},
  'desktop.runner.inspect': {'kind':'desktop','description':'Read-only check of approved GitHub runner installation files; does not inspect tokens or prove online status.'},
+ 'windows.powershell.inspect': {'kind':'desktop','description':'Execute a fixed, read-only PowerShell inspection; arbitrary commands prohibited.'},
+ 'github.runner.status': {'kind':'github','description':'Read runner Online/Idle and labels from authenticated GitHub API.'},
+ 'github.workflow.status': {'kind':'github','description':'Read recent CI runs from authenticated GitHub API.'},
+ 'github.workflow.source_dispatch': {'kind':'github','description':'Trigger source-only CI on a reviewed commit; no builds, merge or deployment.'},
 }
 def init_schema():
     with core.conn() as db:
@@ -16,11 +20,23 @@ def init_schema():
            id TEXT PRIMARY KEY, capability TEXT NOT NULL, args_json TEXT NOT NULL,
            digest TEXT NOT NULL, status TEXT NOT NULL, created INTEGER NOT NULL,
            updated INTEGER NOT NULL, result_json TEXT NOT NULL DEFAULT '{}')''')
+        # The engine may have crashed after a side-effecting tool ran.
+        # Never retry such work automatically or imply it never happened.
+        db.execute("""UPDATE capability_requests SET status='needs_review',
+            result_json=?,updated=? WHERE status='running'""",
+            (json.dumps({'ok':False,'execution_outcome':'unverified',
+             'error':'Interrupted during execution; inspect evidence before a new request.'}),
+             int(time.time())))
 
 def enabled(name):
     if name=='browser.local.inspect':return os.environ.get('THEORG_ENABLE_BROWSER_PREVIEW')=='1'
     if name=='desktop.workspace.open':return os.environ.get('THEORG_ENABLE_OS_ACTIONS')=='1'
     if name=='desktop.runner.inspect':return os.environ.get('THEORG_ENABLE_RUNNER_DIAGNOSTICS')=='1'
+    if name=='windows.powershell.inspect':return os.environ.get('THEORG_ENABLE_WINDOWS_INSPECTION')=='1'
+    if name in ('github.runner.status','github.workflow.status'):
+        return os.environ.get('THEORG_ENABLE_GITHUB_READONLY')=='1'
+    if name=='github.workflow.source_dispatch':
+        return os.environ.get('THEORG_ENABLE_GITHUB_ACTIONS')=='1'
     return False
 
 def catalog():
@@ -37,6 +53,9 @@ def normalize(name,args):
         if set(args)!={'location'} or args['location'] not in ('user_downloads','system_root'):
             raise core.EngineError('Choose a fixed runner location: user_downloads or system_root.')
         return {'location':args['location']}
+    if name.startswith('github.') or name=='windows.powershell.inspect':
+        from engine import operator_tools
+        return operator_tools.normalize(name,args)
     if set(args)!={'file','actions'} or type(args['file']) is not str:
         raise core.EngineError('Browser preview requires file and actions.')
     from engine import browser_local
@@ -95,6 +114,9 @@ def _execute(name,args):
         result=_runner_probe(root)
         result['location']=args['location']
         return result
+    if name.startswith('github.') or name=='windows.powershell.inspect':
+        from engine import operator_tools
+        return operator_tools.execute(name,args)
     raise core.EngineError('Unknown capability execution')
 
 def approve_and_execute(ident,digest,confirmed=False):
@@ -114,9 +136,16 @@ def approve_and_execute(ident,digest,confirmed=False):
             raise core.EngineError('Capability approval expired.')
         if not enabled(row['capability']):raise core.EngineError('Capability now disabled.')
         db.execute("UPDATE capability_requests SET status='running',updated=? WHERE id=?",(now,ident))
-    name=row['capability'];args=json.loads(row['args_json'])
+    name=row['capability']
     try:
-        output=_execute(name,args);result={'ok':True,'result':output};status='completed'
+        args=json.loads(row['args_json'])
+        if not isinstance(args,dict):
+            raise core.EngineError('Stored operator arguments must be an object.')
+        clean=normalize(name,args)
+        raw=json.dumps({'capability':name,'arguments':clean},sort_keys=True,separators=(',',':'))
+        if hashlib.sha256(raw.encode()).hexdigest()!=digest:
+            raise core.EngineError('Stored operator request changed after approval; refuse execution.')
+        output=_execute(name,clean);result={'ok':True,'result':output};status='completed'
     except Exception as e:
         result={'ok':False,'error':str(e)[:350]};status='failed'
     # Avoid corrupting SQLite evidence with a truncated JSON string after an
