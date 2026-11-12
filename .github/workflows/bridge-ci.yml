@@ -52,5 +52,14 @@ jobs:
         if: always()
         shell: powershell
         run: |
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY 'Self-hosted Windows check only. No merge or deployment. No GitHub-hosted compute used.'
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY 'Source tests are not proof of live AI provider execution or a clean-machine install.'
+          $message = @(
+            'Self-hosted Windows check only. No merge or deployment. No GitHub-hosted compute used.',
+            'Source tests are not proof of live AI provider execution or a clean-machine install.',
+            'If preflight failed, expand the preflight step log and report the exact failing prerequisite.'
+          )
+          foreach ($line in $message) { Write-Host $line }
+          if ($env:GITHUB_STEP_SUMMARY -and (Test-Path -LiteralPath $env:GITHUB_STEP_SUMMARY -PathType Leaf)) {
+            foreach ($line in $message) { Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $line }
+          } else {
+            Write-Warning 'GITHUB_STEP_SUMMARY unavailable; printed verification scope in logs.'
+          }
