@@ -613,6 +613,22 @@
             });actions.append(b);
           }
         }
+        if(job.status==='accepted'&&job.edit_mode){
+          const promote=element('button','btn secondary','Create Code Studio draft');
+          promote.addEventListener('click',async()=>{
+            if(!confirm('Convert QA-attested ISOLATED changes into a review-only Code Studio diff? This will not change the original project. A separate exact digest approval will still be required.'))return;
+            promote.disabled=true;
+            try{
+              const outcome=await request('company/jobs/propose',{method:'POST',body:{
+                job_id:job.id,confirmed:true
+              }});
+              chosenCodeProject=order.project_id;
+              changeView('coding');
+              await loadCodePlan(outcome.plan.id);
+              showToast('Draft created. Review the diff and digest before any application.');
+            }catch(e){showToast(e.message,true);promote.disabled=false}
+          });actions.append(promote);
+        }
         const handoff=element('button','btn secondary','Send note to this agent');
         handoff.addEventListener('click',async()=>{
           const note=prompt('Owner note for '+job.agent_role+'. Saved as untrusted task context:', '');
