@@ -103,6 +103,7 @@
     request('status').then(()=>{
       $('unlockOverlay').classList.add('hidden');$('unlockError').textContent='';
       $('tokenInput').value='';refreshAll();
+      loadChatSessions().catch(e=>showToast(e.message,true));
     }).catch(e=>{$('unlockError').textContent=e.message;});
   }
   function changeView(view){
@@ -688,14 +689,28 @@
     e.preventDefault();
     const prompt=$('promptInput').value.trim();
     if(!prompt)return showToast('Enter an instruction for the local specialist.',true);
+    if(currentChatSession()?.archived)return showToast('Restore this session before adding tasks.',true);
     const btn=$('submitTask');btn.disabled=true;
+    let created=null;
     try{
-      const r=await request('tasks',{method:'POST',body:{prompt,role:$('roleSelect').value}});
+      if(!activeSessionId){
+        const opened=await request('chat/sessions',{method:'POST',body:{title:'New session'}});
+        activeSessionId=opened.session.id;created=opened.session.id;
+      }
+      const r=await request('tasks',{method:'POST',body:{
+        prompt,role:$('roleSelect').value,session_id:activeSessionId
+      }});
       $('promptInput').value='';
       showToast('Task queued locally · '+r.id.slice(0,8));
-      await loadTasks();$('chatScroll').scrollTop=$('chatScroll').scrollHeight;
-    }catch(error){showToast(error.message,true);}
-    finally{btn.disabled=false;$('promptInput').focus();}
+      if(created){
+        const title=prompt.replace(/\s+/g,' ').slice(0,70)||'New session';
+        try{await request('chat/sessions/rename',{method:'POST',body:{id:created,title}});}
+        catch{showToast('Task saved; session title can be renamed later.',true);}
+      }
+      await Promise.all([loadChatSessions(),loadTasks()]);
+      $('chatScroll').scrollTop=$('chatScroll').scrollHeight;
+    }catch(error){showToast(error.message,true);await loadChatSessions().catch(()=>{});}
+    finally{btn.disabled=!!currentChatSession()?.archived;$('promptInput').focus();}
   });
   $('promptInput').addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
@@ -704,10 +719,62 @@
       else $('submitTask').click();
     }
   });
-  $('newChatButton').addEventListener('click',()=>{
-    changeView('supervisor');$('promptInput').value='';$('promptInput').focus();
-    showToast('Ready for a new independent task. Previous tasks remain in history.');
+  $('newChatButton').addEventListener('click',async()=>{
+    const button=$('newChatButton');button.disabled=true;
+    try{
+      const res=await request('chat/sessions',{method:'POST',body:{title:'New session'}});
+      await loadChatSessions();
+      await selectChatSession(res.session.id);
+      $('promptInput').value='';$('promptInput').focus();
+    }catch(e){showToast(e.message,true);}
+    finally{button.disabled=false;}
   });
+  $('sessionSearch').addEventListener('input',renderSessionList);
+  $('showArchivedSessions').addEventListener('click',()=>{
+    includeArchivedSessions=!includeArchivedSessions;
+    text($('showArchivedSessions'),includeArchivedSessions?'Hide archived':'Show archived');
+    renderSessionList();
+  });
+  $('chatAllTasks').addEventListener('click',()=>selectChatSession(null).catch(e=>showToast(e.message,true)));
+  $('sessionRename').addEventListener('click',async()=>{
+    const session=currentChatSession();if(!session)return;
+    const name=prompt('Rename local session:',session.title);
+    if(name===null)return;
+    try{
+      await request('chat/sessions/rename',{method:'POST',body:{id:session.id,title:name}});
+      await loadChatSessions();
+    }catch(e){showToast(e.message,true);}
+  });
+  $('sessionArchive').addEventListener('click',async()=>{
+    const session=currentChatSession();if(!session)return;
+    const restore=!!session.archived;
+    if(!restore&&!confirm('Archive this session? Existing tasks will not be deleted or cancelled.'))return;
+    try{
+      await request('chat/sessions/archive',{method:'POST',
+        body:{id:session.id,archived:!restore,confirmed:true}});
+      await loadChatSessions();
+      if(!restore)await selectChatSession(null);
+      else await selectChatSession(session.id);
+    }catch(e){showToast(e.message,true);}
+  });
+  $('chatDetailsClose').addEventListener('click',closeChatDetails);
+  $('chatDetailsToggle').addEventListener('click',()=>{
+    if(!$('chatDetailsPanel').hidden){closeChatDetails();return;}
+    const target=activeChatItems().find(x=>x.id===selectedChatTaskId)||activeChatItems()[0];
+    if(target)openChatDetails(target);
+    else{
+      $('chatDetailsPanel').hidden=false;
+      $('chatDetailsToggle').setAttribute('aria-expanded','true');
+    }
+  });
+  $('chatJumpBottom').addEventListener('click',()=>{
+    $('chatScroll').scrollTo({top:$('chatScroll').scrollHeight,behavior:'smooth'});
+  });
+  $('chatScroll').addEventListener('scroll',()=>{
+    const scroller=$('chatScroll');
+    $('chatJumpWrapper').hidden=
+      scroller.scrollHeight-scroller.scrollTop-scroller.clientHeight<190;
+  },{passive:true});
   document.querySelectorAll('.prompt-starter').forEach(button=>
     button.addEventListener('click',()=>{
       changeView('supervisor');
@@ -719,6 +786,10 @@
   document.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
       e.preventDefault();changeView('supervisor');$('promptInput').focus();
+    }
+    if(e.key==='Escape'){
+      closeChatDetails();
+      document.querySelector('.sidebar').classList.remove('open');
     }
   });
   $('importModel').addEventListener('click',importModel);
@@ -1270,7 +1341,7 @@
     try{const x=await request('profiles');
       for(const p of x.profiles){const opt=element('option','',p.name);opt.value=p.id;$('roleSelect').append(opt);}
     }catch{}
-    if(token){try{await request('status');$('unlockOverlay').classList.add('hidden');await refreshAll();}
+    if(token){try{await request('status');$('unlockOverlay').classList.add('hidden');await Promise.all([refreshAll(),loadChatSessions()]);}
       catch{lock();}}
     else lock();
     setInterval(()=>{if(token&&document.visibilityState==='visible'&&$('unlockOverlay').classList.contains('hidden')){
