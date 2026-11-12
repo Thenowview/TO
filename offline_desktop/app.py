@@ -152,6 +152,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(company_execution.add_owner_message(
                     payload.get('order_id'),payload.get('to_job'),
                     payload.get('message'),confirmed=payload.get('confirmed')),201)
+            elif path=='/api/company/jobs/cancel':
+                self._json(company_execution.cancel_queued(
+                    payload.get('job_id'),confirmed=payload.get('confirmed')))
+            elif path=='/api/company/jobs/requeue':
+                self._json(company_execution.requeue(
+                    payload.get('job_id'),confirmed=payload.get('confirmed')))
+            elif path=='/api/company/jobs/export':
+                self._json(company_execution.export_accepted(
+                    payload.get('job_id'),confirmed=payload.get('confirmed')))
             elif path=='/api/company/jobs/propose':
                 self._json(company_execution.create_code_plan(
                     payload.get('job_id'),confirmed=payload.get('confirmed')),201)
