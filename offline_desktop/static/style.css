@@ -145,3 +145,7 @@ main:has(#view-supervisor.active){height:calc(100dvh - 68px);min-height:430px;ma
   .composer-disclaimer{font-size:9px;margin:6px auto 9px}
 }
 @media(prefers-reduced-motion:reduce){.prompt-starter{transition:none;transform:none!important}}
+
+/* Keep both icon and descriptive label visible in the compact sidebar. */
+.nav-button .nav-copy{width:auto;flex:1;text-align:left;font-size:inherit;min-width:0}
+.nav-button .nav-copy b,.nav-button .nav-copy small{max-width:100%;overflow:hidden;text-overflow:ellipsis}
