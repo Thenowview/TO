@@ -1,111 +1,26 @@
-# One-time, allowlisted branch cleanup after all TheOrg histories reached main.
-# Deletion is fail-closed: never delete main, protected, moved or unmerged refs.
-# Kept manually dispatchable because GitHub-hosted runners can be unavailable.
-name: One-time prune merged TheOrg branches
+# Branch pruning is intentionally unavailable until the stacked PRs have
+# been independently verified, merged and a separate deletion plan is approved.
+# Historical cleanup logic remains in Git history for review; never auto-delete refs.
+name: One-time prune merged TheOrg branches (disabled)
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/one-time-prune-merged-branches.yml'
   workflow_dispatch:
-
+    inputs:
+      confirm_self_hosted:
+        description: 'Run a non-destructive branch cleanup status check only'
+        type: boolean
+        required: true
+        default: false
 permissions:
-  contents: write
-  pull-requests: read
-
+  contents: read
 jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+  review-only:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && inputs.confirm_self_hosted }}
+    runs-on: [self-hosted, windows, x64, theorg-win]
+    timeout-minutes: 5
     steps:
-      - name: Prune only verified merged historical branches
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        shell: bash
+      - name: Confirm branch deletion remains disabled
+        shell: powershell
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json,os,sys,urllib.error,urllib.parse,urllib.request
-          repo=os.environ['GITHUB_REPOSITORY']
-          token=os.environ['GITHUB_TOKEN']
-          if repo!='faisalwrokksa-hub/TO':
-              raise SystemExit('Repository does not match the reviewed allowlist.')
-          names=[
-          "chore/source-import-foundation",
-          "docs/clean-preview-operator-bundle-20261110",
-          "feat/agent-operating-method-v2-20261110",
-          "feat/agent-runtime-pc-preview-20261110",
-          "feat/approved-safe-local-batch-20261110",
-          "feat/audited-existing-chrome-windows-installer",
-          "feat/chrome-windows-native-bridge",
-          "feat/ci-release-evidence-20261110",
-          "feat/one-click-theorg-browser-20261110",
-          "feat/portable-existing-chrome-shortcut",
-          "feat/safe-text-preview-20261110",
-          "feat/theorg-autonomy-reliability-v011",
-          "feat/theorg-bottom-up-capabilities",
-          "feat/theorg-native-llm-20261111",
-          "feat/theorg-offline-chromium-browser",
-          "feat/theorg-release-gates",
-          "feat/theorg-v1-integrated-candidate",
-          "feat/theorg-v010-offline-portable",
-          "fix/batch-command-route-and-audit-20261110",
-          "fix/release-gate-closed-world-audit-20261110",
-          "fix/release-install-registration-audit-20261110",
-          ]
-          assert len(names)==len(set(names))==21
-          api_base='https://api.github.com/repos/'+repo
-          def call(method,path):
-              req=urllib.request.Request(
-                  api_base+path,
-                  headers={'Authorization':'Bearer '+token,
-                           'Accept':'application/vnd.github+json',
-                           'X-GitHub-Api-Version':'2022-11-28',
-                           'User-Agent':'theorg-merged-branch-pruner'},
-                  method=method)
-              with urllib.request.urlopen(req,timeout=30) as res:
-                  raw=res.read()
-                  return json.loads(raw) if raw else {}
-          main=call('GET','/branches/main')
-          main_sha=main['commit']['sha']
-          if not main_sha or len(main_sha)!=40:
-              raise SystemExit('Could not identify main commit.')
-          # No stale/open PR heads may be deleted.
-          open_pulls=call('GET','/pulls?state=open&per_page=100')
-          if len(open_pulls)>=100:
-              raise SystemExit('Open PR listing may be incomplete; refuse cleanup.')
-          active={p['head']['ref'] for p in open_pulls}
-          removed=[];refused=[];missing=[]
-          for name in names:
-              if name=='main' or name in active:
-                  refused.append(name+': protected by open pull request');continue
-              encoded=urllib.parse.quote(name,safe='/')
-              try:
-                  info=call('GET','/branches/'+encoded)
-              except urllib.error.HTTPError as exc:
-                  if exc.code==404:
-                      missing.append(name);continue
-                  raise
-              if info.get('protected'):
-                  refused.append(name+': branch protected');continue
-              branch_sha=info['commit']['sha']
-              comparison=call('GET','/compare/'+branch_sha+'...'+main_sha)
-              if comparison.get('behind_by')!=0 or comparison.get('merge_base_commit',{}).get('sha')!=branch_sha:
-                  refused.append(name+': not confirmed ancestor of main');continue
-              # Re-read ref just before removal: never erase a branch advanced meanwhile.
-              latest=call('GET','/branches/'+encoded)
-              if latest.get('commit',{}).get('sha')!=branch_sha:
-                  refused.append(name+': branch changed during cleanup');continue
-              call('DELETE','/git/refs/heads/'+encoded)
-              removed.append(name)
-              print('DELETED',name,flush=True)
-          print(json.dumps({'deleted':removed,'already_missing':missing,'refused':refused},indent=2))
-          if refused:
-              raise SystemExit('Cleanup incomplete: at least one ref was intentionally preserved.')
-          leftovers=call('GET','/branches?per_page=100')
-          remaining=[x['name'] for x in leftovers if x['name']!='main']
-          if remaining:
-              raise SystemExit('Cleanup incomplete, remaining branches: '+', '.join(remaining))
-          print('PASS: main is the only remaining branch.')
-          PY
+          Write-Host 'NO-OP: Branch deletion disabled while PRs #20-#23 are drafts.'
+          Write-Host 'No git push/delete, merges, billing changes or deployments performed.'
+          Add-Content $env:GITHUB_STEP_SUMMARY 'Branch cleanup is disabled. An explicit independent post-merge review is required.'
