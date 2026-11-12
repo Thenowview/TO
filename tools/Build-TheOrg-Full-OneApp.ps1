@@ -5,6 +5,8 @@
 param(
   [string]$ChromeArchive = '',
   [string]$ChromeSha256 = '',
+  [string]$OpenCodeArchive = '',
+  [string]$OpenCodeSha256 = '',
   [string]$ModelArchive = '',
   [switch]$ConfirmModelRights,
   [string]$PrebuiltEngineExe = '',
@@ -103,6 +105,22 @@ if($ChromeArchive){
   AssertFile (Join-Path $Stage 'browser\chrome.exe')
   $BundledBrowser=$true
 }
+$BundledOpenCode=$false
+if($OpenCodeArchive){
+  AssertFile $OpenCodeArchive
+  if($OpenCodeArchive -notlike '*.zip' -or $OpenCodeSha256 -notmatch '^[0-9a-fA-F]{64}$' -or
+      (Hash $OpenCodeArchive) -ne $OpenCodeSha256.ToLowerInvariant()){
+    throw 'OpenCode archive requires an independently verified SHA-256 and ZIP format.'
+  }
+  $CliExtract=Join-Path $Output '.opencode-extracted'
+  if(Test-Path $CliExtract){Remove-Item -LiteralPath $CliExtract -Recurse -Force}
+  Expand-Archive -LiteralPath $OpenCodeArchive -DestinationPath $CliExtract -Force
+  $ExeMatches=@(Get-ChildItem -LiteralPath $CliExtract -Recurse -Filter 'opencode.exe' -File)
+  if($ExeMatches.Count -ne 1){throw 'OpenCode CLI ZIP must contain exactly one opencode.exe'}
+  Copy-Item -LiteralPath $ExeMatches[0].DirectoryName -Destination (Join-Path $Stage 'opencode') -Recurse
+  AssertFile (Join-Path $Stage 'opencode\opencode.exe')
+  $BundledOpenCode=$true
+}
 $BundledModel=$false
 if($ModelArchive){
   if(-not $ConfirmModelRights){throw 'Model redistribution/use rights need explicit confirmation'}
@@ -116,6 +134,9 @@ if($ModelArchive){
 $Help=@'
 THEORG — FULL ONEAPP WINDOWS DEVELOPMENT CANDIDATE
 Double-click START THEORG.cmd to open the AI engine and Chrome Supervisor.
+OpenCode CLI is optional: to use company coding agents, install OpenCode
+separately or build with an independently verified OpenCode Windows CLI ZIP.
+Bundled OpenCode still needs explicitly selected model and provider access.
 No Python or .NET SDK installation is needed on the target Windows machine.
 A supplied MODEL.zip is NOT activated without explicit import via the Models UI.
 The official/compatible GGUF model must be license-checked and real inference tested.
@@ -137,6 +158,7 @@ $Receipt=@{
   python_embedded_in_engine=$true
   bridge_self_contained=$true
   bundled_browser=$BundledBrowser
+  bundled_opencode_cli=$BundledOpenCode
   bundled_model_archive=$BundledModel
   four_agent_source_tests=(!$SkipTests)
   real_model_inference_tested=$false
