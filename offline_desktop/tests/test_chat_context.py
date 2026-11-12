@@ -92,6 +92,29 @@ class ChatContextTests(unittest.TestCase):
         self.assertEqual(payload["messages"][-1]["content"],"Explain the requested change")
         self.assertFalse("tool_calls" in payload)
 
+    def test_full_saved_history_search_is_session_scoped_and_private(self):
+        first=self.complete("Debug a repository workflow failure",
+                            "The reported job had a failed source verification step.")
+        other=chat_sessions.create("Other session")
+        other_id=self.complete("Confidential design review",
+                                "Private architecture token is an example, not a real credential.",
+                                other["id"])
+        result=chat_sessions.search_history("source verification")
+        self.assertTrue(any(x["id"]==first for x in result["matches"]))
+        self.assertFalse(result["remote_search_performed"])
+        scoped=chat_sessions.search_history("private",self.session["id"])
+        self.assertEqual(scoped["matches"],[])
+        scoped2=chat_sessions.search_history("Confidential design",other["id"])
+        self.assertEqual(scoped2["matches"][0]["id"],other_id)
+        self.assertNotIn("context_snapshot",scoped2["matches"][0])
+        exact=chat_sessions.task_details(other_id)
+        self.assertEqual(exact["session_id"],other["id"])
+        self.assertNotIn("context_snapshot",exact)
+        with self.assertRaisesRegex(core.EngineError,"2–120"):
+            chat_sessions.search_history("%")
+        with self.assertRaisesRegex(core.EngineError,"identifier"):
+            chat_sessions.task_details("../../secrets")
+
     def test_archiving_prevents_more_contextual_tasks(self):
         chat_sessions.set_context(self.session["id"],True)
         chat_sessions.archive(self.session["id"],True)
