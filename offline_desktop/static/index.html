@@ -54,6 +54,11 @@
           <input id="operatorRunSha" maxlength="40" placeholder="40 lowercase hexadecimal characters">
           <button class="btn secondary" id="operatorVerifyRun">Verify GitHub source-test evidence</button>
           <div id="operatorRunStatus" class="inline-note" role="status">Requires the authenticated GitHub read-only integration.</div>
+          <h2>Visible Windows applications</h2>
+          <p class="muted">List visible window titles only after approval. Focus requires a separate confirmation and exact window identity. No typing or mouse input.</p>
+          <button class="btn secondary" id="operatorWindows">Inspect visible Windows</button>
+          <div id="operatorWindowsStatus" class="inline-note" role="status">Window inspection is disabled by default.</div>
+          <div id="operatorWindowList" class="task-stack"></div>
           <h2>Execution history</h2>
           <div id="operatorHistory" class="task-stack"></div>
         </article>
