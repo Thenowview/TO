@@ -256,13 +256,20 @@ class Handler(BaseHTTPRequestHandler):
                 if payload.get('confirmed') is not True:
                     raise core.EngineError('Explicit archive/restore confirmation required.')
                 self._json({'session':chat_sessions.archive(payload.get('id'),payload.get('archived',True))})
+            elif path=='/api/chat/sessions/context':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Changing conversation context requires owner confirmation.')
+                self._json({'session':chat_sessions.set_context(
+                    payload.get('id'),payload.get('enabled'))})
             elif path=='/api/tasks':
                 session=payload.get('session_id')
                 if session is not None:
                     chat_sessions._validated_id(session)
                     with core.conn() as db:
                         chat_sessions._require_open(db,session)
-                ident=core.enqueue(payload.get('prompt'),payload.get('role','supervisor'))
+                snapshot=chat_sessions.context_for_new_task(session) if session is not None else ''
+                ident=core.enqueue(payload.get('prompt'),payload.get('role','supervisor'),
+                                   context_snapshot=snapshot)
                 if session is not None:
                     chat_sessions.attach_task(session,ident)
                 self._json({'ok':True,'id':ident,'session_id':session},201)
