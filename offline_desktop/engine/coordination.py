@@ -58,6 +58,22 @@ def _save(ident,status,steps,error=''):
         db.execute('UPDATE agent_reviews SET status=?,steps_json=?,error=?,updated=? WHERE id=?',
                    (status,encoded,str(error)[:1200],core.utcnow(),ident))
 
+def _finish_record(ident,status,steps,error=''):
+    """On failure retain prior evidence when current steps cannot be encoded."""
+    encoded=None
+    if steps is not None:
+        try:
+            encoded=_encode_steps(steps)
+        except core.EngineError:
+            pass
+    with core.conn() as db:
+        if encoded is None:
+            db.execute('UPDATE agent_reviews SET status=?,error=?,updated=? WHERE id=?',
+                       (status,str(error)[:1200],core.utcnow(),ident))
+        else:
+            db.execute('UPDATE agent_reviews SET status=?,steps_json=?,error=?,updated=? WHERE id=?',
+                       (status,encoded,str(error)[:1200],core.utcnow(),ident))
+
 def _check(ident):
     item=get(ident)
     if item['cancel_requested']:raise InterruptedError('Cancellation requested.')
@@ -133,8 +149,8 @@ def _execute(ident):
         _save(ident,'completed',steps)
         core.audit('agents.completed',{'id':ident,'roles':len(steps)})
     except InterruptedError as e:
-        _save(ident,'cancelled',locals().get('steps',[]),str(e))
+        _finish_record(ident,'cancelled',locals().get('steps'),str(e))
         core.audit('agents.cancelled',{'id':ident})
     except Exception as e:
-        _save(ident,'failed',locals().get('steps',[]),str(e))
+        _finish_record(ident,'failed',locals().get('steps'),str(e))
         core.audit('agents.failed',{'id':ident,'reason':str(e)[:150]})
