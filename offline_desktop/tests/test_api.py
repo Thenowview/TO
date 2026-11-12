@@ -328,7 +328,7 @@ class ApiTests(unittest.TestCase):
         code,response=self.post(url,{'confirmed':True})
         self.assertEqual(code,200,response)
         knowledge=response['knowledge']
-        self.assertFalse(knowledge['bundle']['contains_memories'])
+        self.assertFalse(knowledge['bundle']['includes_memory_records'])
         data={'bundle':knowledge['bundle'],'sha256':knowledge['sha256']}
         self.assertEqual(self.post('/api/adaptive/knowledge/validate',data)[0],200)
         self.assertEqual(self.post('/api/adaptive/knowledge/import',data)[0],400)
