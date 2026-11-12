@@ -32,7 +32,7 @@ jobs:
           node-version: '22'
 
       - name: Test extension and Native Messaging routing
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           node --check apps/chrome-extension/background.js
           node --check apps/chrome-extension/home.js
@@ -40,7 +40,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Supervisor tests failed' }
 
       - name: Publish self-contained Windows local controller
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           dotnet publish engine/bridge/TheOrg.Bridge.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output out/onefile/bridge
           if ($LASTEXITCODE -ne 0) { throw 'Bridge publish failed' }
@@ -50,13 +50,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native Messaging framing failed' }
 
       - name: Create fixed-ID unpacked Chrome extension
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           node tools/prepare-onefile-extension.cjs apps/chrome-extension out/onefile/chrome-extension tools/onefile-extension-public-key.txt tools/onefile-extension-id.txt
           if ($LASTEXITCODE -ne 0) { throw 'Fixed ID packaging failed' }
 
       - name: Directly validate Windows registration before packaging
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $root=(Resolve-Path 'out/onefile').Path
           Copy-Item -LiteralPath 'tools/Setup-OneFile.ps1' -Destination (Join-Path $root 'Setup-OneFile.ps1')
@@ -74,13 +74,13 @@ jobs:
           if (Test-Path -LiteralPath $key) { throw 'Preflight registry key not cleaned up' }
 
       - name: Install NSIS compiler
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $nsis = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'NSIS\makensis.exe'
           if (-not (Test-Path -LiteralPath $nsis -PathType Leaf)) { throw 'Preinstall NSIS on the private runner.' }
 
       - name: Build one unsigned Windows EXE (no Chrome bundle)
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $compiler=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'NSIS\makensis.exe'
           if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) { throw 'NSIS compiler missing' }
@@ -91,7 +91,7 @@ jobs:
           }
 
       - name: Smoke-test real Windows install, exact extension ID, registration and uninstall
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $file=(Resolve-Path 'out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe').Path
           $proc=Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
@@ -133,7 +133,7 @@ jobs:
           Write-Host 'PASS one-file EXE, Native Messaging registration, uninstall and user data retention'
 
       - name: Report installer SHA-256
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $file='out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe'
           $sha=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
