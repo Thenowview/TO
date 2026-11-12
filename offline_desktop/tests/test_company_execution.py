@@ -179,11 +179,11 @@ class CompanyExecutionTests(unittest.TestCase):
 
         class FakeProcess:
             def __init__(self,*args,**kwargs):
-                Path(kwargs["cwd"]).joinpath("main.py").write_text("mutated\\n",encoding="utf-8")
-                kwargs["stdout"].write(b'{"type":"text","part":{"type":"text","text":"done"}}\\n')
+                Path(kwargs["cwd"]).joinpath("main.py").write_text("mutated\n",encoding="utf-8")
+                kwargs["stdout"].write(b'{"type":"text","part":{"type":"text","text":"done"}}\n')
             def wait(self,timeout):return 0
 
-        with patch.object(adapter,"_binary",return_value="/mock/opencode"), \\
+        with patch.object(adapter,"_binary",return_value="/mock/opencode"), \
              patch.object(adapter.subprocess,"Popen",FakeProcess):
             report=adapter.run(stage,"Inspect this synthetic source without modifying files.",
                                edit=False,model="ollama/demo",allow_provider_transfer=True)
@@ -198,10 +198,10 @@ class CompanyExecutionTests(unittest.TestCase):
 
         class FakeProcess:
             def __init__(self,*args,**kwargs):
-                kwargs["stdout"].write(b'{"type":"error","error":{"name":"ProviderError"}}\\n')
+                kwargs["stdout"].write(b'{"type":"error","error":{"name":"ProviderError"}}\n')
             def wait(self,timeout):return 0
 
-        with patch.object(adapter,"_binary",return_value="/mock/opencode"), \\
+        with patch.object(adapter,"_binary",return_value="/mock/opencode"), \
              patch.object(adapter.subprocess,"Popen",FakeProcess):
             report=adapter.run(stage,"Read synthetic code and identify potential concerns.",
                                edit=False,model="ollama/demo",allow_provider_transfer=True)
