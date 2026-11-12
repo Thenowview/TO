@@ -305,8 +305,10 @@
       body.append(label);
       if(job.output){
         const content=element('div','chat-response-rich');
-        if(window.TheOrgChatRenderer)content.append(window.TheOrgChatRenderer.render(job.output,clipboardCopy));
-        else content.append(element('pre','chat-response-text',job.output));
+        if(window.TheOrgChatRenderer){
+          try{content.append(window.TheOrgChatRenderer.render(job.output,clipboardCopy));}
+          catch{content.append(element('pre','chat-response-text',job.output));}
+        }else content.append(element('pre','chat-response-text',job.output));
         body.append(content);
       }else if(job.error)body.append(element('p','chat-error-text',job.error));
       else body.append(element('p','chat-pending-text',
@@ -702,9 +704,11 @@
       }});
       $('promptInput').value='';
       showToast('Task queued locally · '+r.id.slice(0,8));
-      if(created){
+      const existing=currentChatSession();
+      if(created||(existing&&existing.title==='New session'&&Number(existing.task_count)===0)){
         const title=prompt.replace(/\s+/g,' ').slice(0,70)||'New session';
-        try{await request('chat/sessions/rename',{method:'POST',body:{id:created,title}});}
+        try{await request('chat/sessions/rename',{method:'POST',
+          body:{id:activeSessionId,title}});}
         catch{showToast('Task saved; session title can be renamed later.',true);}
       }
       await Promise.all([loadChatSessions(),loadTasks()]);
