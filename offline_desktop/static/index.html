@@ -49,6 +49,8 @@
   {"role":"qa","instruction":"Review the plan and source evidence; identify defects and test gaps.","mode":"read_only","depends_on":[1]}
 ]</textarea>
           <p class="muted">Dependencies reference previous task numbers starting at 0. Every execution and external data transfer needs separate approval. Findings are never accepted without QA review.</p>
+          <button class="btn secondary wide" id="companyPlanPreview">Suggest agent plan from instruction (editable)</button>
+          <p class="muted" id="companyPlanStatus">Planning preview is local, rule-based and creates no work orders or provider requests.</p>
           <button class="btn primary wide" id="companyCreate">Create draft work order</button>
         </article>
         <article class="panel"><div class="section-kicker">EXTERNAL RUNTIME</div><h2>OpenCode connection</h2>
