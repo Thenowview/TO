@@ -147,6 +147,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({'agent':company_execution.save_company_profile(
                     payload.get('company_id'),payload.get('agent_id'),
                     payload.get('updates'),confirmed=payload.get('confirmed'))})
+            elif path=='/api/company/plan':
+                self._json({'plan':company_execution.preview_instruction_plan(
+                    payload.get('company_id'),payload.get('project_id'),
+                    payload.get('objective'))})
             elif path=='/api/company/orders':
                 self._json({'order':company_execution.create_order(
                     payload.get('company_id'),payload.get('project_id'),
