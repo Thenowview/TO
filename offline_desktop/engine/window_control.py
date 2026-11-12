@@ -87,6 +87,19 @@ def normalize_focus(args: dict) -> dict:
     return {"hwnd": hwnd, "pid": pid, "title_sha256": digest}
 
 
+def _focus_native(hwnd: int) -> tuple[bool, int]:
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+    user32.SetForegroundWindow.restype = wintypes.BOOL
+    user32.GetForegroundWindow.argtypes = []
+    user32.GetForegroundWindow.restype = wintypes.HWND
+    accepted = bool(user32.SetForegroundWindow(hwnd))
+    observed = int(user32.GetForegroundWindow() or 0)
+    return accepted, observed
+
+
 def focus(args: dict) -> dict:
     target = normalize_focus(args)
     if os.name != "nt":
@@ -95,16 +108,8 @@ def focus(args: dict) -> dict:
         w[k] == target[k] for k in ("hwnd", "pid", "title_sha256"))]
     if len(matching) != 1:
         raise core.EngineError("Window changed or is not visible; approve a fresh inventory.")
-    import ctypes
-    from ctypes import wintypes
-    user32 = ctypes.WinDLL("user32", use_last_error=True)
-    user32.SetForegroundWindow.argtypes = [wintypes.HWND]
-    user32.SetForegroundWindow.restype = wintypes.BOOL
-    user32.GetForegroundWindow.argtypes = []
-    user32.GetForegroundWindow.restype = wintypes.HWND
     # Windows may deny background focus; return actual observed state.
-    accepted = bool(user32.SetForegroundWindow(target["hwnd"]))
-    observed = int(user32.GetForegroundWindow() or 0)
+    accepted, observed = _focus_native(target["hwnd"])
     return {
         "requested_hwnd": target["hwnd"], "pid": target["pid"],
         "focus_confirmed": accepted and observed == target["hwnd"],
