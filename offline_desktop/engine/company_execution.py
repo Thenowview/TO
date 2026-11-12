@@ -48,6 +48,17 @@ def _ident(value: str) -> str:
     return value
 
 
+def _bounded_json(value: dict, max_bytes: int, label: str) -> str:
+    """Never save partially truncated JSON in an agent or QA evidence record."""
+    try:
+        encoded = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except (TypeError, ValueError) as exc:
+        raise core.EngineError("Cannot serialize " + label + " as valid JSON.") from exc
+    if len(encoded.encode("utf-8")) > max_bytes:
+        raise core.EngineError(label + " exceeds the safe audit size limit.")
+    return encoded
+
+
 def init_schema() -> None:
     with core.conn() as db:
         db.executescript("""
@@ -451,7 +462,7 @@ def _execute(job_id: str) -> None:
             db.execute("BEGIN IMMEDIATE")
             db.execute("""UPDATE company_jobs SET status=?,report_json=?,finished=?,
                           staging_path=?,updated=? WHERE id=? AND status='running'""",
-                       (status,json.dumps(report,ensure_ascii=False)[:26000],
+                       (status,_bounded_json(report, 26000, "Agent execution report"),
                         core.utcnow(),str(stage),core.utcnow(),job_id))
             _reconcile_order(db,job["order_id"])
         core.audit("company.job.finished", {"job_id": job_id, "status": status,
@@ -653,9 +664,10 @@ def _run_ai_qa(review_id: str, job_id: str, model: str) -> None:
             db.execute("""UPDATE company_qa SET verdict='advisory',
               findings=?,structural_json=? WHERE id=? AND verdict='running'""",
                        (result["summary"][:4000],
-                        json.dumps({"model":model,"advisory_only":True,
-                                    "source_unchanged":True,
-                                    "initial":structural_qa(job_id)})[:18000],
+                        _bounded_json({"model":model,"advisory_only":True,
+                                        "source_unchanged":True,
+                                        "initial":structural_qa(job_id)},
+                                       18000, "AI QA evidence"),
                         review_id))
         core.audit("company.qa.ai_finished",{"job_id":job_id,"review_id":review_id})
     except Exception as exc:
