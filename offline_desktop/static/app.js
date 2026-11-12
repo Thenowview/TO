@@ -22,6 +22,7 @@
   let lastChatSignature = null;
   let chatSessions=[], activeSessionId=null, activeSessionTasks=[];
   let includeArchivedSessions=false, selectedChatTaskId=null;
+  let inspectorTab='task', inspectorCodeRequest=0;
   const labels = {overview:'Overview',supervisor:'Chat',operator:'Windows Operator',tasks:'Task queue',coding:'Code Studio',company:'Agent team',models:'Models',files:'Files',memory:'Memory',settings:'Settings'};
 
   /* Original, dependency-free line icon set. Icons are pure local SVG,
@@ -180,8 +181,16 @@
     $('sessionRename').hidden=!active;
     $('sessionArchive').hidden=!active;
     text($('sessionArchive'),archived?'Restore':'Archive');
+    const context=$('chatContextToggle');
+    context.hidden=!active;
+    context.disabled=archived;
+    context.setAttribute('aria-pressed',String(!!active?.include_context));
+    text(context,active?.include_context?'Context on':'Context off');
+    context.title='Include up to three previous completed task excerpts in future prompts, in this session only. Off by default.';
     $('promptInput').disabled=archived;
     $('submitTask').disabled=archived;
+    text($('chatComposerStatus'),archived?'Session archived · restore to send':
+      (active?.include_context?'Recent completed task context enabled':'Independent local task · no conversation context'));
     text($('chatDisclaimer'),archived
       ?'This session is archived. Restore it to add tasks. Existing jobs continue independently.'
       :'Sessions organize independent local tasks. Previous messages are not automatically sent to the model. No AI replies are fabricated.');
@@ -249,6 +258,7 @@
   }
   function openChatDetails(job){
     selectedChatTaskId=job.id;
+    if(inspectorTab==='code'){renderCodeInspector();return;}
     const panel=$('chatDetailsPanel'),target=$('chatDetailsContent');
     target.replaceChildren();
     const section=element('section','chat-evidence');
@@ -258,6 +268,7 @@
       ['Status',job.status||'Unknown'],
       ['Created',job.created||'Unknown'],
       ['Updated',job.updated||'Unknown'],
+      ['Optional context',job.context_snapshot?'Previous completed-task excerpts attached by user choice':'None'],
       ['Output evidence',job.output?'Returned by local worker':'None returned'],
       ['Error',job.error||'None reported']
     ];
@@ -267,7 +278,7 @@
       section.append(row);
     }
     const note=element('p','chat-evidence-notice',
-      'Task status and text come from the local SQLite task record. This panel does not imply tool execution, sources, or successful inference beyond the evidence shown.');
+      'Task status and text come from the local SQLite task record. Completion does not prove real-world tool execution, verified sources or successful changes unless separate evidence is shown.');
     target.append(section,note);
     if(job.output){
       const summary=window.TheOrgChatRenderer?.codeSummary(job.output)||[];
@@ -286,13 +297,21 @@
   function renderChatMessages(){
     const feed=$('supervisorResults'),scroll=$('chatScroll'),welcome=$('chatWelcome');
     if(!feed||!scroll||!welcome)return;
-    const recent=activeChatItems().slice(0,100).reverse();
-    const signature=String(activeSessionId||'all')+':'+recent.map(job=>
+    const allRecent=activeChatItems().slice(0,100).reverse();
+    const term=$('chatMessageSearch').value.trim().toLocaleLowerCase();
+    const recent=term?allRecent.filter(job=>[job.prompt,job.output,job.error,job.role]
+       .some(value=>String(value||'').toLocaleLowerCase().includes(term))):allRecent;
+    text($('chatSearchStatus'),term
+      ?recent.length+' matching task'+(recent.length===1?'':'s')+' in recent history'
+      :allRecent.length+' recent task'+(allRecent.length===1?'':'s'));
+    const signature=String(activeSessionId||'all')+':'+term+':'+recent.map(job=>
       [job.id,job.status,job.output||'',job.error||''].join('\x1f')).join('\x1e');
     if(signature===lastChatSignature)return;
     lastChatSignature=signature;
     const nearBottom=scroll.scrollHeight-scroll.scrollTop-scroll.clientHeight<150;
-    feed.replaceChildren();welcome.hidden=recent.length>0;
+    feed.replaceChildren();welcome.hidden=allRecent.length>0||!!term;
+    if(term&&!recent.length)feed.append(element('div','chat-search-empty',
+      'No recent tasks match this search. Try another word or open All tasks.'));
     for(const job of recent){
       const user=element('article','chat-message chat-user');
       const userBody=element('div','chat-message-body');
@@ -323,6 +342,26 @@
       const details=element('button','chat-action-button','Details');
       details.type='button';details.setAttribute('aria-label','View task details and evidence');
       details.addEventListener('click',()=>openChatDetails(job));actions.append(details);
+      const revise=element('button','chat-action-button','Revise');
+      revise.type='button';revise.title='Copy this request into the composer to edit; no task runs automatically.';
+      revise.addEventListener('click',()=>{
+        $('promptInput').value=job.prompt; $('promptInput').focus();
+        text($('chatComposerStatus'),'Editing a new task draft; original task remains unchanged.');
+      });
+      actions.append(revise);
+      const branch=element('button','chat-action-button','Branch');
+      branch.type='button';branch.title='Create a fresh independent session using this task as an editable draft.';
+      branch.addEventListener('click',async()=>{
+        branch.disabled=true;
+        try{
+          const title=('Branch: '+job.prompt.replace(/\s+/g,' ')).slice(0,100);
+          const {session}=await request('chat/sessions',{method:'POST',body:{title}});
+          await loadChatSessions();await selectChatSession(session.id);
+          $('promptInput').value=job.prompt;$('promptInput').focus();
+          showToast('New independent branch created; draft not yet submitted.');
+        }catch(e){showToast(e.message,true);}
+        finally{branch.disabled=false;}
+      });actions.append(branch);
       if(job.output){
         const copy=element('button','chat-action-button','Copy response');
         copy.type='button';
