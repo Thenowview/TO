@@ -11,7 +11,7 @@ const py=fs.readFileSync(path.join(ROOT,"offline_desktop","app.py"),"utf8");
 
 test("Company agents view has all wired controls",()=>{
   const ids=["companyName","companyProject","companyObjective","companyTasks","companyModel",
-    "companyCreate","companyRefresh","companyOrderList","companyRuntime",
+    "companyCreate","companyPlanPreview","companyPlanStatus","companyRefresh","companyOrderList","companyRuntime",
     "companyAgentSelect","companyAgentName","companyAgentTitle",
     "companyAgentDepartment","companyAgentExpertise","companyAgentInstructions",
     "companyAgentEnabled","companyAgentSave"];
@@ -40,4 +40,10 @@ test("Client asks permission before provider transfer and code-plan promotion",(
   assert.match(js,/Code Studio draft/);
   assert.match(js,/confirmed:true/);
   assert.doesNotMatch(js,/\beval\s*\(/);
+});
+
+test("Local instruction preview cannot trigger external execution",()=>{
+  assert.ok(py.includes("path=='/api/company/plan'"));
+  assert.ok(js.includes("request('company/plan'"));
+  assert.ok(js.includes("This is an EDITABLE preview"));
 });
