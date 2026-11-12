@@ -15,6 +15,7 @@ const sw=fs.readFileSync(path.join(root,"offline_desktop/static/sw.js"),"utf8");
 
 function fakeNode(name){
   const n={tagName:name,attributes:{},children:[],className:"",handlers:{},_text:"",type:""};
+  Object.defineProperty(n,"childNodes",{get(){return n.children;}});
   Object.defineProperty(n,"textContent",{
     get(){return n._text+n.children.map(x=>x.textContent).join("");},
     set(value){n._text=String(value);n.children=[];}
