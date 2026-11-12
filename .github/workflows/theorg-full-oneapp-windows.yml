@@ -36,7 +36,7 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Parse PowerShell scripts before building
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $paths = @(
@@ -56,7 +56,7 @@ jobs:
           }
           Write-Host 'PASS all four PowerShell build/launcher scripts parse'
       - name: Verify source and company-agent request limit
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $ErrorActionPreference='Stop'
           python -m unittest discover -s offline_desktop/tests -t offline_desktop -q
@@ -68,12 +68,12 @@ jobs:
           node --check apps/chrome-extension/provider-auto-handoff.js
           node --check offline_desktop/static/app.js
       - name: Compile self-contained engine and .NET bridge
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $ErrorActionPreference='Stop'
           ./tools/Build-TheOrg-Full-OneApp.ps1 -SkipTests
       - name: Verify actual Windows payload
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $ErrorActionPreference='Stop'
           ./out/full-oneapp/TheOrg/Start-TheOrg-Full.ps1 -CheckOnly
@@ -95,7 +95,7 @@ jobs:
           }
           if (Test-Path ./out/full-oneapp/TheOrg/.theorg) { throw 'Runtime state found in distributable package' }
       - name: Create unsigned candidate archive
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           $ErrorActionPreference='Stop'
           Compress-Archive -Path ./out/full-oneapp/TheOrg -DestinationPath ./out/TheOrg-Full-OneApp-Windows-Unsigned-Candidate.zip -CompressionLevel Optimal
@@ -113,6 +113,6 @@ jobs:
           retention-days: 30
       - name: Do not release unverified binaries
         if: failure()
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File {0}
         run: |
           Add-Content $env:GITHUB_STEP_SUMMARY 'Full OneApp NOT BUILT or NOT VERIFIED. No binary published.'
