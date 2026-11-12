@@ -40,16 +40,31 @@ def build(output,root=ROOT,run_tests=True):
     if output.is_relative_to(root):raise ValueError('Output must be outside the source tree')
     count=validate_source(root) if run_tests else None
     paths=files(root)
+    # Standalone source candidate receives a single copy of the canonical
+    # registry from the parent repository, without duplicating static assets.
+    external_registry=(root.parent/'config'/'adaptive-model-registry.json'
+                       if root==ROOT else None)
+    extras={}
+    if external_registry is not None and external_registry.is_file():
+        if external_registry.is_symlink() or external_registry.stat().st_size>100000:
+            raise ValueError('Adaptive registry must be a small regular file.')
+        extras['config/adaptive-model-registry.json']=external_registry.read_bytes()
     manifest={'schema':'theorg-source-candidate-v1','kind':'source_only',
               'python_tests':count,'windows_exe':'not_tested',
               'real_gguf':'not_tested','autonomous_coding':'not_tested',
               'files':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}}
+    for name,data in extras.items():
+        manifest['files'][name]=hashlib.sha256(data).hexdigest()
     output.parent.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(output,'w',allowZip64=True) as z:
         for file in paths:
             info=zipfile.ZipInfo('TheOrg/'+file.relative_to(root).as_posix(),(2026,1,1,0,0,0))
             info.compress_type=zipfile.ZIP_DEFLATED
             z.writestr(info,file.read_bytes(),compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
+        for name,data in extras.items():
+            info=zipfile.ZipInfo('TheOrg/'+name,(2026,1,1,0,0,0))
+            info.compress_type=zipfile.ZIP_DEFLATED
+            z.writestr(info,data,compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
         info=zipfile.ZipInfo('TheOrg/RELEASE-MANIFEST.json',(2026,1,1,0,0,0))
         info.compress_type=zipfile.ZIP_DEFLATED
         z.writestr(info,json.dumps(manifest,indent=2,sort_keys=True)+'\n',compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
