@@ -119,6 +119,9 @@ if($OpenCodeArchive){
   if($ExeMatches.Count -ne 1){throw 'OpenCode CLI ZIP must contain exactly one opencode.exe'}
   Copy-Item -LiteralPath $ExeMatches[0].DirectoryName -Destination (Join-Path $Stage 'opencode') -Recurse
   AssertFile (Join-Path $Stage 'opencode\opencode.exe')
+  $OpenCodeLicense=Join-Path $Repo 'third_party\opencode\LICENSE'
+  AssertFile $OpenCodeLicense
+  Copy-Item -LiteralPath $OpenCodeLicense -Destination (Join-Path $Stage 'opencode\LICENSE')
   $BundledOpenCode=$true
 }
 $BundledModel=$false
