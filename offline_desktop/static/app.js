@@ -360,6 +360,21 @@
   $('refreshBtn').addEventListener('click',refreshAll);
   $('operatorPreview').addEventListener('click',previewOperator);
   $('operatorRefresh').addEventListener('click',()=>loadOperator().catch(e=>showToast(e.message,true)));
+  $('operatorVerifyRun').addEventListener('click',async()=>{
+    const runId=Number($('operatorRunId').value);
+    const sha=$('operatorRunSha').value.trim();
+    if(!Number.isSafeInteger(runId)||runId<1||!/^[0-9a-f]{40}$/.test(sha)){
+      return showToast('Enter a positive run ID and the exact 40-character lowercase commit SHA.',true);
+    }
+    const button=$('operatorVerifyRun');button.disabled=true;
+    try{
+      await runOperatorAction('github.workflow.result',{
+        run_id:runId,expected_sha:sha
+      },'authenticated_remote_read');
+      text($('operatorRunStatus'),'Result recorded in local operator history. See outcome above.');
+    }catch(e){text($('operatorRunStatus'),e.message);showToast(e.message,true);}
+    finally{button.disabled=false;}
+  });
   $('refreshTasks').addEventListener('click',loadTasks);
   $('refreshFiles').addEventListener('click',loadFiles);
   $('readFile').addEventListener('click',readFile);
