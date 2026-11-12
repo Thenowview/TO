@@ -152,6 +152,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(company_execution.add_owner_message(
                     payload.get('order_id'),payload.get('to_job'),
                     payload.get('message'),confirmed=payload.get('confirmed')),201)
+            elif path=='/api/company/qa/run':
+                self._json(company_execution.request_ai_qa(
+                    payload.get('job_id'),payload.get('model'),
+                    confirmed=payload.get('confirmed'),
+                    data_transfer_confirmed=payload.get('data_transfer_confirmed')),202)
             elif path=='/api/company/qa/review':
                 self._json(company_execution.review(
                     payload.get('job_id'),payload.get('verdict'),payload.get('findings'),
