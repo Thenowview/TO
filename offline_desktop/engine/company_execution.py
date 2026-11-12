@@ -356,6 +356,27 @@ def _execute(job_id: str) -> None:
         _THREADS.pop(job_id,None)
 
 
+def _validated_stage(job: dict) -> Path:
+    """Resolve only an existing company/order/job attempt, never a DB-supplied arbitrary path."""
+    raw = job.get("staging_path")
+    if not isinstance(raw, str) or not raw or not Path(raw).is_absolute():
+        raise core.EngineError("Job staging path is missing or not absolute.")
+    order = _read_order(job["order_id"])
+    base = core.WORKSPACE.resolve()
+    expected = (base / "theorg_agent_runs" / order["company_id"] /
+                order["id"] / job["id"])
+    stage = Path(raw)
+    if (stage.parent != expected or not re.fullmatch(r"[0-9a-f]{16}", stage.name)
+            or not stage.is_dir()):
+        raise core.EngineError("Job staging path does not match its approved attempt.")
+    current = base
+    for part in stage.relative_to(base).parts:
+        current = current / part
+        if current.is_symlink():
+            raise core.EngineError("Job staging path contains an unsafe symlink.")
+    return stage
+
+
 def structural_qa(job_id: str) -> dict:
     """Mechanical evidence only; never impersonates a human or another model."""
     job = _read_job(job_id)
@@ -363,23 +384,23 @@ def structural_qa(job_id: str) -> dict:
     findings = []
     if job["status"] not in ("submitted_for_qa", "accepted", "rejected"):
         findings.append("Job has no completed executor report.")
-    if report.get("exit_code") != 0:
-        findings.append("External execution did not exit successfully.")
+    if report.get("exit_code") != 0 or report.get("status") != "submitted_for_qa":
+        findings.append("External executor did not report a clean, successful completion.")
+    if report.get("safety_findings") or report.get("provider_error_event_count"):
+        findings.append("Executor recorded runtime safety findings or provider errors.")
+    if not job["edit_mode"] and report.get("changed_count", 0):
+        findings.append("Read-only execution changed project files.")
     if report.get("engine") != "opencode":
         findings.append("No recognized OpenCode execution evidence.")
     if report.get("unexpected_files"):
         findings.append("Executor produced unapproved or potentially unsafe files: " +
                         ", ".join(str(x) for x in report["unexpected_files"][:10]))
-    stage = Path(job["staging_path"])
-    if not stage.is_dir():
-        findings.append("Staged execution workspace missing.")
+    try:
+        stage = _validated_stage(job)
+        current = adapter.manifest(stage)
+    except (core.EngineError, ValueError) as exc:
+        findings.append("Staged execution workspace invalid: " + str(exc))
         current = {}
-    else:
-        try:
-            current = adapter.manifest(stage)
-        except core.EngineError as exc:
-            findings.append("Staged file inventory invalid: " + str(exc))
-            current = {}
     current_digest = hashlib.sha256(json.dumps(current,sort_keys=True).encode()).hexdigest()
     if current_digest != report.get("final_manifest_sha256"):
         findings.append("The complete source manifest changed after the executor finished.")
@@ -490,7 +511,7 @@ def request_ai_qa(job_id: str, model: str, *, confirmed: bool,
 def _run_ai_qa(review_id: str, job_id: str, model: str) -> None:
     try:
         job=_read_job(job_id)
-        stage=Path(job["staging_path"])
+        stage=_validated_stage(job)
         baseline=adapter.manifest(stage)
         instruction=(
             "You are a separate, read-only QA reviewer. Do not edit files. "
@@ -504,7 +525,7 @@ def _run_ai_qa(review_id: str, job_id: str, model: str) -> None:
         result=adapter.run(stage,instruction,edit=False,model=model,
                            allow_provider_transfer=True)
         after=adapter.manifest(stage)
-        if result["exit_code"] != 0 or baseline != after:
+        if result["status"] != "submitted_for_qa" or baseline != after:
             raise core.EngineError("AI QA run failed or altered the staged source files.")
         with core.conn() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -547,12 +568,7 @@ def create_code_plan(job_id: str, *, confirmed: bool) -> dict:
     if not 1 <= len(raw_changes) <= coding.MAX_CHANGES:
         raise core.EngineError("Plan requires 1–6 bounded source modifications.")
     order=_read_order(job["order_id"])
-    stage=Path(job["staging_path"])
-    expected=(core.WORKSPACE / "theorg_agent_runs" / order["company_id"]
-              / job["order_id"] / job_id).resolve()
-    if (stage.is_symlink() or stage.parent.resolve() != expected or
-            not re.fullmatch(r"[0-9a-f]{16}", stage.name)):
-        raise core.EngineError("Output folder is not inside an approved company job attempt.")
+    stage=_validated_stage(job)
     repo=coding._project(order["project_id"])
     edits=[]
     for change in raw_changes:
@@ -642,11 +658,7 @@ def export_accepted(job_id: str, *, confirmed: bool) -> dict:
     if not assessment["structural_pass"]:
         raise core.EngineError("Staged output changed after QA; export refused.")
     order=_read_order(job["order_id"])
-    stage=Path(job["staging_path"])
-    expected=(core.WORKSPACE/"theorg_agent_runs"/order["company_id"]/
-              order["id"]/job_id).resolve()
-    if stage.is_symlink() or stage.parent.resolve()!=expected:
-        raise core.EngineError("Staged source path is outside the approved order.")
+    stage=_validated_stage(job)
     output=core.WORKSPACE/"companies"/order["company_id"]/"orders"/order["id"]/"results"
     base=core.WORKSPACE.resolve()
     if not output.resolve().is_relative_to(base):
