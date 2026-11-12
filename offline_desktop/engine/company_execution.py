@@ -34,6 +34,9 @@ def _ident(value: str) -> str:
 def init_schema() -> None:
     with core.conn() as db:
         db.executescript("""
+        CREATE TABLE IF NOT EXISTS company_project_bindings(
+          project_id TEXT PRIMARY KEY, company_id TEXT NOT NULL,
+          created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS company_orders(
           id TEXT PRIMARY KEY, company_id TEXT NOT NULL, project_id TEXT NOT NULL,
           objective TEXT NOT NULL, status TEXT NOT NULL,
@@ -140,6 +143,13 @@ def create_order(company_id: str, project_id: str, objective: str,
     now = core.utcnow()
     with core.conn() as db:
         db.execute("BEGIN IMMEDIATE")
+        binding=db.execute("SELECT company_id FROM company_project_bindings WHERE project_id=?",
+                           (project_id,)).fetchone()
+        if binding and binding["company_id"] != company_id:
+            raise core.EngineError("Code Studio project is already bound to a different company.")
+        if not binding:
+            db.execute("INSERT INTO company_project_bindings VALUES(?,?,?)",
+                       (project_id,company_id,now))
         db.execute("INSERT INTO company_orders VALUES(?,?,?,?,?,?,?)",
                    (ident, company_id, project_id, objective.strip(), "queued", now, now))
         for pos, task in enumerate(tasks):
