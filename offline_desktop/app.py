@@ -236,6 +236,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({'candidate':adaptive_runtime.propose(
                     payload.get('question'),payload.get('answer'),
                     payload.get('origin','owner'),payload.get('source_url',''))},201)
+            elif path=='/api/adaptive/solutions/from-task':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Saving a completed task as a candidate requires approval.')
+                self._json({'candidate':adaptive_runtime.propose_completed_task(
+                    payload.get('task_id'))},201)
             elif path=='/api/adaptive/solutions/review':
                 if payload.get('confirmed') is not True:
                     raise core.EngineError('Knowledge promotion/replacement requires owner approval.')
