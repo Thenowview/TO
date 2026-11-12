@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import threading
 import tempfile
 import unittest
 from pathlib import Path
@@ -44,6 +45,7 @@ class CompanyExecutionTests(unittest.TestCase):
     def _restore(self):
         core.DATA,core.WORKSPACE,core.MODELS,core.DB=self.before
         company._THREADS.clear()
+        company._CANCEL_EVENTS.clear()
 
     def _create(self, tasks=None):
         if tasks is None:
@@ -156,6 +158,37 @@ class CompanyExecutionTests(unittest.TestCase):
             company.requeue(job["id"],confirmed=False)
         self.assertEqual(company.requeue(job["id"],confirmed=True)["status"],"queued")
         self.assertEqual(company.cancel_queued(job["id"],confirmed=True)["status"],"cancelled")
+
+    def test_running_cancel_requires_owner_and_does_not_fake_completion(self):
+        order=self._create([{"role":"planner","instruction":"Read the bounded local project."}])
+        class FakeThread:
+            def __init__(self,*args,**kwargs):pass
+            def start(self):pass
+        with patch.object(company.threading,"Thread",FakeThread):
+            company.dispatch(order["jobs"][0]["id"],"ollama/demo",confirmed=True,
+                             data_transfer_confirmed=True,isolated_edit_confirmed=False)
+        job_id=order["jobs"][0]["id"]
+        with self.assertRaises(core.EngineError):
+            company.cancel_queued(job_id,confirmed=False)
+        self.assertFalse(company._CANCEL_EVENTS[job_id].is_set())
+        response=company.cancel_queued(job_id,confirmed=True)
+        self.assertEqual(response["status"],"cancellation_requested")
+        self.assertFalse(response["external_process_stopped"])
+        self.assertTrue(company._CANCEL_EVENTS[job_id].is_set())
+        self.assertEqual(company._read_job(job_id)["status"],"running")
+        self.assertTrue(company._read_job(job_id)["cancellation_requested"])
+
+    def test_prelaunch_cancel_prevents_running_external_cli(self):
+        stage=core.WORKSPACE/"temp"/"cancelled"
+        adapter.make_copy(self.project,stage)
+        event=threading.Event()
+        event.set()
+        with patch.object(adapter,"_binary") as executable:
+            with self.assertRaisesRegex(core.EngineError,"cancelled before launch"):
+                adapter.run(stage,"Read this local synthetic project and summarize it.",
+                            edit=False,model="ollama/demo",allow_provider_transfer=True,
+                            cancel_event=event)
+        executable.assert_not_called()
 
     def test_qa_rejects_outside_or_missing_attempt_workspace(self):
         order=self._create()
