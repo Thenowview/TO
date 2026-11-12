@@ -126,7 +126,7 @@ if($OpenCodeArchive){
     throw 'TheOrg requires a verified OpenCode V2 CLI with ordered permissions'
   }
   Copy-Item -LiteralPath $ExeMatches[0].DirectoryName -Destination (Join-Path $Stage 'opencode') -Recurse
-  AssertFile (Join-Path $Stage 'opencode\'+$ExeMatches[0].Name)
+  AssertFile (Join-Path (Join-Path $Stage 'opencode') $ExeMatches[0].Name)
   $OpenCodeLicense=Join-Path $Repo 'third_party\opencode\LICENSE'
   AssertFile $OpenCodeLicense
   Copy-Item -LiteralPath $OpenCodeLicense -Destination (Join-Path $Stage 'opencode\LICENSE')
