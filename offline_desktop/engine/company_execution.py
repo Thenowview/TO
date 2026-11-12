@@ -413,6 +413,9 @@ def _execute(job_id: str) -> None:
         stage = stage_root / job_id / secrets.token_hex(8)
         source, source_job = _approved_execution_source(job, Path(project))
         initial = adapter.make_copy(source, stage)
+        copied_digest = hashlib.sha256(json.dumps(initial,sort_keys=True).encode()).hexdigest()
+        if source_job and copied_digest != _read_job(source_job)["report"].get("final_manifest_sha256"):
+            raise core.EngineError("Accepted parent source changed before isolated copy completed.")
         project_baseline = (_read_job(source_job)["report"].get("project_baseline_manifest_sha256")
                             if source_job else hashlib.sha256(
                                 json.dumps(initial,sort_keys=True).encode()).hexdigest())
