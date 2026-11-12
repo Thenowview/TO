@@ -326,8 +326,39 @@ def infer(prompt,role,max_tokens=750,structured=False,include_memory=True):
         raise EngineError('Local model output exceeded the configured safety limit.')
     return content
 
+_recent_model_probe = None
+_MODEL_PROBE_TTL_SECONDS = 300
+
+
+def invalidate_model_probe():
+    """Forget proof when selected model/session changes or a probe fails."""
+    global _recent_model_probe
+    _recent_model_probe = None
+
+
+def inference_probe_status(backend=None, name=None):
+    """Ephemeral proof for this engine process, not a model quality certification."""
+    if backend is None or name is None:
+        backend, name = active_backend()
+    evidence = _recent_model_probe
+    age = (time.monotonic() - evidence['checked_at']) if evidence else None
+    process = globals().get('_model_process')
+    managed_pid = (process.pid if process and process.poll() is None else None)
+    valid = bool(evidence and backend and name and
+                 evidence['backend'] == backend and evidence['model'] == name and
+                 age is not None and 0 <= age <= _MODEL_PROBE_TTL_SECONDS and
+                 evidence['managed_pid'] == managed_pid)
+    return {'benchmark_unlocked': valid, 'backend': backend, 'model': name,
+            'verified_real_inference_recently': valid,
+            'seconds_since_probe': round(age, 1) if valid else None,
+            'valid_seconds': _MODEL_PROBE_TTL_SECONDS,
+            'note': ('A non-empty response was observed from the selected local model.'
+                     if valid else 'Run a successful real inference probe on the selected local model before benchmarking.')}
+
+
 def probe_local_model():
     """An *actual* local inference request, never a fabricated model benchmark."""
+    invalidate_model_probe()
     backend,name=active_backend()
     if not backend:
         raise EngineError('No running local model is available for an inference probe.')
@@ -348,6 +379,11 @@ def probe_local_model():
     if not isinstance(answer,str) or not answer.strip():
         raise EngineError('The model endpoint returned empty output.')
     duration=round(time.monotonic()-started,3)
+    global _recent_model_probe
+    process=globals().get('_model_process')
+    managed_pid=process.pid if process and process.poll() is None else None
+    _recent_model_probe={'backend':backend,'model':name,'checked_at':time.monotonic(),
+                         'managed_pid':managed_pid}
     audit('model.probe',{'backend':backend,'elapsed_seconds':duration,'nonempty':True})
     return {'ok':True,'backend':backend,'model':name,'elapsed_seconds':duration,
             'response_excerpt':answer.strip()[:160],
@@ -362,6 +398,8 @@ def benchmark_local_model():
     backend,name=active_backend()
     if not backend:
         raise EngineError('Start a compatible local model before benchmarking.')
+    if not inference_probe_status(backend,name)['benchmark_unlocked']:
+        raise EngineError('Benchmark locked. First run a successful real local inference probe on this model within the last five minutes.')
     prompt=('Return ONLY a JSON object, no code fences, with exactly these fields: '
             '{"product":"TheOrg","result":42,"flags":[true,false]}. '
             'The numeric result is 6 times 7.')
@@ -452,6 +490,7 @@ def model_start_preflight(name):
 
 def start_local_model(name):
     global _model_process
+    invalidate_model_probe()
     candidate=next((x for x in local_models() if x['name']==name),None)
     if not candidate: raise EngineError('Only local GGUF files inside models/ may be loaded.')
     with open(candidate['path'],'rb') as f:
@@ -623,6 +662,7 @@ def import_model_zip_stream(filename, incoming, length):
 
 def stop_local_model():
     global _model_process
+    invalidate_model_probe()
     with _model_lock:
         if not _model_process or _model_process.poll() is not None:
             return {'stopped':False,'note':'No TheOrg-managed model is running.'}
