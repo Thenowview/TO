@@ -36,12 +36,20 @@ def export_verified(*, confirmed=False, limit=MAX_ENTRIES):
                            ORDER BY updated DESC,id DESC LIMIT ?""", (limit,))
     entries = [dict(row) for row in rows]
     document = {"schema": SCHEMA, "trust": "source-verified-only",
-                "entries": entries, "contains_memories": False, "contains_credentials": False}
+                "entries": entries, "includes_memory_records": False,
+                "includes_token_files": False, "manual_content_review_required": True}
+    # An explicit export may contain a long reviewed answer. Skip older records
+    # until the file fits the API and browser importer limits; never truncate
+    # text silently or produce an invalid bundle.
+    omitted = 0
+    while len(_encoded(document)) > MAX_BYTES and document["entries"]:
+        document["entries"].pop()
+        omitted += 1
     if len(_encoded(document)) > MAX_BYTES:
-        raise core.EngineError("Knowledge is too large for a safe export; reduce the record count.")
-    core.audit("knowledge.export_verified", {"count": len(entries)})
-    return {"bundle": document, "sha256": _digest(document),
-            "warning": "This digest detects accidental changes; it is not a cryptographic signature or proof of provenance."}
+        raise core.EngineError("Knowledge export cannot fit the safe transfer limit.")
+    core.audit("knowledge.export_verified", {"count": len(document["entries"]), "omitted": omitted})
+    return {"bundle": document, "sha256": _digest(document), "omitted_due_to_size": omitted,
+            "warning": "Inspect solution text for secrets before sharing. A digest is not a signature or proof of provenance."}
 
 
 def validate_bundle(bundle, sha256):
@@ -51,12 +59,15 @@ def validate_bundle(bundle, sha256):
         raise core.EngineError("Knowledge import exceeds 120 KB.")
     if _digest(bundle) != sha256:
         raise core.EngineError("Knowledge bundle digest does not match its content.")
-    if set(bundle) != {"schema", "trust", "entries", "contains_memories", "contains_credentials"}:
+    if set(bundle) != {"schema", "trust", "entries", "includes_memory_records",
+                       "includes_token_files", "manual_content_review_required"}:
         raise core.EngineError("Unrecognized knowledge bundle fields.")
     if bundle["schema"] != SCHEMA or bundle["trust"] != "source-verified-only":
         raise core.EngineError("Unsupported knowledge transfer format.")
-    if bundle["contains_memories"] is not False or bundle["contains_credentials"] is not False:
-        raise core.EngineError("Memory and credential transfer is not supported.")
+    if (bundle["includes_memory_records"] is not False
+            or bundle["includes_token_files"] is not False
+            or bundle["manual_content_review_required"] is not True):
+        raise core.EngineError("Memory, token-file or unreviewed transfer is not supported.")
     entries = bundle["entries"]
     if not isinstance(entries, list) or len(entries) > MAX_ENTRIES:
         raise core.EngineError("Knowledge bundle has too many entries.")
