@@ -9,6 +9,8 @@ CATALOG={
  'browser.local.inspect': {'kind':'browser','description':'Inspect approved workspace HTML offline in disposable Chromium.'},
  'desktop.workspace.open': {'kind':'desktop','description':'Open only the dedicated TheOrg workspace in Windows Explorer.'},
  'desktop.runner.inspect': {'kind':'desktop','description':'Read-only check of approved GitHub runner installation files; does not inspect tokens or prove online status.'},
+ 'desktop.runner.registration_prompt': {'kind':'desktop','description':'Open official local runner registration in a visible console; type a fresh token privately.'},
+ 'desktop.runner.start': {'kind':'desktop','description':'Start a locally registered runner in a visible console; Online still requires provider verification.'},
  'windows.powershell.inspect': {'kind':'desktop','description':'Execute a fixed, read-only PowerShell inspection; arbitrary commands prohibited.'},
  'windows.source.verify': {'kind':'desktop','description':'Run fixed source tests in an explicitly trusted local checkout at an approved commit SHA.'},
  'github.runner.status': {'kind':'github','description':'Read runner Online/Idle and labels from authenticated GitHub API.'},
@@ -34,6 +36,8 @@ def enabled(name):
     if name=='browser.local.inspect':return os.environ.get('THEORG_ENABLE_BROWSER_PREVIEW')=='1'
     if name=='desktop.workspace.open':return os.environ.get('THEORG_ENABLE_OS_ACTIONS')=='1'
     if name=='desktop.runner.inspect':return os.environ.get('THEORG_ENABLE_RUNNER_DIAGNOSTICS')=='1'
+    if name in ('desktop.runner.registration_prompt','desktop.runner.start'):
+        return os.environ.get('THEORG_ENABLE_RUNNER_CONTROL')=='1'
     if name=='windows.powershell.inspect':return os.environ.get('THEORG_ENABLE_WINDOWS_INSPECTION')=='1'
     if name=='windows.source.verify':return os.environ.get('THEORG_ENABLE_LOCAL_SOURCE_TESTS')=='1'
     if name in ('github.runner.status','github.workflow.status','github.workflow.result'):
@@ -56,7 +60,8 @@ def normalize(name,args):
         if set(args)!={'location'} or args['location'] not in ('user_downloads','system_root'):
             raise core.EngineError('Choose a fixed runner location: user_downloads or system_root.')
         return {'location':args['location']}
-    if name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify'):
+    if (name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify',
+                                                'desktop.runner.registration_prompt','desktop.runner.start')):
         from engine import operator_tools
         return operator_tools.normalize(name,args)
     if set(args)!={'file','actions'} or type(args['file']) is not str:
@@ -117,7 +122,8 @@ def _execute(name,args):
         result=_runner_probe(root)
         result['location']=args['location']
         return result
-    if name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify'):
+    if (name.startswith('github.') or name in ('windows.powershell.inspect','windows.source.verify',
+                                                'desktop.runner.registration_prompt','desktop.runner.start')):
         from engine import operator_tools
         return operator_tools.execute(name,args)
     raise core.EngineError('Unknown capability execution')
@@ -157,7 +163,8 @@ def approve_and_execute(ident,digest,confirmed=False):
     except Exception as e:
         # GitHub might accept a dispatch even if the client loses its response.
         # Record uncertainty and require operator inspection; never auto-retry.
-        uncertain=name in ('github.workflow.source_dispatch','windows.source.verify')
+        uncertain=name in ('github.workflow.source_dispatch','windows.source.verify',
+                           'desktop.runner.registration_prompt','desktop.runner.start')
         result={'ok':False,'error':str(e)[:350]}
         if uncertain:
             result['execution_outcome']='unverified'
