@@ -19,6 +19,7 @@
   let activeView = 'supervisor';
   let companyAgentProfiles=[];
   let jobs = [], modelData = {}, engineStatus = {};
+  let lastChatSignature = null;
   const labels = {overview:'Overview',supervisor:'Chat',operator:'Windows Operator',tasks:'Task queue',coding:'Code Studio',company:'Agent team',models:'Models',files:'Files',memory:'Memory',settings:'Settings'};
 
   /* Original, dependency-free line icon set. Icons are pure local SVG,
@@ -167,9 +168,13 @@
   function renderChatMessages(){
     const feed=$('supervisorResults'),scroll=$('chatScroll'),welcome=$('chatWelcome');
     if(!feed||!scroll||!welcome)return;
+    const recent=jobs.slice(0,30).reverse();
+    const signature=recent.map(job=>
+      [job.id,job.status,job.output||'',job.error||''].join('\\x1f')).join('\\x1e');
+    if(signature===lastChatSignature)return;
+    lastChatSignature=signature;
     const nearBottom=scroll.scrollHeight-scroll.scrollTop-scroll.clientHeight<150;
     feed.replaceChildren();
-    const recent=jobs.slice(0,30).reverse();
     welcome.hidden=recent.length>0;
     for(const job of recent){
       const user=element('article','chat-message chat-user');
