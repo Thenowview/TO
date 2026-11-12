@@ -312,6 +312,43 @@
     else showToast('Source/CI not verified or action requires review: '+outcome.status,true);
     return outcome;
   }
+  async function inspectWindows(){
+    const source=operatorCatalog.find(t=>t.id==='windows.window.list');
+    const target=$('operatorWindowList');target.replaceChildren();
+    if(!source?.enabled){
+      text($('operatorWindowsStatus'),'Window inventory is disabled. Enable its local operator flag first.');
+      return;
+    }
+    const result=await runOperatorAction('windows.window.list',{},'local_window_metadata_read');
+    if(!result||result.status!=='completed'||!result.result?.windows){
+      text($('operatorWindowsStatus'),'Window inventory not verified; inspect the audit history.');
+      return;
+    }
+    const windows=result.result.windows;
+    text($('operatorWindowsStatus'),windows.length+' visible windows returned. Titles are private local metadata.');
+    if(!windows.length)appendEmpty(target,'No visible windows found.');
+    for(const item of windows){
+      const card=element('div','task-card');
+      card.append(element('strong','',item.title||'Unnamed window'));
+      card.append(element('div','muted','PID '+item.pid+' · window '+item.hwnd));
+      const button=element('button','btn secondary','Request focus on this window');
+      const allowed=operatorCatalog.find(t=>t.id==='windows.window.focus');
+      button.disabled=!allowed?.enabled;
+      button.addEventListener('click',async()=>{
+        button.disabled=true;
+        try{
+          const outcome=await runOperatorAction('windows.window.focus',{
+            hwnd:item.hwnd,pid:item.pid,title_sha256:item.title_sha256
+          },'local_window_focus_only');
+          text($('operatorWindowsStatus'),outcome?.result?.focus_confirmed
+            ?'Foreground focus verified. No input was sent.'
+            :'Focus not verified or approval declined. Inspect execution history.');
+        }catch(e){text($('operatorWindowsStatus'),e.message);showToast(e.message,true);}
+        finally{button.disabled=false;}
+      });
+      card.append(button);target.append(card);
+    }
+  }
   async function previewOperator(){
     const instruction=$('operatorInstruction').value.trim();
     if(instruction.length<5){showToast('Enter at least 5 characters.',true);return;}
@@ -364,6 +401,7 @@
   $('refreshBtn').addEventListener('click',refreshAll);
   $('operatorPreview').addEventListener('click',previewOperator);
   $('operatorRefresh').addEventListener('click',()=>loadOperator().catch(e=>showToast(e.message,true)));
+  $('operatorWindows').addEventListener('click',()=>inspectWindows().catch(e=>showToast(e.message,true)));
   $('operatorVerifyRun').addEventListener('click',async()=>{
     const runId=Number($('operatorRunId').value);
     const sha=$('operatorRunSha').value.trim();
