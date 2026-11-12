@@ -140,7 +140,9 @@ def session_tasks(session_id):
         if not existing:
             raise core.EngineError("Local session not found.")
         return [dict(row) for row in db.execute("""
-            SELECT t.* FROM tasks t JOIN chat_session_tasks st ON st.task_id=t.id
+            SELECT t.id,t.role,t.prompt,t.status,t.output,t.error,t.created,t.updated,
+                   CASE WHEN LENGTH(t.context_snapshot)>0 THEN 1 ELSE 0 END AS has_context
+            FROM tasks t JOIN chat_session_tasks st ON st.task_id=t.id
             WHERE st.session_id=? ORDER BY st.assigned DESC,t.created DESC LIMIT ?
         """,(session_id,MAX_HISTORY)).fetchall()]
 
