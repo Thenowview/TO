@@ -88,6 +88,12 @@ try{
   VerifyHashes -AllFiles:$CheckOnly
   if($CheckOnly){Write-Host 'PASS self-contained payload present, checksums and fixed extension ID verified';return}
   New-Item -ItemType Directory -Force -Path $UserRoot,$Profile|Out-Null
+  # Keep access tokens, SQLite and models in the user's profile, never inside
+  # a redistributable application directory (including Program Files).
+  $env:THEORG_DATA_DIR=Join-Path $UserRoot 'EngineData'
+  $env:THEORG_WORKSPACE=Join-Path $UserRoot 'workspace'
+  $env:THEORG_MODELS=Join-Path $UserRoot 'models'
+  $env:THEORG_SKIP_SHORTCUT='1'
   if($Icon -and (Test-Path -LiteralPath $Icon)){
     try{
       $desktop=Join-Path ([Environment]::GetFolderPath('Desktop')) 'TheOrg.lnk'
@@ -121,7 +127,7 @@ try{
   $Listening=Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue
   if($Listening){throw 'TheOrg port 8765 is already occupied; refusing to connect to an unknown local service.'}
   $Process=Start-Process -FilePath $Exe -ArgumentList '--no-browser' -WorkingDirectory $Root -PassThru
-  $TokenFile=Join-Path $Root '.theorg\data\access-token.txt'
+  $TokenFile=Join-Path $env:THEORG_DATA_DIR 'access-token.txt'
   $Ready=$false
   for($i=0;$i -lt 50;$i++){
     Start-Sleep -Milliseconds 250
