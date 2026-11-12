@@ -47,6 +47,9 @@
           <p class="muted">A tool must be enabled by the local operator and approved using its exact request digest. Actions involving external services or code execution still require confirmation.</p>
           <button class="btn secondary" id="operatorRefresh">Refresh capabilities and history</button>
           <div id="operatorCatalog" class="task-stack"></div>
+          <h2>Business integrations (read-only)</h2>
+          <p class="muted">Credentials must be authorized separately in Windows Credential Manager. These connection states are unknown until a user-approved probe succeeds.</p>
+          <div id="operatorIntegrations" class="task-stack"></div>
           <h2>Verify an existing CI run</h2>
           <label for="operatorRunId">GitHub Actions run ID</label>
           <input id="operatorRunId" type="number" min="1" step="1" placeholder="Run ID">
