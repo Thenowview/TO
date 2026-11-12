@@ -229,6 +229,7 @@
     renderSessionList();setSessionTitle();
   }
   async function selectChatSession(id){
+    $('chatMessageSearch').value='';
     if(id && !chatSessions.some(s=>s.id===id)){
       throw new Error('Session was not found; refresh the local list.');
     }
@@ -252,6 +253,7 @@
     }catch{showToast('Clipboard access was denied.',true);}
   }
   function closeChatDetails(){
+    inspectorCodeRequest++;
     const panel=$('chatDetailsPanel');
     panel.hidden=true;
     $('chatDetailsToggle').setAttribute('aria-expanded','false');
@@ -293,6 +295,62 @@
     panel.hidden=false;
     $('chatDetailsToggle').setAttribute('aria-expanded','true');
     if(window.matchMedia('(max-width:1050px)').matches)panel.focus?.();
+  }
+  async function renderCodeInspector(){
+    const panel=$('chatDetailsPanel'),target=$('chatDetailsContent');
+    panel.hidden=false;$('chatDetailsToggle').setAttribute('aria-expanded','true');
+    const serial=++inspectorCodeRequest;
+    target.replaceChildren(element('p','muted','Loading read-only Code Studio proposals…'));
+    try{
+      const data=await request('code/plans');
+      if(serial!==inspectorCodeRequest||inspectorTab!=='code')return;
+      target.replaceChildren();
+      target.append(element('p','chat-evidence-notice',
+        'These are separate local Code Studio proposals, NOT proven actions or changes made by this chat task. Applying or committing remains in Code Studio with its own approval gates.'));
+      const plans=(data.plans||[]).slice(0,8);
+      if(!plans.length){
+        target.append(element('p','muted','No local Code Studio proposals recorded.'));
+        return;
+      }
+      for(const plan of plans){
+        const card=element('article','chat-inspector-plan');
+        const heading=element('div','chat-inspector-plan-head');
+        heading.append(element('strong','',plan.objective||'Untitled proposal'));
+        heading.append(pill(plan.status||'unknown'));card.append(heading);
+        card.append(element('p','muted','Review-only proposal '+String(plan.id).slice(0,12)));
+        const inspect=element('button','btn secondary','View diff and evidence');
+        inspect.type='button';
+        inspect.addEventListener('click',async()=>{
+          inspect.disabled=true;
+          try{
+            const result=await request('code/plan?id='+encodeURIComponent(plan.id));
+            if(serial!==inspectorCodeRequest||inspectorTab!=='code')return;
+            const record=result.plan||{};
+            const body=element('div','chat-inspector-diff');
+            body.append(element('div','chat-inspector-digest',
+              'Status: '+record.status+' · Digest: '+String(record.digest||'Not provided')));
+            for(const change of (record.changes||[]).slice(0,20)){
+              body.append(element('h4','',change.path||'File change'));
+              body.append(element('pre','chat-inspector-pre',
+                String(change.diff||'No textual diff').slice(0,25000)));
+            }
+            body.append(element('h4','','Recorded validation'));
+            body.append(element('pre','chat-inspector-pre',
+              JSON.stringify(record.evidence||{note:'No verification evidence recorded'},null,2).slice(0,15000)));
+            const go=element('button','btn secondary','Open Code Studio for review');
+            go.type='button';go.addEventListener('click',()=>{
+              chosenCodePlan=record;changeView('coding');
+            });
+            body.append(go);card.append(body);
+          }catch(e){showToast(e.message,true);}
+          finally{inspect.disabled=false;}
+        });
+        card.append(inspect);target.append(card);
+      }
+    }catch(e){
+      if(serial===inspectorCodeRequest)target.replaceChildren(
+        element('p','chat-error-text','Cannot load Code Studio evidence: '+e.message));
+    }
   }
   function renderChatMessages(){
     const feed=$('supervisorResults'),scroll=$('chatScroll'),welcome=$('chatWelcome');
@@ -821,6 +879,36 @@
     }catch(e){showToast(e.message,true);}
     finally{button.disabled=false;}
   });
+  $('chatMessageSearch').addEventListener('input',renderChatMessages);
+  $('chatContextToggle').addEventListener('click',async()=>{
+    const session=currentChatSession();
+    if(!session||session.archived)return;
+    const enabled=!Boolean(session.include_context);
+    if(enabled&&!confirm('Allow the next local model task in this session to receive excerpts from up to three PREVIOUS completed tasks? Stored prompts and answers may contain private information. Off by default; no external website or tool is authorized.'))return;
+    const button=$('chatContextToggle');button.disabled=true;
+    try{
+      await request('chat/sessions/context',{method:'POST',body:{id:session.id,enabled,confirmed:true}});
+      await loadChatSessions();
+      showToast(enabled?'Recent session context enabled.':'Session context disabled for new tasks.');
+    }catch(e){showToast(e.message,true);}
+    finally{button.disabled=false;}
+  });
+  function activateInspector(tab){
+    inspectorTab=tab==='code'?'code':'task';
+    for(const [id,value] of [['chatInspectorTask','task'],['chatInspectorCode','code']]){
+      $(id).classList.toggle('selected',inspectorTab===value);
+      $(id).setAttribute('aria-pressed',String(inspectorTab===value));
+    }
+    if(inspectorTab==='code')renderCodeInspector();
+    else{
+      inspectorCodeRequest++;
+      const target=activeChatItems().find(x=>x.id===selectedChatTaskId)||activeChatItems()[0];
+      if(target)openChatDetails(target);
+      else $('chatDetailsContent').replaceChildren(element('p','muted','Choose a task to inspect its local status.'));
+    }
+  }
+  $('chatInspectorTask').addEventListener('click',()=>activateInspector('task'));
+  $('chatInspectorCode').addEventListener('click',()=>activateInspector('code'));
   $('sessionSearch').addEventListener('input',renderSessionList);
   $('showArchivedSessions').addEventListener('click',()=>{
     includeArchivedSessions=!includeArchivedSessions;
@@ -852,6 +940,7 @@
   $('chatDetailsClose').addEventListener('click',closeChatDetails);
   $('chatDetailsToggle').addEventListener('click',()=>{
     if(!$('chatDetailsPanel').hidden){closeChatDetails();return;}
+    if(inspectorTab==='code'){renderCodeInspector();return;}
     const target=activeChatItems().find(x=>x.id===selectedChatTaskId)||activeChatItems()[0];
     if(target)openChatDetails(target);
     else{
