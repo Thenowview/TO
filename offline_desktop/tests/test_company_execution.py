@@ -66,7 +66,9 @@ class CompanyExecutionTests(unittest.TestCase):
         (stage/"main.py").write_text("new\n",encoding="utf-8")
         result=adapter.manifest(stage)
         digest=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()
-        report={"engine":"opencode","exit_code":0,"status":"submitted_for_qa",
+        root_digest=hashlib.sha256(json.dumps(adapter.manifest(self.project),sort_keys=True).encode()).hexdigest()
+        report={"project_baseline_manifest_sha256":root_digest,
+                "engine":"opencode","exit_code":0,"status":"submitted_for_qa",
                 "changed_files":[{"path":"main.py","before":before,"after":after}],
                 "changed_count":1,"unexpected_files":[],
                 "final_manifest_sha256":digest,"summary":"Wrote a new synthetic main.py"}
