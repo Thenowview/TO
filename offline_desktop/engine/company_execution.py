@@ -321,6 +321,9 @@ def structural_qa(job_id: str) -> dict:
         findings.append("External execution did not exit successfully.")
     if report.get("engine") != "opencode":
         findings.append("No recognized OpenCode execution evidence.")
+    if report.get("unexpected_files"):
+        findings.append("Executor produced unapproved or potentially unsafe files: " +
+                        ", ".join(str(x) for x in report["unexpected_files"][:10]))
     stage = Path(job["staging_path"])
     if not stage.is_dir():
         findings.append("Staged execution workspace missing.")
