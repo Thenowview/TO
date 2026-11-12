@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime, operating_desk, reviewed_knowledge
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -58,6 +58,8 @@ class Handler(BaseHTTPRequestHandler):
                                 'models':adaptive_runtime.registry()['models']})
                 elif path=='/api/adaptive/solutions':
                     self._json({'solutions':adaptive_runtime.candidates()})
+                elif path=='/api/operating/overview':
+                    self._json({'desk':operating_desk.overview()})
                 elif path=='/api/models':
                     files=core.local_models()
                     memory=device_capabilities.detect()
@@ -238,6 +240,22 @@ class Handler(BaseHTTPRequestHandler):
                 if payload.get('confirmed') is not True:
                     raise core.EngineError('Model startup requires separate explicit confirmation.')
                 self._json({'adaptive_start':adaptive_runtime.start_recommended(confirmed=True)})
+            elif path=='/api/operating/route':
+                self._json({'route':operating_desk.route_preview(
+                    payload.get('instruction'),payload.get('role','supervisor'))})
+            elif path=='/api/adaptive/knowledge/export':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Owner consent required to export private reviewed knowledge.')
+                self._json({'knowledge':reviewed_knowledge.export_verified(
+                    confirmed=True,limit=payload.get('limit',12))})
+            elif path=='/api/adaptive/knowledge/validate':
+                self._json({'validation':reviewed_knowledge.validate_bundle(
+                    payload.get('bundle'),payload.get('sha256'))})
+            elif path=='/api/adaptive/knowledge/import':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Owner consent required to import knowledge candidates.')
+                self._json({'import':reviewed_knowledge.import_as_candidates(
+                    payload.get('bundle'),payload.get('sha256'),confirmed=True)})
             elif path=='/api/adaptive/recall':
                 self._json({'recall':adaptive_runtime.recall(payload.get('query'))})
             elif path=='/api/adaptive/resolve':
