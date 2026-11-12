@@ -274,6 +274,19 @@ class CompanyExecutionTests(unittest.TestCase):
         self.assertFalse(guarded["source_edit_proposed"])
         self.assertTrue(all(t["mode"]=="read_only" for t in guarded["tasks"]))
 
+    def test_stale_ai_qa_review_slot_recovered_on_restart(self):
+        order=self._create()
+        job_id=order["jobs"][0]["id"]
+        with core.conn() as db:
+            db.execute("""INSERT INTO company_qa VALUES(?,?,?,?,?,?,?)""",
+                       ("c"*24,job_id,"ai_qa","running","",
+                        json.dumps({"model":"ollama/demo"}),core.utcnow()))
+        company.init_schema()
+        rows=company.qa_history(job_id)
+        self.assertEqual(rows[0]["verdict"],"interrupted")
+        active=core.records("SELECT count(*) AS n FROM company_qa WHERE verdict='running'")
+        self.assertEqual(active[0]["n"],0)
+
     def test_accepted_dependency_inherits_actual_reviewed_source(self):
         order=self._create()
         parent_id,stage=self._complete_job(order)
