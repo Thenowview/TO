@@ -52,9 +52,10 @@ def _bounded_json(value: dict, max_bytes: int, label: str) -> str:
     """Never save partially truncated JSON in an agent or QA evidence record."""
     try:
         encoded = json.dumps(value, ensure_ascii=False, sort_keys=True)
-    except (TypeError, ValueError) as exc:
-        raise core.EngineError("Cannot serialize " + label + " as valid JSON.") from exc
-    if len(encoded.encode("utf-8")) > max_bytes:
+        byte_length = len(encoded.encode("utf-8"))
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise core.EngineError("Cannot serialize " + label + " as valid UTF-8 JSON.") from exc
+    if byte_length > max_bytes:
         raise core.EngineError(label + " exceeds the safe audit size limit.")
     return encoded
 
