@@ -90,6 +90,23 @@ class CompanyExecutionTests(unittest.TestCase):
         with self.assertRaisesRegex(core.EngineError,"valid JSON"):
             company._bounded_json({"unserializable":object()},30000,"Agent report")
 
+    def test_corrupt_agent_report_is_not_accepted_for_qa(self):
+        order=self._create()
+        job_id=order["jobs"][0]["id"]
+        with core.conn() as db:
+            db.execute("UPDATE company_jobs SET report_json=? WHERE id=?",
+                       ('{"partial":',job_id))
+        with self.assertRaisesRegex(core.EngineError,"invalid JSON"):
+            company._read_job(job_id)
+        with self.assertRaisesRegex(core.EngineError,"invalid JSON"):
+            company.structural_qa(job_id)
+        # A bad persisted dependency graph must also fail closed.
+        with core.conn() as db:
+            db.execute("UPDATE company_jobs SET report_json=?,depends_on=? WHERE id=?",
+                       ('{}','["not-a-valid-job-id"]',job_id))
+        with self.assertRaisesRegex(core.EngineError,"invalid structure"):
+            company._read_job(job_id)
+
     def test_company_profile_editor_is_scoped_and_immutable(self):
         names=company.company_profiles("demo")
         self.assertEqual(len(names),12)
