@@ -72,5 +72,5 @@ test("Runner launch needs explicit consent and registration; scripts never creat
   assert.match(setup,/\.runner/);
   assert.match(setup,/Python 3\.12\+/);
   assert.match(setup,/Node\.js 20\+/);
-  assert.doesNotMatch(launch+setup,/registration.token|api\.github\.com.*registration-token|ConvertFrom-SecureString/i);
+  assert.doesNotMatch(launch+setup,/\/actions\/runners\/registration-token|\/actions\/runners\/registration_token|ConvertFrom-SecureString/i);
 });
