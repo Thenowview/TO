@@ -7,6 +7,7 @@ const path=require("node:path");
 const ROOT=path.resolve(__dirname,"..");
 const workflows=[
   "bridge-ci.yml",
+  "one-time-prune-merged-branches.yml",
   "chromium-browser-ci.yml",
   "onefile-existing-chrome-ci.yml",
   "portable-chrome-ci.yml",
