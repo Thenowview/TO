@@ -39,7 +39,7 @@ class HardwareAdviceTests(unittest.TestCase):
         self.assertEqual(tiny["estimated_max_gguf_file_bytes"],0)
 
     def test_gpu_unavailable_is_unknown_not_zero_memory(self):
-        with patch.object(devices.os,"name","nt"):
+        with patch.object(devices.sys,"platform","linux"):
             with patch("pathlib.Path.is_file",return_value=False):
                 result=devices.detect_gpu_memory()
         self.assertFalse(result["detected"])
@@ -47,7 +47,7 @@ class HardwareAdviceTests(unittest.TestCase):
         self.assertFalse(result["inference_gpu_acceleration_verified"])
 
     def test_nvidia_driver_reports_actual_free_memory_without_claiming_gpu_offload(self):
-        with patch.object(devices.os,"name","nt"),patch("pathlib.Path.is_file",return_value=True),patch(
+        with patch.object(devices.sys,"platform","linux"),patch("pathlib.Path.is_file",return_value=True),patch(
                 "pathlib.Path.is_symlink",return_value=False),patch(
                 "subprocess.run",return_value=SimpleNamespace(
                     returncode=0,
@@ -62,7 +62,7 @@ class HardwareAdviceTests(unittest.TestCase):
         self.assertEqual(cmd.call_args.kwargs["timeout"],5)
 
     def test_driver_errors_cannot_create_fake_vram(self):
-        with patch.object(devices.os,"name","nt"),patch("pathlib.Path.is_file",return_value=True),patch(
+        with patch.object(devices.sys,"platform","linux"),patch("pathlib.Path.is_file",return_value=True),patch(
                 "pathlib.Path.is_symlink",return_value=False),patch(
                 "subprocess.run",return_value=SimpleNamespace(
                     returncode=0,stdout="Fake GPU, 8192, Not Supported"
