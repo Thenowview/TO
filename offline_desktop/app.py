@@ -228,6 +228,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({'adaptive':adaptive_runtime.select(payload.get('tier'))})
             elif path=='/api/adaptive/recall':
                 self._json({'recall':adaptive_runtime.recall(payload.get('query'))})
+            elif path=='/api/adaptive/resolve':
+                self._json({'resolution':adaptive_runtime.resolve_preview(payload.get('query'))})
             elif path=='/api/adaptive/solutions/propose':
                 if payload.get('confirmed') is not True:
                     raise core.EngineError('Saving a knowledge candidate requires confirmation.')
