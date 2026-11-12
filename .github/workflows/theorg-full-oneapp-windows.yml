@@ -42,9 +42,10 @@ jobs:
             'offline_desktop/Build-TheOrg-Portable-Windows.ps1'
           )
           foreach ($path in $paths) {
+            $tokens = $null
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
-              (Join-Path $PWD $path), [ref]$null, [ref]$errors)
+              (Join-Path $PWD $path), [ref]$tokens, [ref]$errors)
             if ($errors -and $errors.Count) {
               throw "PowerShell parser found errors in .github/workflows/theorg-full-oneapp-windows.yml: $($errors | Out-String)"
             }
