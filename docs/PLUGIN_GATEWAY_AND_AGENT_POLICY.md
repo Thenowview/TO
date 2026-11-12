@@ -1,6 +1,6 @@
 # TheOrg Plugin Gateway and Agent Tool Policy
 
-**Implementation status:** architecture and machine-readable role registry committed; plugin gateway runtime and third-party integrations **not yet built or tested**.
+**Implementation status (12 Nov 2026):** policy registry exists; a narrow, optional read-only Google connection-probe runtime has been committed for Gmail, Drive and Calendar. It requires separately provisioned user credentials in Windows Credential Manager and explicit one-time approval. **No account is connected or live tested; full OAuth onboarding, record operations, MCP client, external writes and business integrations are still incomplete.**
 
 ## Principle
 
@@ -60,11 +60,22 @@ Use `config/agent-profiles.json`. Profiles are **definitions**, not 12 constantl
 
 The selected profile can read a plugin's **advertised** capability list, but that alone never makes it authorized or callable.
 
+## Implemented read-only Google probe adapter
+
+`offline_desktop/engine/google_readonly.py` defines three **fixed read-only HTTPS GET probes**, using Windows Credential Manager Generic-credential targets `TheOrg/google/gmail-readonly`, `TheOrg/google/drive-readonly`, and `TheOrg/google/calendar-readonly`. Scoped access tokens must be obtained independently through the provider's official user-consent flow and provisioned in the same restricted Windows account running TheOrg; no token-generation shortcuts or ChatGPT connection reuse are supported.
+
+The scope requested for each provider is shown by the authenticated `GET /api/integrations` endpoint. Until a token is provisioned and an explicit `google.readonly.probe` action is approved with `THEORG_ENABLE_GOOGLE_READONLY=1`, connected status is **unknown**, not Connected. A successful fixed API read confirms that probe only. No mailbox messages, Drive files or calendar event details are returned or saved; no writing, sending, sharing or deletion is supported.
+
+The adapter blocks HTTP redirects and uses fixed hosts/paths, a 12-second deadline and a 32 KiB response limit. Provider failures and expired/insufficiently scoped credentials fail closed. Tokens are never returned to the browser/UI, stored in SQLite or inserted into agent prompts. The browser/app receives only the probe's read-only status and requested scope.
+
+**Additional required work:** secure interactive OAuth authorization and refresh, token revocation UX, granular read/write operations with data minimization, real-provider acceptance tests, rate-limit policy, cost caps and business QA. Do not mark P2 complete based on these health probes.
+
 ## Current acceptance gates
 
 - [x] Role policy and connector metadata designs committed
-- [ ] Registry parser and input validation implemented
-- [ ] Credential storage and per-connector OAuth implemented
+- [x] Narrow Google read-only provider names, scopes, fixed endpoint validation and approval routing added to source (runtime CI not yet run)
+- [ ] General-purpose provider registry parser and per-tenant isolation implemented
+- [ ] End-to-end provider OAuth onboarding and credential lifecycle implemented (the probe only reads user-provisioned Windows credentials)
 - [ ] MCP client and actual tool discovery implemented
 - [ ] Approval service and role-policy enforcement integrated with execution
 - [ ] Read-back auditing and revocation tests run
