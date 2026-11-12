@@ -40,6 +40,28 @@ class IntegrationBoundaryTests(unittest.TestCase):
         coding._git(repo,'commit','--allow-empty','-m','External revision')
         with self.assertRaisesRegex(core.EngineError,'changed'):
             coordination.resume(a['id'],confirmed=True)
+    def test_advisory_steps_json_is_complete_or_refused(self):
+        import json
+        payload=[{'role':'planner','output':'Review ✓ '+('a'*32)}]
+        serialized=coordination._encode_steps(payload)
+        self.assertEqual(json.loads(serialized),payload)
+        with self.assertRaisesRegex(core.EngineError,'bounded audit limit'):
+            coordination._encode_steps([{'role':'planner','output':'☑'*20000}])
+        with self.assertRaisesRegex(core.EngineError,'cannot be serialized'):
+            coordination._encode_steps([{'role':'planner','output':object()}])
+        item=coordination.create(self.project['id'],'Review source evidence',
+                                 coordination.SCOPE,start=False)
+        with core.conn() as db:
+            db.execute('UPDATE agent_reviews SET steps_json=? WHERE id=?',
+                       ('{"incomplete":',item['id']))
+        with self.assertRaisesRegex(core.EngineError,'invalid JSON'):
+            coordination.get(item['id'])
+        with core.conn() as db:
+            db.execute('UPDATE agent_reviews SET steps_json=? WHERE id=?',
+                       ('[{"role":"invented"}]',item['id']))
+        with self.assertRaisesRegex(core.EngineError,'invalid structure'):
+            coordination.get(item['id'])
+
     def test_disabled_tools_and_consumed_approvals(self):
         self.assertFalse(any(x['enabled'] for x in capabilities.catalog()))
         with self.assertRaises(core.EngineError):capabilities.prepare('desktop.workspace.open',{})
