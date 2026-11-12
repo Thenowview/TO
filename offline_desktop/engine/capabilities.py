@@ -1,12 +1,14 @@
 """Single-use, time-bound approvals for optional local browser and desktop tools."""
 from __future__ import annotations
 import hashlib,json,os,re,secrets,time
+from pathlib import Path
 from engine import core
 
 TTL=300
 CATALOG={
  'browser.local.inspect': {'kind':'browser','description':'Inspect approved workspace HTML offline in disposable Chromium.'},
  'desktop.workspace.open': {'kind':'desktop','description':'Open only the dedicated TheOrg workspace in Windows Explorer.'},
+ 'desktop.runner.inspect': {'kind':'desktop','description':'Read-only check of approved GitHub runner installation files; does not inspect tokens or prove online status.'},
 }
 def init_schema():
     with core.conn() as db:
@@ -18,6 +20,7 @@ def init_schema():
 def enabled(name):
     if name=='browser.local.inspect':return os.environ.get('THEORG_ENABLE_BROWSER_PREVIEW')=='1'
     if name=='desktop.workspace.open':return os.environ.get('THEORG_ENABLE_OS_ACTIONS')=='1'
+    if name=='desktop.runner.inspect':return os.environ.get('THEORG_ENABLE_RUNNER_DIAGNOSTICS')=='1'
     return False
 
 def catalog():
@@ -30,6 +33,10 @@ def normalize(name,args):
     if name=='desktop.workspace.open':
         if args:raise core.EngineError('Workspace opening takes no arguments.')
         return {}
+    if name=='desktop.runner.inspect':
+        if set(args)!={'location'} or args['location'] not in ('user_downloads','system_root'):
+            raise core.EngineError('Choose a fixed runner location: user_downloads or system_root.')
+        return {'location':args['location']}
     if set(args)!={'file','actions'} or type(args['file']) is not str:
         raise core.EngineError('Browser preview requires file and actions.')
     from engine import browser_local
@@ -53,6 +60,23 @@ def history(limit=30):
     if type(limit) is not int or not 1<=limit<=100:raise core.EngineError('Invalid history limit.')
     return core.records('SELECT id,capability,digest,status,created,updated,result_json FROM capability_requests ORDER BY created DESC,id DESC LIMIT ?',(limit,))
 
+def _runner_probe(root: Path) -> dict:
+    """Inspect only known runner file existence; never read credential/token contents."""
+    if root.is_symlink():
+        raise core.EngineError('Runner installation directory may not be a symlink.')
+    required=('config.cmd','run.cmd','bin','externals')
+    exists={}
+    for name in required:
+        entry=root/name
+        exists[name]=not entry.is_symlink() and (
+            entry.is_dir() if name in ('bin','externals') else entry.is_file())
+    registration=root/'.runner'
+    registered=registration.is_file() and not registration.is_symlink()
+    return {'folder_exists':root.is_dir(), 'installation_complete':all(exists.values()),
+            'registration_file_present':registered, 'required_files':exists,
+            'registered_online':None, 'status_source':'read-only-local-files',
+            'warning':'A registration file is not proof of GitHub authentication or Online status.'}
+
 def _execute(name,args):
     if name=='browser.local.inspect':
         from engine import browser_local
@@ -63,6 +87,14 @@ def _execute(name,args):
         core.WORKSPACE.mkdir(parents=True,exist_ok=True)
         os.startfile(str(core.WORKSPACE))
         return {'opened':True,'scope':'TheOrg workspace only'}
+    if name=='desktop.runner.inspect':
+        if os.name!='nt':
+            raise core.EngineError('Local GitHub runner inspection requires Windows.')
+        root=(Path.home()/'Downloads'/'actions-runner' if args['location']=='user_downloads'
+              else Path('C:/actions-runner'))
+        result=_runner_probe(root)
+        result['location']=args['location']
+        return result
     raise core.EngineError('Unknown capability execution')
 
 def approve_and_execute(ident,digest,confirmed=False):
