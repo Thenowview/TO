@@ -590,3 +590,72 @@ def requeue(job_id: str, *, confirmed: bool) -> dict:
     return {"job_id":job_id,"status":"queued",
             "requires_new_execution_and_provider_approval":True,
             "previous_attempt_artifacts_preserved":True}
+
+
+def export_accepted(job_id: str, *, confirmed: bool) -> dict:
+    """Export QA-attested, immutable-readable results to a company-scoped folder.
+
+    An exported source file is a deliverable only; it is not executed, merged or
+    automatically marked correct. Existing exports and original files are preserved.
+    """
+    if confirmed is not True:
+        raise core.EngineError("Owner approval required for exporting accepted outputs.")
+    job=_read_job(job_id)
+    if job["status"] != "accepted":
+        raise core.EngineError("Only QA-accepted jobs may export results.")
+    assessment=structural_qa(job_id)
+    if not assessment["structural_pass"]:
+        raise core.EngineError("Staged output changed after QA; export refused.")
+    order=_read_order(job["order_id"])
+    stage=Path(job["staging_path"])
+    expected=(core.WORKSPACE/"theorg_agent_runs"/order["company_id"]/
+              order["id"]/job_id).resolve()
+    if stage.is_symlink() or stage.parent.resolve()!=expected:
+        raise core.EngineError("Staged source path is outside the approved order.")
+    output=core.WORKSPACE/"companies"/order["company_id"]/"orders"/order["id"]/"results"
+    base=core.WORKSPACE.resolve()
+    if not output.resolve().is_relative_to(base):
+        raise core.EngineError("Results path escapes TheOrg company workspace.")
+    current=base
+    for segment in output.relative_to(base).parts:
+        current=current/segment
+        if current.is_symlink():
+            raise core.EngineError("Results path contains an unsafe symlink.")
+    report=job["report"]
+    payloads=[]
+    summary=("TheOrg agent result — QA attested, not independently certified\n\n"+
+             "Job: "+job_id+"\nAgent: "+job["agent_role"]+"\n\n"+
+             report.get("summary","")[:9000]+"\n").encode("utf-8")
+    payloads.append((job_id+"-summary.md",summary))
+    for entry in report.get("changed_files",[]):
+        rel=entry["path"]
+        src=stage/rel
+        if src.is_symlink() or not src.is_file():
+            raise core.EngineError("Unsafe changed source file: "+str(rel))
+        data=src.read_bytes()
+        if len(data)>adapter.MAX_FILE or hashlib.sha256(data).hexdigest()!=entry["after"]:
+            raise core.EngineError("Changed source failed integrity verification: "+str(rel))
+        safe_name=re.sub(r"[^A-Za-z0-9_.-]","_",rel)[:115]
+        if not safe_name or safe_name.startswith("."):
+            raise core.EngineError("Cannot export unsafe output name.")
+        payloads.append((job_id+"-"+safe_name,data))
+    output.mkdir(parents=True,exist_ok=True)
+    if any((output/name).exists() or (output/name).is_symlink() for name,_ in payloads):
+        raise core.EngineError("This job's outputs have already been exported; refusing overwrite.")
+    saved=[]
+    try:
+        for name,data in payloads:
+            target=output/name
+            with target.open("xb") as handle:
+                handle.write(data)
+            saved.append(target)
+    except Exception:
+        for file in saved:
+            file.unlink(missing_ok=True)
+        raise
+    receipt=[{"name":p.name,"sha256":hashlib.sha256(p.read_bytes()).hexdigest(),
+              "bytes":p.stat().st_size} for p in saved]
+    core.audit("company.job.exported",{"job_id":job_id,"files":receipt})
+    return {"job_id":job_id,"order_id":order["id"],"company_id":order["company_id"],
+            "folder":str(output),"files":receipt,
+            "code_executed":False,"qa_identity_verified":False}
