@@ -147,7 +147,13 @@ def approve_and_execute(ident,digest,confirmed=False):
             raise core.EngineError('Stored operator request changed after approval; refuse execution.')
         output=_execute(name,clean);result={'ok':True,'result':output};status='completed'
     except Exception as e:
-        result={'ok':False,'error':str(e)[:350]};status='failed'
+        # GitHub might accept a dispatch even if the client loses its response.
+        # Record uncertainty and require operator inspection; never auto-retry.
+        uncertain=name=='github.workflow.source_dispatch'
+        result={'ok':False,'error':str(e)[:350]}
+        if uncertain:
+            result['execution_outcome']='unverified'
+        status='needs_review' if uncertain else 'failed'
     # Avoid corrupting SQLite evidence with a truncated JSON string after an
     # operation has possibly run. Ambiguous outcomes are never auto-retried.
     try:
