@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 import app
-from engine import core, coding
+from engine import core, coding, chat_sessions
 
 class ApiTests(unittest.TestCase):
     @classmethod
@@ -19,6 +19,7 @@ class ApiTests(unittest.TestCase):
         os.environ['THEORG_ALLOW_TRUSTED_TESTS']='1'
         app.TOKEN=core.init()
         coding.init_schema()
+        chat_sessions.init_schema()
         cls.server=ThreadingHTTPServer(('127.0.0.1',0),app.Handler)
         cls.server.daemon_threads=True
         cls.thread=threading.Thread(target=cls.server.serve_forever,daemon=True)
@@ -112,6 +113,35 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(code,400)
             self.assertIn('Benchmark locked',body['error'])
             inference.assert_not_called()
+
+    def test_chat_sessions_persist_and_do_not_inject_model_context(self):
+        self.assertEqual(self.get('/api/chat/sessions',auth=False)[0],401)
+        status,created=self.post('/api/chat/sessions',{'title':'Design review'})
+        self.assertEqual(status,201,created)
+        ident=created['session']['id']
+        status,task=self.post('/api/tasks',{'prompt':'Plan UI regression tests',
+                                          'role':'supervisor','session_id':ident})
+        self.assertEqual(status,201,task)
+        self.assertEqual(task['session_id'],ident)
+        code,_,data=self.get('/api/chat/session/tasks?id='+ident)
+        self.assertEqual(code,200)
+        messages=json.loads(data)['tasks']
+        self.assertEqual(len(messages),1)
+        self.assertEqual(messages[0]['prompt'],'Plan UI regression tests')
+        self.assertEqual(messages[0]['status'],'queued')
+        self.assertNotIn('conversation_context',messages[0])
+        code,_,data=self.get('/api/chat/sessions')
+        self.assertEqual(code,200)
+        self.assertEqual(json.loads(data)['sessions'][0]['task_count'],1)
+        self.assertEqual(self.post('/api/chat/sessions/rename',
+                                  {'id':ident,'title':'Reviewed UI'})[0],200)
+        self.assertEqual(self.post('/api/chat/sessions/archive',{'id':ident})[0],400)
+        self.assertEqual(self.post('/api/chat/sessions/archive',
+                                  {'id':ident,'confirmed':True})[0],200)
+        self.assertEqual(self.post('/api/tasks',{'prompt':'Do not queue into archive',
+                    'role':'supervisor','session_id':ident})[0],400)
+        code,_,data=self.get('/api/chat/session/tasks?id='+ident)
+        self.assertEqual(json.loads(data)['tasks'][0]['id'],task['id'])
 
     def test_authenticated_status(self):
         status,h,b=self.get('/api/status')
