@@ -7,7 +7,14 @@ $Repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $ResultDir = Join-Path $Repo 'out\source-verification'
 $Checks = @(
   @{Name='Python regression tests'; Program='python'; Args=@('-m','unittest','discover','-s','offline_desktop/tests','-t','offline_desktop','-q')},
-  @{Name='Node agent and UI tests'; Program='node'; Args=@('--test','tests/company-agent-directory.test.cjs','tests/provider-capacity.test.cjs','tests/supervisor-starters.test.cjs','tests/ui-contract.test.cjs','tests/company-ui-contract.test.cjs')},
+  @{Name='Node agent and UI tests'; Program='node'; Args=@('--test','tests/company-agent-directory.test.cjs','tests/provider-capacity.test.cjs','tests/supervisor-starters.test.cjs','tests/ui-contract.test.cjs','tests/company-ui-contract.test.cjs','tests/task-manager.test.cjs','tests/release-gates.test.cjs','tests/release-audit.test.cjs')},
+  @{Name='Agent playbooks syntax'; Program='node'; Args=@('--check','apps/chrome-extension/agent-playbooks.js')},
+  @{Name='Task manager syntax'; Program='node'; Args=@('--check','apps/chrome-extension/task-manager.js')},
+  @{Name='Supervisor plan syntax'; Program='node'; Args=@('--check','apps/chrome-extension/supervisor-plan.js')},
+  @{Name='Supervisor starters syntax'; Program='node'; Args=@('--check','apps/chrome-extension/supervisor-starters.js')},
+  @{Name='Company agent directory syntax'; Program='node'; Args=@('--check','apps/chrome-extension/company-agent-directory.js')},
+  @{Name='Supervisor job intake syntax'; Program='node'; Args=@('--check','apps/chrome-extension/supervisor-job-intake.js')},
+  @{Name='Extension home syntax'; Program='node'; Args=@('--check','apps/chrome-extension/home.js')},
   @{Name='Chrome background syntax'; Program='node'; Args=@('--check','apps/chrome-extension/background.js')},
   @{Name='Provider page syntax'; Program='node'; Args=@('--check','apps/chrome-extension/provider-page-agent.js')},
   @{Name='Provider handoff syntax'; Program='node'; Args=@('--check','apps/chrome-extension/provider-auto-handoff.js')},
