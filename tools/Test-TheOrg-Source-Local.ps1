@@ -18,6 +18,10 @@ foreach($program in @('python','node')){
     throw "Missing ${program}: install on the Windows developer PC; nothing was installed by this script."
   }
 }
+& python -c "import sys; raise SystemExit(0 if sys.version_info >= (3,12) else 1)"
+if($LASTEXITCODE -ne 0){throw 'Local Python 3.12+ is required for TheOrg source checks.'}
+& node -e "process.exit(Number(process.versions.node.split('.')[0]) >= 20 ? 0 : 1)"
+if($LASTEXITCODE -ne 0){throw 'Node.js 20+ is required for TheOrg source checks.'}
 foreach($check in $Checks){
   foreach($argument in $check.Args){
     if($argument -match '^(tests|apps|offline_desktop)/' -and
@@ -46,6 +50,8 @@ $report = [ordered]@{
   checks=@()
 }
 $allPassed=$true
+$priorBytecode=[Environment]::GetEnvironmentVariable('PYTHONDONTWRITEBYTECODE','Process')
+[Environment]::SetEnvironmentVariable('PYTHONDONTWRITEBYTECODE','1','Process')
 Push-Location $Repo
 try{
   foreach($check in $Checks){
@@ -64,6 +70,7 @@ try{
   }
 }finally{
   Pop-Location
+  [Environment]::SetEnvironmentVariable('PYTHONDONTWRITEBYTECODE',$priorBytecode,'Process')
 }
 $report.passed=$allPassed
 New-Item -ItemType Directory -Force -Path $ResultDir | Out-Null
