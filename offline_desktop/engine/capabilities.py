@@ -39,7 +39,7 @@ def enabled(name):
     if name=='browser.local.inspect':return os.environ.get('THEORG_ENABLE_BROWSER_PREVIEW')=='1'
     if name=='desktop.workspace.open':return os.environ.get('THEORG_ENABLE_OS_ACTIONS')=='1'
     if name=='desktop.runner.inspect':return os.environ.get('THEORG_ENABLE_RUNNER_DIAGNOSTICS')=='1'
-    if name in ('desktop.runner.registration_prompt','desktop.runner.start','windows.window.list','windows.window.focus','google.readonly.probe'):
+    if name in ('desktop.runner.registration_prompt','desktop.runner.start'):
         return os.environ.get('THEORG_ENABLE_RUNNER_CONTROL')=='1'
     if name=='windows.powershell.inspect':return os.environ.get('THEORG_ENABLE_WINDOWS_INSPECTION')=='1'
     if name=='windows.source.verify':return os.environ.get('THEORG_ENABLE_LOCAL_SOURCE_TESTS')=='1'

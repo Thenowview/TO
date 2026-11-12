@@ -7,11 +7,17 @@ from __future__ import annotations
 import secrets
 import sqlite3
 import re
+from datetime import datetime, timezone
 from engine import core
 
 MAX_TITLE = 100
 MAX_SESSIONS = 100
 MAX_HISTORY = 100
+
+
+def _now():
+    # Multiple messages/session updates commonly arrive within the same second.
+    return datetime.now(timezone.utc).isoformat(timespec='microseconds')
 
 
 def init_schema():
@@ -58,7 +64,7 @@ def _validated_title(value):
 def create(title="New session"):
     title = _validated_title(title)
     ident = secrets.token_hex(12)
-    now = core.utcnow()
+    now = _now()
     with core.conn() as db:
         db.execute("INSERT INTO chat_sessions(id,title,created,updated) VALUES(?,?,?,?)",
                    (ident,title,now,now))
@@ -76,7 +82,7 @@ def list_sessions(include_archived=False):
                COUNT(j.task_id) AS task_count
         FROM chat_sessions s LEFT JOIN chat_session_tasks j ON j.session_id=s.id
         {predicate} GROUP BY s.id
-        ORDER BY s.updated DESC LIMIT ?
+        ORDER BY s.updated DESC,s.rowid DESC LIMIT ?
     """, (MAX_SESSIONS,))
 
 
@@ -102,7 +108,7 @@ def attach_task(session_id, task_id):
             if linked["session_id"] != session_id:
                 raise core.EngineError("Task already belongs to another session.")
             return
-        now=core.utcnow()
+        now=_now()
         db.execute("INSERT INTO chat_session_tasks(session_id,task_id,assigned) VALUES(?,?,?)",
                    (session_id,task_id,now))
         db.execute("UPDATE chat_sessions SET updated=? WHERE id=?",(now,session_id))
@@ -115,7 +121,7 @@ def rename(session_id,title):
     with core.conn() as db:
         _require_open(db,session_id)
         db.execute("UPDATE chat_sessions SET title=?,updated=? WHERE id=?",
-                   (title,core.utcnow(),session_id))
+                   (title,_now(),session_id))
     core.audit("chat_session.renamed",{"id":session_id})
     return {"id":session_id,"title":title}
 
@@ -129,7 +135,7 @@ def archive(session_id, archived=True):
         if not existing:
             raise core.EngineError("Local session not found.")
         db.execute("UPDATE chat_sessions SET archived=?,updated=? WHERE id=?",
-                   (1 if archived else 0,core.utcnow(),session_id))
+                   (1 if archived else 0,_now(),session_id))
     core.audit("chat_session.archived" if archived else "chat_session.restored",{"id":session_id})
     return {"id":session_id,"archived":archived}
 
@@ -144,7 +150,7 @@ def session_tasks(session_id):
             SELECT t.id,t.role,t.prompt,t.status,t.output,t.error,t.created,t.updated,
                    CASE WHEN LENGTH(t.context_snapshot)>0 THEN 1 ELSE 0 END AS has_context
             FROM tasks t JOIN chat_session_tasks st ON st.task_id=t.id
-            WHERE st.session_id=? ORDER BY st.assigned DESC,t.created DESC LIMIT ?
+            WHERE st.session_id=? ORDER BY st.assigned DESC,t.created DESC,t.rowid DESC LIMIT ?
         """,(session_id,MAX_HISTORY)).fetchall()]
 
 
@@ -161,7 +167,7 @@ def set_context(session_id, enabled):
     with core.conn() as db:
         _require_open(db, session_id)
         db.execute("UPDATE chat_sessions SET include_context=?,updated=? WHERE id=?",
-                   (int(enabled),core.utcnow(),session_id))
+                   (int(enabled),_now(),session_id))
     core.audit("chat_session.context_changed", {"id":session_id,"enabled":enabled})
     return {"id":session_id,"include_context":enabled,
             "previous_tasks_executed_again":False,"external_tool_approval_granted":False}
@@ -185,7 +191,7 @@ def context_for_new_task(session_id):
             SELECT t.prompt,t.output,t.id FROM tasks t
             JOIN chat_session_tasks j ON j.task_id=t.id
             WHERE j.session_id=? AND t.status='completed' AND t.output!=''
-            ORDER BY j.assigned DESC,t.created DESC LIMIT 3
+            ORDER BY j.assigned DESC,t.created DESC,t.rowid DESC LIMIT 3
         """,(session_id,)).fetchall()
     if not rows:
         return ""

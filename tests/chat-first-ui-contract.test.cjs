@@ -42,7 +42,8 @@ test("Chat keyboard shortcuts and examples never auto-run tools", () => {
   assert.ok(js.includes("e.key.toLowerCase()==='k'"));
   assert.ok(js.includes("button.dataset.prompt"));
   assert.ok(js.includes("showToast('Task queued locally"));
-  assert.ok(html.includes("Each message creates an independent local task."));
+  assert.ok(html.includes("Tasks are independent by default."));
+  assert.ok(html.includes("Context never grants tool approval."));
   assert.ok(js.includes("element('pre','chat-response-text',job.output)"));
   assert.ok(!js.includes("chat-response-text', '<html"));
 });

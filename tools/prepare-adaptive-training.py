@@ -85,8 +85,10 @@ def export(db_path,output,confirmed=False):
     # A tiny dataset cannot reliably estimate model performance.
     if len(validation)==0:
         validation=[train.pop()]
-    if len(train)<2:
-        raise ValueError("Need at least two training and one validation example.")
+    # Hash buckets can put every member of a tiny dataset into validation.
+    # Rebalance deterministically; never invent examples or drop review checks.
+    while len(train)<2:
+        train.append(validation.pop())
     val=output.with_name(output.stem+"-validation.jsonl")
     if val.exists():
         raise ValueError("Validation output already exists; refuse overwrite.")

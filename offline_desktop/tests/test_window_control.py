@@ -105,6 +105,17 @@ class WindowsWindowControlTests(unittest.TestCase):
                 capabilities.approve_and_execute(
                     request["id"], request["digest"], confirmed=True)
 
+    def test_runner_opt_in_does_not_enable_window_or_google_capabilities(self):
+        with patch.dict(os.environ, {
+            'THEORG_ENABLE_RUNNER_CONTROL': '1',
+            'THEORG_ENABLE_WINDOW_INSPECTION': '0',
+            'THEORG_ENABLE_WINDOW_FOCUS': '0',
+            'THEORG_ENABLE_GOOGLE_READONLY': '0',
+        }):
+            self.assertTrue(capabilities.enabled('desktop.runner.start'))
+            for name in ('windows.window.list', 'windows.window.focus', 'google.readonly.probe'):
+                self.assertFalse(capabilities.enabled(name), name)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -78,6 +78,12 @@ class ChatContextTests(unittest.TestCase):
         with self.assertRaisesRegex(core.EngineError,"3,200"):
             core.enqueue("Too much","supervisor",context_snapshot="x"*3201)
 
+    def test_latest_task_is_first_when_creation_timestamps_tie(self):
+        with patch.object(core, 'utcnow', return_value='2026-11-12T00:00:00+00:00'):
+            core.enqueue('First independent task', 'supervisor')
+            latest = core.enqueue('Second independent task', 'supervisor')
+        self.assertEqual(core.tasks()[0]['id'], latest)
+
     def test_prompt_is_last_user_turn_and_previous_text_is_data(self):
         response={"choices":[{"message":{"content":"Answer using local inference"}}]}
         with patch.object(core,"active_backend",return_value=("llamacpp","llama.cpp")),patch.object(

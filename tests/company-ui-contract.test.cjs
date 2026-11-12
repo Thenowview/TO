@@ -21,7 +21,7 @@ test("Company agents view has all wired controls",()=>{
   }
   assert.match(html,/data-view="company"/);
   assert.match(html,/id="view-company"/);
-  assert.match(js,/company:'Company agents'/);
+  assert.match(js,/company:'Agent team'/);
 });
 
 test("API gateway requires local bearer authentication",()=>{

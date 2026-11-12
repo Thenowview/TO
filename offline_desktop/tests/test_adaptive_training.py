@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from engine import adaptive_runtime, core
 
 SCRIPT=Path(__file__).resolve().parents[2]/"tools"/"prepare-adaptive-training.py"
@@ -76,6 +77,15 @@ class TrainingDatasetTests(unittest.TestCase):
         malformed.write_text("not-json",encoding="utf-8")
         with self.assertRaisesRegex(ValueError,"Invalid JSONL"):
             training.validate(malformed)
+
+    def test_tiny_dataset_with_all_validation_hashes_still_keeps_two_training_examples(self):
+        for index in range(3):
+            self.add_verified(index)
+        with patch.object(training.hashlib, 'sha256') as digest:
+            digest.return_value.hexdigest.return_value = '0' * 64
+            result = training.export(core.DB, self.output, True)
+        self.assertEqual(result['training_examples'], 2)
+        self.assertEqual(result['validation_examples'], 1)
 
     def test_never_mutates_source_database_or_model_weights(self):
         self.add_verified(1);self.add_verified(2);self.add_verified(3)
