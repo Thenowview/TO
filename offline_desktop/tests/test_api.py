@@ -74,6 +74,19 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.post('/api/operator/plan',
             {'instruction':'x'})[0],400)
 
+    def test_integration_catalog_requires_auth_and_does_not_claim_connection(self):
+        code,_,_=self.get('/api/integrations',auth=False)
+        self.assertEqual(code,401)
+        code,_,raw=self.get('/api/integrations')
+        self.assertEqual(code,200)
+        data=json.loads(raw)
+        providers=data['integrations']
+        self.assertEqual({item['provider'] for item in providers},
+                         {'gmail','drive','calendar'})
+        self.assertTrue(all(item['connected'] is None and item['status']=='not_verified'
+                            for item in providers))
+        self.assertNotIn('access_token',raw.decode('utf-8'))
+
     def test_authenticated_status(self):
         status,h,b=self.get('/api/status')
         self.assertEqual(status,200);d=json.loads(b)
