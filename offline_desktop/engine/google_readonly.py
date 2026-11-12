@@ -130,6 +130,9 @@ def probe(provider: str) -> dict:
                 raise core.EngineError("Google provider returned invalid response JSON.") from exc
             if not isinstance(parsed, dict):
                 raise core.EngineError("Google provider response must be a JSON object.")
+            expected_key = {"gmail":"labels", "drive":"files", "calendar":"items"}[provider]
+            if not isinstance(parsed.get(expected_key), list):
+                raise core.EngineError("Google provider did not return the expected read-only resource shape.")
     except urllib.error.HTTPError as exc:
         # Do not include server response bodies, URL, authorization or tokens.
         raise core.EngineError("Google provider rejected read-only authentication or scope (HTTP " +
