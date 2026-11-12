@@ -97,6 +97,46 @@ class LocalVerificationTests(unittest.TestCase):
             with patch.object(local_validation.os, "name", "nt"):
                 local_validation.verify("main")
 
+    def test_evidence_requires_fresh_pinned_passed_source_only_results(self):
+        report_path = self.root / "out" / "source-verification" / "source-results.json"
+        report_path.parent.mkdir(parents=True)
+        valid = {
+            "commit": self.sha,
+            "source_only": True, "passed": True,
+            "deployment_performed": False, "windows_executable_verified": False,
+            "checks": [{"name": "Python regressions", "passed": True},
+                       {"name": "Node regressions", "passed": True}]
+        }
+        report_path.write_text(json.dumps(valid), encoding="utf-8")
+        self.assertEqual(len(local_validation._validated_report(
+            report_path, self.sha, None)), 2)
+        old = report_path.stat().st_mtime_ns
+        with self.assertRaisesRegex(core.EngineError, "stale"):
+            local_validation._validated_report(report_path, self.sha, old)
+
+        tampered = {**valid, "commit": "e"*40}
+        report_path.write_text(json.dumps(tampered), encoding="utf-8")
+        with self.assertRaisesRegex(core.EngineError, "pinned PASS"):
+            local_validation._validated_report(report_path, self.sha, None)
+
+        skipped = {**valid, "checks": [
+            {"name": "Python regressions", "passed": True},
+            {"name": "Node regressions", "passed": False}]}
+        report_path.write_text(json.dumps(skipped), encoding="utf-8")
+        with self.assertRaisesRegex(core.EngineError, "pinned PASS"):
+            local_validation._validated_report(report_path, self.sha, None)
+
+        report_path.write_text("{invalid", encoding="utf-8")
+        with self.assertRaisesRegex(core.EngineError, "valid UTF-8 JSON"):
+            local_validation._validated_report(report_path, self.sha, None)
+
+    def test_invalid_or_oversized_evidence_fails_closed(self):
+        path = self.root / "report.json"
+        path.write_text("x" * (local_validation._MAX_REPORT_BYTES + 1),
+                        encoding="utf-8")
+        with self.assertRaisesRegex(core.EngineError, "accepted size"):
+            local_validation._validated_report(path, self.sha, None)
+
     def test_no_approval_no_execution_and_uncertain_results_not_retried(self):
         with patch.dict(os.environ, {"THEORG_ENABLE_LOCAL_SOURCE_TESTS": "1"}):
             request = capabilities.prepare("windows.source.verify",
