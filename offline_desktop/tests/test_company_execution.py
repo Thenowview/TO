@@ -35,7 +35,7 @@ class CompanyExecutionTests(unittest.TestCase):
         self.project_id="b"*16
         self.project=core.WORKSPACE/"projects"/"demo"
         self.project.mkdir(parents=True)
-        (self.project/"main.py").write_text("old\n",encoding="utf-8")
+        (self.project/"main.py").write_bytes(b"old\n")
         self.project_patch=patch.object(coding,"_project",lambda project_id:
             self.project if project_id==self.project_id else
             (_ for _ in ()).throw(core.EngineError("Unknown project")))
@@ -63,7 +63,7 @@ class CompanyExecutionTests(unittest.TestCase):
         stage=(core.WORKSPACE/"theorg_agent_runs"/"demo"/order["id"]/
                job["id"]/("a"*16))
         stage.mkdir(parents=True)
-        (stage/"main.py").write_text("new\n",encoding="utf-8")
+        (stage/"main.py").write_bytes(b"new\n")
         result=adapter.manifest(stage)
         digest=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()
         root_digest=hashlib.sha256(json.dumps(adapter.manifest(self.project),sort_keys=True).encode()).hexdigest()
