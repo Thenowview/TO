@@ -34,6 +34,9 @@ def init_schema():
         CREATE INDEX IF NOT EXISTS ix_chat_session_tasks_recent
             ON chat_session_tasks(session_id,assigned DESC);
         """)
+        columns={r['name'] for r in db.execute('PRAGMA table_info(chat_sessions)').fetchall()}
+        if 'include_context' not in columns:
+            db.execute('ALTER TABLE chat_sessions ADD COLUMN include_context INTEGER NOT NULL DEFAULT 0')
 
 
 def _validated_id(value):
@@ -60,7 +63,7 @@ def create(title="New session"):
                    (ident,title,now,now))
     core.audit("chat_session.created", {"id": ident})
     return {"id": ident, "title": title, "created": now,
-            "updated": now, "archived": False, "task_count": 0}
+            "updated": now, "archived": False, "task_count": 0, "include_context": False}
 
 
 def list_sessions(include_archived=False):
@@ -68,7 +71,7 @@ def list_sessions(include_archived=False):
         raise core.EngineError("Invalid archived-session filter.")
     predicate = "" if include_archived else "WHERE s.archived=0"
     return core.records(f"""
-        SELECT s.id,s.title,s.created,s.updated,s.archived,
+        SELECT s.id,s.title,s.created,s.updated,s.archived,s.include_context,
                COUNT(j.task_id) AS task_count
         FROM chat_sessions s LEFT JOIN chat_session_tasks j ON j.session_id=s.id
         {predicate} GROUP BY s.id
@@ -145,3 +148,50 @@ def session_tasks(session_id):
 def assigned_task_ids():
     """Allows the UI to show legacy independent tasks separately."""
     return core.records("SELECT task_id,session_id FROM chat_session_tasks")
+
+
+def set_context(session_id, enabled):
+    """Only explicit owner action enables saved-task snippets for future tasks."""
+    session_id=_validated_id(session_id)
+    if type(enabled) is not bool:
+        raise core.EngineError("Conversation context mode must be true or false.")
+    with core.conn() as db:
+        _require_open(db, session_id)
+        db.execute("UPDATE chat_sessions SET include_context=?,updated=? WHERE id=?",
+                   (int(enabled),core.utcnow(),session_id))
+    core.audit("chat_session.context_changed", {"id":session_id,"enabled":enabled})
+    return {"id":session_id,"include_context":enabled,
+            "previous_tasks_executed_again":False,"external_tool_approval_granted":False}
+
+
+def context_for_new_task(session_id):
+    """Capture three completed exchanges only; never recall other sessions.
+
+    The user explicitly enables this option. Outputs are untrusted contextual
+    snippets, not instructions or proof of correctness.
+    """
+    session_id=_validated_id(session_id)
+    with core.conn() as db:
+        record=db.execute("SELECT include_context,archived FROM chat_sessions WHERE id=?",
+                          (session_id,)).fetchone()
+        if record is None or record["archived"]:
+            raise core.EngineError("Session missing or archived; cannot add contextual task.")
+        if not record["include_context"]:
+            return ""
+        rows=db.execute("""
+            SELECT t.prompt,t.output,t.id FROM tasks t
+            JOIN chat_session_tasks j ON j.task_id=t.id
+            WHERE j.session_id=? AND t.status='completed' AND t.output!=''
+            ORDER BY j.assigned DESC,t.created DESC LIMIT 3
+        """,(session_id,)).fetchall()
+    if not rows:
+        return ""
+    snippets=[]
+    for item in reversed(rows):
+        # Double-enclosed content cannot grant commands or tool permissions.
+        snippets.append(
+            "Previous task "+item["id"]+":\n"
+            "User request: "+item["prompt"][:350].replace("\x00"," ")+"\n"
+            "Model output (unverified): "+item["output"][:650].replace("\x00"," ")
+        )
+    return "\n\n".join(snippets)[:3200]
