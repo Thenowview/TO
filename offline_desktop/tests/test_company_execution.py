@@ -284,7 +284,7 @@ class CompanyExecutionTests(unittest.TestCase):
         inherited,source_job=company._approved_execution_source(child,self.project)
         self.assertEqual(source_job,parent_id)
         self.assertEqual(inherited,stage)
-        self.assertEqual((inherited/"main.py").read_text(encoding="utf-8"),"new\\n")
+        self.assertEqual((inherited/"main.py").read_text(encoding="utf-8"),"new\n")
 
     def test_unreviewed_dependency_source_is_never_inherited(self):
         order=self._create()
