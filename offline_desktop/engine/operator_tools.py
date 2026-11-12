@@ -50,6 +50,12 @@ def plan(instruction: str) -> dict:
         tasks.append({"tool": "desktop.runner.inspect",
                       "arguments": {"location": "user_downloads"},
                       "effect": "local_read_only"})
+        tasks.append({"tool": "desktop.runner.registration_prompt",
+                      "arguments": {"location": "user_downloads"},
+                      "effect": "interactive_local_registration_if_not_already_registered"})
+        tasks.append({"tool": "desktop.runner.start",
+                      "arguments": {"location": "user_downloads"},
+                      "effect": "launch_local_runner_console_if_registered"})
         tasks.append({"tool": "windows.powershell.inspect",
                       "arguments": {"check": "toolchain"},
                       "effect": "local_read_only"})
@@ -85,6 +91,10 @@ def plan(instruction: str) -> dict:
 def normalize(name: str, args: dict) -> dict:
     if type(args) is not dict:
         raise core.EngineError("Operator tool arguments must be an object.")
+    if name in ("desktop.runner.registration_prompt", "desktop.runner.start"):
+        if set(args) != {"location"} or args["location"] not in ("user_downloads", "system_root"):
+            raise core.EngineError("Runner console actions require an approved fixed location.")
+        return {"location": args["location"]}
     if name == "windows.powershell.inspect":
         if set(args) != {"check"} or args["check"] not in _CHECKS:
             raise core.EngineError("Choose an allowlisted read-only PowerShell inspection.")
@@ -272,6 +282,11 @@ def _dispatch_source_only(expected_sha: str) -> dict:
 
 def execute(name: str, args: dict) -> dict:
     clean = normalize(name, args)
+    if name in ("desktop.runner.registration_prompt", "desktop.runner.start"):
+        from engine import runner_control
+        if name == "desktop.runner.registration_prompt":
+            return runner_control.registration_prompt(clean["location"])
+        return runner_control.start_registered(clean["location"])
     if name == "windows.powershell.inspect":
         return _powershell(clean["check"])
     if name == "github.runner.status":
