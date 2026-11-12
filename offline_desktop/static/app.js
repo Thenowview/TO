@@ -18,7 +18,7 @@
   }
   let activeView = 'overview';
   let jobs = [], modelData = {}, engineStatus = {};
-  const labels = {overview:'Workspace overview',supervisor:'AI Supervisor',tasks:'Task queue',coding:'Code Studio',models:'Local models',files:'Workspace files',memory:'Memory vault',settings:'System & security'};
+  const labels = {overview:'Workspace overview',supervisor:'AI Supervisor',tasks:'Task queue',coding:'Code Studio',company:'Company agents',models:'Local models',files:'Workspace files',memory:'Memory vault',settings:'System & security'};
 
   function text(node, value){ node.textContent = String(value ?? ''); return node; }
   function element(tag, className, value) {
@@ -68,6 +68,7 @@
     text($('breadcrumb'),view.toUpperCase());text($('pageTitle'),labels[view]);
     document.querySelector('.sidebar').classList.remove('open');
     if(view==='coding')loadCodeStudio().catch(e=>showToast(e.message,true));
+    if(view==='company')loadCompany().catch(e=>showToast(e.message,true));
     if(view==='models')loadModels();if(view==='tasks'||view==='supervisor')loadTasks();
     if(view==='files')loadFiles();if(view==='memory')loadMemories();if(view==='settings')loadAudit();
   }
@@ -515,6 +516,114 @@
       }
     }catch(e){showToast(e.message,true)}
   }
+  // Company jobs: explicit user dispatch, no model output is treated as authorization.
+  async function loadCompany(){
+    const company = $('companyName').value.trim() || 'demo';
+    const target = $('companyOrderList');target.replaceChildren();
+    const [projects, runtime, data] = await Promise.all([
+      request('code/projects'), request('company/runtime'),
+      request('company/orders?company_id='+encodeURIComponent(company))
+    ]);
+    $('companyRuntime').textContent=runtime.opencode.available
+      ? 'OpenCode detected: '+runtime.opencode.version+' · External runtime; authorization required.'
+      : 'OpenCode not available: '+(runtime.opencode.reason||'Install and authenticate the OpenCode CLI before dispatch.');
+    const projectSelect=$('companyProject'), wanted=projectSelect.value;
+    projectSelect.replaceChildren(element('option','', 'Select existing local project'));
+    for(const p of projects.projects||[]){
+      const opt=element('option','',p.slug);opt.value=p.id;projectSelect.append(opt);
+    }
+    if([...projectSelect.options].some(x=>x.value===wanted))projectSelect.value=wanted;
+    if(!data.orders.length) return appendEmpty(target,'No company work orders. Choose an existing Code Studio project and create one.');
+    for(const order of data.orders){
+      const card=element('div','task-item');
+      card.append(element('strong','',order.objective),
+        element('small','',order.company_id+' · '+order.status+' · '+order.id));
+      for(const job of order.jobs||[]){
+        const jobBox=element('div','file-item');
+        jobBox.append(element('strong','',job.agent_role+' · '+job.status+
+          (job.edit_mode?' · isolated edit':' · read only')),
+          element('small','',job.instruction));
+        if(job.error)jobBox.append(element('div','inline-note',job.error));
+        if(job.report?.summary)jobBox.append(element('pre','',job.report.summary.slice(0,2800)));
+        if(job.report?.changed_count)jobBox.append(element('small','',job.report.changed_count+' changed files (isolated copy only)'));
+        const actions=element('div','button-row');
+        if(job.status==='queued'){
+          const b=element('button','btn secondary','Approve & run');
+          b.addEventListener('click',async()=>{
+            const model=$('companyModel').value.trim();
+            if(!model)return showToast('Choose an explicit provider/model first.',true);
+            if(!confirm('Authorize the external OpenCode CLI to read a COPIED snapshot of this project? Its selected model provider may receive project source content, and provider costs may apply.'))return;
+            const edit=!!job.edit_mode;
+            if(edit && !confirm('Approve source changes in the ISOLATED COPY only? The CLI runs under your user account; it is not an OS sandbox. No merge or deployment will occur.'))return;
+            b.disabled=true;
+            try{
+              await request('company/jobs/dispatch',{method:'POST',body:{
+                job_id:job.id,model,confirmed:true,data_transfer_confirmed:true,
+                isolated_edit_confirmed:edit
+              }});
+              await loadCompany();showToast('Authorized work dispatched. Review result before accepting.');
+            }catch(e){showToast(e.message,true);b.disabled=false}
+          });actions.append(b);
+        }
+        if(job.status==='submitted_for_qa'){
+          const check=element('button','btn secondary','Check structural evidence');
+          check.addEventListener('click',async()=>{
+            try{
+              const x=await request('company/qa/structural?job_id='+encodeURIComponent(job.id));
+              alert(x.assessment.structural_pass
+                ? 'Structural checks passed. Content correctness, tests and reviewer identity remain UNVERIFIED.'
+                : 'Structural checks failed:\n'+x.assessment.findings.join('\n'));
+            }catch(e){showToast(e.message,true)}
+          });actions.append(check);
+          for(const verdict of ['accept','reject']){
+            const b=element('button','btn secondary',verdict==='accept'?'Record QA acceptance':'Reject & request repair');
+            b.addEventListener('click',async()=>{
+              const notes=prompt('Record specific evidence you independently inspected (minimum 30 characters). Do not falsely claim tests or reviewer identity:', '');
+              if(notes===null)return;
+              const role=job.agent_role==='qa'?'security':'qa';
+              if(!confirm('Record a '+role.toUpperCase()+' reviewer attestation? It is not a verified reviewer login or independent automated test.'))return;
+              try{
+                await request('company/qa/review',{method:'POST',body:{
+                  job_id:job.id,verdict,findings:notes,reviewer_role:role,confirmed:true
+                }});
+                await loadCompany();
+              }catch(e){showToast(e.message,true)}
+            });actions.append(b);
+          }
+        }
+        const handoff=element('button','btn secondary','Send note to this agent');
+        handoff.addEventListener('click',async()=>{
+          const note=prompt('Owner note for '+job.agent_role+'. Saved as untrusted task context:', '');
+          if(note===null)return;
+          if(!confirm('Save this note for the selected job? This alone will not execute work.'))return;
+          try{
+            await request('company/messages',{method:'POST',body:{
+              order_id:order.id,to_job:job.id,message:note,confirmed:true
+            }});showToast('Owner note saved to job inbox.');
+          }catch(e){showToast(e.message,true)}
+        });actions.append(handoff);
+        jobBox.append(actions);card.append(jobBox);
+      }
+      target.append(card);
+    }
+  }
+  $('companyRefresh').addEventListener('click',()=>loadCompany().catch(e=>showToast(e.message,true)));
+  $('companyCreate').addEventListener('click',async()=>{
+    const company=$('companyName').value.trim(), project=$('companyProject').value;
+    const objective=$('companyObjective').value.trim();
+    let tasks;
+    try{tasks=JSON.parse($('companyTasks').value)}catch{return showToast('Tasks must be valid JSON.',true);}
+    if(!project)return showToast('Create or select a Code Studio project first.',true);
+    if(!confirm('Create this work order? This only saves queued tasks; NO external AI execution starts.'))return;
+    const b=$('companyCreate');b.disabled=true;
+    try{
+      await request('company/orders',{method:'POST',body:{
+        company_id:company,project_id:project,objective,tasks,confirmed:true
+      }});
+      await loadCompany();showToast('Persistent work order created. Dispatch requires separate approval.');
+    }catch(e){showToast(e.message,true)}
+    finally{b.disabled=false}
+  });
   $('autopilotStart').addEventListener('click',startAutopilot);
   $('agentStart').addEventListener('click',startAgentReview);
   $('agentRefresh').addEventListener('click',()=>loadAgentReviews().catch(e=>showToast(e.message,true)));
