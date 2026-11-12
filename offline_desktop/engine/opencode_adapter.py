@@ -123,7 +123,11 @@ def _policy(edit: bool) -> dict[str, Any]:
 def _binary() -> str:
     override = os.getenv("THEORG_OPENCODE_BIN", "").strip()
     path = Path(override) if override else None
-    executable = str(path.resolve()) if path and path.is_file() else shutil.which("opencode")
+    bundled = core.BASE / "opencode" / ("opencode.exe" if os.name == "nt" else "opencode")
+    if path and not path.is_file():
+        raise core.EngineError("Configured OpenCode executable does not exist.")
+    executable = (str(path.resolve()) if path else
+                  str(bundled) if bundled.is_file() else shutil.which("opencode"))
     if not executable:
         raise core.EngineError("OpenCode CLI missing. Install OpenCode separately and verify 'opencode --version'.")
     return executable
@@ -160,13 +164,13 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
     if not staged.is_dir() or staged.is_symlink():
         raise core.EngineError("Staged source directory missing.")
     # An overwrite of an existing global project config must not loosen policy.
+    exe = _binary()
     config = _policy(edit)
     policy_path = staged / "opencode.json"
     if policy_path.exists():
         raise core.EngineError("Refusing an existing OpenCode configuration in worktree.")
     policy_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     original = manifest(staged)
-    exe = _binary()
     env = {}
     # Avoid passing CI tokens and provider API secrets from the parent process.
     for name in ("PATH", "SystemRoot", "WINDIR", "COMSPEC", "TEMP", "TMP", "HOME",
@@ -204,6 +208,17 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
         # Never include policy file as a deliverable.
         policy_path.unlink(missing_ok=True)
     after = manifest(staged)
+    unexpected = []
+    for folder, dirs, files in os.walk(staged, topdown=True, followlinks=False):
+        base = Path(folder)
+        for d in dirs:
+            if (base / d).is_symlink():
+                unexpected.append(str((base / d).relative_to(staged)))
+        for name in files:
+            path = base / name
+            rel = path.relative_to(staged)
+            if path.is_symlink() or not _safe_file(rel):
+                unexpected.append(rel.as_posix())
     changes = [{"path": key, "before": original.get(key), "after": after.get(key)}
                for key in sorted(original.keys() | after.keys()) if original.get(key) != after.get(key)]
     messages = []
@@ -222,6 +237,7 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
     return {"engine": "opencode", "status": "submitted_for_qa" if exit_code == 0 else "failed",
             "exit_code": exit_code, "agent": agent, "model": model,
             "changed_files": changes[:60], "changed_count": len(changes),
+            "unexpected_files": unexpected[:60],
             "final_manifest_sha256": after_digest,
             "summary": summary, "output_bytes": length,
             "structural_only": True, "independent_qa_passed": False,
