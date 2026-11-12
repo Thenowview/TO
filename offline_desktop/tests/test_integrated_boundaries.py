@@ -49,6 +49,8 @@ class IntegrationBoundaryTests(unittest.TestCase):
             coordination._encode_steps([{'role':'planner','output':'☑'*20000}])
         with self.assertRaisesRegex(core.EngineError,'cannot be serialized'):
             coordination._encode_steps([{'role':'planner','output':object()}])
+        with self.assertRaisesRegex(core.EngineError,'cannot be serialized'):
+            coordination._encode_steps([{'role':'planner','output':chr(0xD800)}])
         item=coordination.create(self.project['id'],'Review source evidence',
                                  coordination.SCOPE,start=False)
         with core.conn() as db:
@@ -125,6 +127,13 @@ class IntegrationBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(core.EngineError,'consumed'):
                 capabilities.approve_and_execute(
                     prepared['id'],prepared['digest'],confirmed=True)
+            malformed=capabilities.prepare('desktop.workspace.open',{})
+            with patch.object(capabilities,'_execute',
+                              return_value={'bad_text':chr(0xD800)}):
+                invalid=capabilities.approve_and_execute(
+                    malformed['id'],malformed['digest'],confirmed=True)
+            self.assertEqual(invalid['status'],'needs_review')
+            self.assertEqual(invalid['execution_outcome'],'unverified')
 
     def test_browser_cannot_escape_workspace(self):
         with patch.dict(os.environ,{'THEORG_ENABLE_BROWSER_PREVIEW':'1'}):
