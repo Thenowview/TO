@@ -22,6 +22,25 @@ GitHub's self-hosted runner compute is free of GitHub-hosted compute charges, in
 https://docs.github.com/en/billing/concepts/product-billing/github-actions
 https://docs.github.com/en/actions/reference/security/secure-use
 
+## One-command local preflight and safe start
+
+Run these commands in Windows PowerShell after downloading and registering the **official** GitHub self-hosted runner (using the installation commands shown in your account). The scripts do not register the runner, request or store registration tokens, install software, or expose secrets.
+
+~~~powershell
+git fetch origin
+git switch feat/agent-execution-handoffs-independent-qa
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Runner-Preflight.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-TheOrg-Runner-Preflight.ps1 -RequireBuildTools
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Start-TheOrg-SelfHosted-Runner.ps1 -ConfirmStart -RunnerDirectory 'C:\actions-runner'
+~~~
+
+- The first check requires Windows x64, Python 3.12+ x64, Node.js 20+, and Git.
+- The optional build-tools check additionally requires the .NET 8 SDK; it warns if NSIS is unavailable for older installers.
+- The starter checks that the official installation and `.runner` registration file exist and launches `run.cmd` in the foreground. Change `-RunnerDirectory` if your official runner is installed elsewhere.
+- Before starting, confirm this is a **trusted, isolated Windows user or VM** without production credentials; the runner executes commands from manually dispatched workflows.
+- Run a source-only dispatch first; only after it passes should you opt into Windows binary packaging.
+- All build evidence stays local on the Windows machine because GitHub artifact uploads are deliberately disabled at the $0 budget.
+
 ## First run — no EXE build
 
 Open **Actions → TheOrg Chrome and Windows Bridge CI → Run workflow**.
