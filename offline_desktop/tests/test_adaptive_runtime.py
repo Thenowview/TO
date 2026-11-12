@@ -59,7 +59,7 @@ class AdaptiveRuntimeTests(unittest.TestCase):
             start.assert_not_called()
             with self.assertRaisesRegex(core.EngineError,"Insufficient measured RAM"):
                 adaptive_runtime.select("advanced")
-        with self.assertRaisesRegex(core.EngineError,"Choose Nano"):
+        with self.assertRaisesRegex(core.EngineError,"Choose Auto, Nano, Lite or Advanced"):
             adaptive_runtime.select("superadmin")
 
     def test_unreviewed_knowledge_never_used_as_verified_solution(self):

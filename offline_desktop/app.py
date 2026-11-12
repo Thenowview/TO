@@ -143,6 +143,7 @@ class Handler(BaseHTTPRequestHandler):
                     q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
                     self._json(coding.project_history(q.get('project_id',[''])[0]))
                 else:self._json({'error':'Unknown API endpoint.'},404)
+            except core.EngineError as e:self._json({'error':str(e)},400)
             except Exception as e:self._json({'error':str(e)},500)
             return
         if path=='/':path='/index.html'
