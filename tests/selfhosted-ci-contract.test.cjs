@@ -52,3 +52,24 @@ test("Production release policy remains fail closed",()=>{
   assert.equal(policy.productionReady,false);
   assert.equal(policy.decision,"NO_GO");
 });
+
+test("Bridge runner preflight executes before any source or Windows build",()=>{
+  const workflow=fs.readFileSync(path.join(ROOT,".github","workflows","bridge-ci.yml"),"utf8");
+  const preflight=workflow.indexOf("./tools/Test-TheOrg-Runner-Preflight.ps1");
+  const source=workflow.indexOf("./tools/Test-TheOrg-Source-Local.ps1");
+  const build=workflow.indexOf("./tools/Build-TheOrg-Windows-Local.ps1");
+  assert.ok(preflight>0 && source>preflight && build>source);
+  assert.match(workflow,/build_unsigned_windows_candidate:/);
+  assert.match(workflow,/build_unsigned_windows_candidate:[\\s\\S]*?default:\\s*false/);
+});
+test("Runner launch needs explicit consent and registration; scripts never create tokens",()=>{
+  const setup=fs.readFileSync(path.join(ROOT,"tools","Test-TheOrg-Runner-Preflight.ps1"),"utf8");
+  const launch=fs.readFileSync(path.join(ROOT,"tools","Start-TheOrg-SelfHosted-Runner.ps1"),"utf8");
+  assert.match(launch,/\[switch\]\$ConfirmStart/);
+  assert.match(launch,/if\(-not \$ConfirmStart\)/);
+  assert.match(launch,/-RequireRunnerRegistration/);
+  assert.match(setup,/\.runner/);
+  assert.match(setup,/Python 3\.12\+/);
+  assert.match(setup,/Node\.js 20\+/);
+  assert.doesNotMatch(launch+setup,/registration.token|api\.github\.com.*registration-token|ConvertFrom-SecureString/i);
+});
