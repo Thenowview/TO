@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 import re
 import subprocess
-import tempfile
 import time
 
 from engine import core
@@ -57,9 +56,13 @@ def _checked_checkout(root: Path, expected_sha: str) -> None:
     actual_sha = _git(root, "rev-parse", "HEAD")
     if actual_sha != expected_sha:
         raise core.EngineError("Checkout commit differs from the approved SHA.")
-    # A clean checkout is required so the reviewed commit matches the executed script.
-    if _git(root, "status", "--porcelain", "--untracked-files=no"):
-        raise core.EngineError("Trusted checkout has modified tracked source; refuse execution.")
+    # Untracked source can be executed by discovery imports. Reject all dirty
+    # files except generated reports under out/, which are non-source artifacts.
+    changes = _git(root, "status", "--porcelain", "--untracked-files=all")
+    for change in changes.splitlines():
+        if change.startswith("?? ") and change[3:].replace("\\", "/").startswith("out/"):
+            continue
+        raise core.EngineError("Trusted checkout contains modified or untracked source; refuse execution.")
 
 
 def _terminate_windows_tree(pid: int) -> None:
@@ -118,8 +121,9 @@ def verify(expected_sha: str) -> dict:
             "status": "failed", "exit_code": code, "duration_seconds": duration,
             "approved_sha": expected_sha, "source_tests_passed": False,
             "build_performed": False, "deployment_performed": False,
-            "note": "Local script failed. Inspect its local source-results.json and terminal output."
+            "note": "Fixed source verifier exited nonzero; review the local out/source-verification/source-results.json. Output was suppressed to avoid credential disclosure."
         }
+    _checked_checkout(root, expected_sha)  # Reject source modified during tests.
     if not report_path.is_file() or report_path.is_symlink():
         raise core.EngineError("Verification exited zero but no safe evidence report exists.")
     if (previous_mtime is not None and
