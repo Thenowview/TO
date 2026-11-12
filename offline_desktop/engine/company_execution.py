@@ -221,6 +221,8 @@ def _reconcile_order(db, order_id: str) -> None:
         state = "needs_attention"
     elif "interrupted" in statuses:
         state = "interrupted"
+    elif "cancelled" in statuses:
+        state = "needs_attention"
     elif "submitted_for_qa" in statuses:
         state = "needs_qa"
     else:
@@ -280,7 +282,7 @@ def _execute(job_id: str) -> None:
         project = coding._project(order["project_id"])
         stage_root = core.WORKSPACE / "theorg_agent_runs" / order["company_id"] / job["order_id"]
         stage_root.mkdir(parents=True, exist_ok=True)
-        stage = stage_root / job_id
+        stage = stage_root / job_id / secrets.token_hex(8)
         initial = adapter.make_copy(Path(project), stage)
         inbox = read_messages(order["id"], for_job=job_id)
         handoffs = [json.loads(m["payload"]) for m in inbox][-8:]
@@ -513,8 +515,9 @@ def create_code_plan(job_id: str, *, confirmed: bool) -> dict:
     stage=Path(job["staging_path"])
     expected=(core.WORKSPACE / "theorg_agent_runs" / order["company_id"]
               / job["order_id"] / job_id).resolve()
-    if stage.is_symlink() or stage.resolve() != expected:
-        raise core.EngineError("Output folder is not inside the approved company order.")
+    if (stage.is_symlink() or stage.parent.resolve() != expected or
+            not re.fullmatch(r"[0-9a-f]{16}", stage.name)):
+        raise core.EngineError("Output folder is not inside an approved company job attempt.")
     repo=coding._project(order["project_id"])
     edits=[]
     for change in raw_changes:
@@ -548,3 +551,42 @@ def create_code_plan(job_id: str, *, confirmed: bool) -> dict:
                                                 "qa_attested":True})
     return {"plan":plan,"from_job":job_id,"status":"draft",
             "requires_digest_approval":True, "original_project_unchanged":True}
+
+
+def cancel_queued(job_id: str, *, confirmed: bool) -> dict:
+    """Cancel only a not-yet-running request; cannot pretend to stop external CLI."""
+    if confirmed is not True:
+        raise core.EngineError("Owner approval required before cancelling a job.")
+    with _LOCK:
+        with core.conn() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row=db.execute("SELECT order_id,status FROM company_jobs WHERE id=?",
+                           (_ident(job_id),)).fetchone()
+            if not row or row["status"] not in ("queued","interrupted"):
+                raise core.EngineError("Only queued or interrupted jobs can be cancelled.")
+            db.execute("UPDATE company_jobs SET status='cancelled',updated=? WHERE id=?",
+                       (core.utcnow(),job_id))
+            _reconcile_order(db,row["order_id"])
+    core.audit("company.job.cancelled",{"job_id":job_id})
+    return {"job_id":job_id,"status":"cancelled","external_process_stopped":False}
+
+
+def requeue(job_id: str, *, confirmed: bool) -> dict:
+    """Explicitly retry a failed/rejected/interrupted job using a NEW copy on next dispatch."""
+    if confirmed is not True:
+        raise core.EngineError("A fresh owner retry approval is required.")
+    with _LOCK:
+        with core.conn() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row=db.execute("SELECT order_id,status FROM company_jobs WHERE id=?",
+                           (_ident(job_id),)).fetchone()
+            if not row or row["status"] not in ("failed","rejected","interrupted"):
+                raise core.EngineError("Only failed/rejected/interrupted jobs may be explicitly retried.")
+            db.execute("""UPDATE company_jobs SET status='queued',model='',report_json='{}',
+                          error='',started=NULL,finished=NULL,staging_path='',
+                          updated=? WHERE id=?""",(core.utcnow(),job_id))
+            _reconcile_order(db,row["order_id"])
+    core.audit("company.job.requeued",{"job_id":job_id})
+    return {"job_id":job_id,"status":"queued",
+            "requires_new_execution_and_provider_approval":True,
+            "previous_attempt_artifacts_preserved":True}
