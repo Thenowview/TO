@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -53,6 +53,11 @@ class Handler(BaseHTTPRequestHandler):
                         'coding_projects':len(core.records('SELECT id FROM code_projects')),'coding_git_available':core.git_binary() is not None})
                 elif path=='/api/device/capabilities':
                     self._json({'capabilities':device_capabilities.detect()})
+                elif path=='/api/adaptive':
+                    self._json({'adaptive':adaptive_runtime.readiness(),
+                                'models':adaptive_runtime.registry()['models']})
+                elif path=='/api/adaptive/solutions':
+                    self._json({'solutions':adaptive_runtime.candidates()})
                 elif path=='/api/models':
                     files=core.local_models()
                     memory=device_capabilities.detect()
@@ -217,6 +222,25 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/workflows/cancel':
                 if payload.get('confirmed') is not True:raise core.EngineError('Explicit workflow cancellation required.')
                 orchestration.cancel(payload.get('workflow_id'));self._json({'ok':True})
+            elif path=='/api/adaptive/select':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Edition change requires explicit confirmation.')
+                self._json({'adaptive':adaptive_runtime.select(payload.get('tier'))})
+            elif path=='/api/adaptive/recall':
+                self._json({'recall':adaptive_runtime.recall(payload.get('query'))})
+            elif path=='/api/adaptive/solutions/propose':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Saving a knowledge candidate requires confirmation.')
+                self._json({'candidate':adaptive_runtime.propose(
+                    payload.get('question'),payload.get('answer'),
+                    payload.get('origin','owner'),payload.get('source_url',''))},201)
+            elif path=='/api/adaptive/solutions/review':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Knowledge promotion/replacement requires owner approval.')
+                self._json({'review':adaptive_runtime.review(
+                    payload.get('id'),approved=payload.get('approved'),
+                    evidence=payload.get('evidence',''),
+                    supersedes=payload.get('supersedes',''))})
             elif path=='/api/chat/sessions':
                 self._json({'session':chat_sessions.create(payload.get('title','New session'))},201)
             elif path=='/api/chat/sessions/rename':
@@ -427,6 +451,7 @@ def main():
         capabilities.init_schema()
         company_execution.init_schema()
         chat_sessions.init_schema()
+    adaptive_runtime.init_schema()
         try:
             # CLI benchmarking also requires a real local generation probe first.
             core.probe_local_model()
@@ -450,6 +475,7 @@ def main():
         capabilities.init_schema()
         company_execution.init_schema()
         chat_sessions.init_schema()
+        adaptive_runtime.init_schema()
         print('PASS bundled dashboard, engine, SQLite and role registry')
         return 0
     TOKEN=core.init()
@@ -460,6 +486,7 @@ def main():
     capabilities.init_schema()
     company_execution.init_schema()
     chat_sessions.init_schema()
+        adaptive_runtime.init_schema()
     _create_desktop_shortcut_if_needed()
     if args.host not in ('127.0.0.1','::1','localhost'):
         if os.environ.get('THEORG_ALLOW_LAN_HTTP')!='1':
