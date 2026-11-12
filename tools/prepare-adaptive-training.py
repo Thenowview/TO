@@ -39,7 +39,7 @@ def _read(db_path):
     if not db_path.is_file():
         raise ValueError("SQLite knowledge database not found; nothing to export.")
     # Open strictly read-only to avoid accidental migrations or edits.
-    uri="file:"+db_path.resolve().as_posix()+"?mode=ro"
+    uri=db_path.resolve().as_uri()+"?mode=ro"
     conn=sqlite3.connect(uri,uri=True,timeout=5)
     conn.row_factory=sqlite3.Row
     try:
