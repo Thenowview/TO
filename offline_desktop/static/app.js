@@ -230,6 +230,8 @@
   }
   async function selectChatSession(id){
     $('chatMessageSearch').value='';
+    $('chatHistoryResults').hidden=true;
+    $('chatHistoryMatches').replaceChildren();
     if(id && !chatSessions.some(s=>s.id===id)){
       throw new Error('Session was not found; refresh the local list.');
     }
@@ -283,6 +285,10 @@
       'Task status and text come from the local SQLite task record. Completion does not prove real-world tool execution, verified sources or successful changes unless separate evidence is shown.');
     target.append(section,note);
     if(job.output){
+      target.append(element('h3','chat-evidence-subhead','Recorded response'));
+      target.append(element('pre','chat-evidence-response',String(job.output).slice(0,12000)));
+    }
+    if(job.output){
       const summary=window.TheOrgChatRenderer?.codeSummary(job.output)||[];
       if(summary.length){
         target.append(element('h3','chat-evidence-subhead','Code blocks'));
@@ -295,6 +301,49 @@
     panel.hidden=false;
     $('chatDetailsToggle').setAttribute('aria-expanded','true');
     if(window.matchMedia('(max-width:1050px)').matches)panel.focus?.();
+  }
+  async function searchSavedTasks(){
+    const value=$('chatMessageSearch').value.trim();
+    if(value.length<2)return showToast('Enter at least two characters to search saved local tasks.',true);
+    const panel=$('chatHistoryResults'),target=$('chatHistoryMatches');
+    panel.hidden=false;target.replaceChildren(element('p','muted','Searching saved local tasks…'));
+    const url='chat/search?q='+encodeURIComponent(value)+
+       (activeSessionId?'&session_id='+encodeURIComponent(activeSessionId):'');
+    try{
+      const response=await request(url),data=response.search;
+      target.replaceChildren();
+      if(!data.matches?.length){
+        target.append(element('p','muted','No saved tasks match. Try a more specific phrase.'));
+        return;
+      }
+      const hint=element('p','muted','Up to '+data.limit+' local SQLite matches; no website or AI provider was contacted.');
+      target.append(hint);
+      for(const item of data.matches){
+        const row=element('article','chat-history-match');
+        row.append(element('strong','',item.prompt.slice(0,160)));
+        row.append(element('div','chat-history-meta',
+          (item.created||'Unknown date')+' · '+(item.role||'Agent')+' · '+(item.status||'Unknown')));
+        if(item.output)row.append(element('p','chat-history-excerpt',item.output.slice(0,240)));
+        const button=element('button','chat-action-button','Inspect saved task');
+        button.type='button';button.addEventListener('click',async()=>{
+          button.disabled=true;
+          try{
+            const detail=await request('chat/task?id='+encodeURIComponent(item.id));
+            inspectorTab='task';
+            $('chatInspectorTask').classList.add('selected');
+            $('chatInspectorTask').setAttribute('aria-pressed','true');
+            $('chatInspectorCode').classList.remove('selected');
+            $('chatInspectorCode').setAttribute('aria-pressed','false');
+            openChatDetails(detail.task);
+            panel.hidden=true;
+          }catch(e){showToast(e.message,true);}
+          finally{button.disabled=false;}
+        });
+        row.append(button);target.append(row);
+      }
+    }catch(e){
+      target.replaceChildren(element('p','chat-error-text','History search unavailable: '+e.message));
+    }
   }
   async function renderCodeInspector(){
     const panel=$('chatDetailsPanel'),target=$('chatDetailsContent');
@@ -880,6 +929,14 @@
     finally{button.disabled=false;}
   });
   $('chatMessageSearch').addEventListener('input',renderChatMessages);
+  $('chatSearchAll').addEventListener('click',searchSavedTasks);
+  $('chatCloseSearch').addEventListener('click',()=>{
+    $('chatHistoryResults').hidden=true;$('chatHistoryMatches').replaceChildren();
+  });
+  $('chatMessageSearch').addEventListener('keydown',event=>{
+    if(event.key==='Enter'){event.preventDefault();searchSavedTasks();}
+    if(event.key==='Escape'){$('chatMessageSearch').value='';renderChatMessages();}
+  });
   $('chatContextToggle').addEventListener('click',async()=>{
     const session=currentChatSession();
     if(!session||session.archived)return;
