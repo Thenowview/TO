@@ -119,8 +119,21 @@ def approve_and_execute(ident,digest,confirmed=False):
         output=_execute(name,args);result={'ok':True,'result':output};status='completed'
     except Exception as e:
         result={'ok':False,'error':str(e)[:350]};status='failed'
+    # Avoid corrupting SQLite evidence with a truncated JSON string after an
+    # operation has possibly run. Ambiguous outcomes are never auto-retried.
+    try:
+        serialized=json.dumps(result,ensure_ascii=False)
+    except (TypeError,ValueError):
+        serialized=''
+    if not serialized or len(serialized.encode('utf-8'))>5000:
+        result={'ok':False,'error':
+                'Capability execution outcome is unverified: result evidence was '
+                'unserializable or exceeded the audit limit. Inspect manually; do not retry automatically.',
+                'execution_outcome':'unverified'}
+        status='needs_review'
+        serialized=json.dumps(result)
     with core.conn() as db:
         db.execute('UPDATE capability_requests SET status=?,updated=?,result_json=? WHERE id=?',
-                   (status,int(time.time()),json.dumps(result)[:5000],ident))
+                   (status,int(time.time()),serialized,ident))
     core.audit('capability.'+status,{'id':ident,'capability':name})
     return {'id':ident,'status':status,**result}
