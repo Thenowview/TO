@@ -74,6 +74,39 @@ class IntegrationBoundaryTests(unittest.TestCase):
             self.assertEqual(r['status'],'completed')
             with self.assertRaises(core.EngineError):
                 capabilities.approve_and_execute(p['id'],p['digest'],confirmed=True)
+    def test_runner_diagnostic_is_read_only_opt_in_and_not_online_proof(self):
+        from pathlib import Path
+        with self.assertRaisesRegex(core.EngineError,'disabled'):
+            capabilities.prepare('desktop.runner.inspect',{'location':'user_downloads'})
+        with patch.dict(os.environ,{'THEORG_ENABLE_RUNNER_DIAGNOSTICS':'1'}):
+            with self.assertRaisesRegex(core.EngineError,'fixed runner location'):
+                capabilities.prepare('desktop.runner.inspect',{'location':'../../secrets'})
+            with self.assertRaisesRegex(core.EngineError,'fixed runner location'):
+                capabilities.prepare('desktop.runner.inspect',{'path':'C:/Windows'})
+            request=capabilities.prepare('desktop.runner.inspect',{'location':'user_downloads'})
+            with self.assertRaisesRegex(core.EngineError,'approval'):
+                capabilities.approve_and_execute(request['id'],request['digest'],confirmed=False)
+            with patch.object(capabilities,'_execute',return_value={'registered_online':None,'status_source':'read-only-local-files'}) as action:
+                result=capabilities.approve_and_execute(request['id'],request['digest'],confirmed=True)
+            self.assertEqual(result['status'],'completed')
+            self.assertIsNone(result['result']['registered_online'])
+            action.assert_called_once_with('desktop.runner.inspect',{'location':'user_downloads'})
+            with self.assertRaises(core.EngineError):
+                capabilities.approve_and_execute(request['id'],request['digest'],confirmed=True)
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            absent=capabilities._runner_probe(root)
+            self.assertFalse(absent['installation_complete'])
+            self.assertIsNone(absent['registered_online'])
+            for filename in ('config.cmd','run.cmd','.runner'):
+                (root/filename).write_text('',encoding='utf-8')
+            (root/'bin').mkdir()
+            (root/'externals').mkdir()
+            ready=capabilities._runner_probe(root)
+            self.assertTrue(ready['installation_complete'])
+            self.assertTrue(ready['registration_file_present'])
+            self.assertIsNone(ready['registered_online'])
+
     def test_browser_cannot_escape_workspace(self):
         with patch.dict(os.environ,{'THEORG_ENABLE_BROWSER_PREVIEW':'1'}):
             with self.assertRaises(core.EngineError):
