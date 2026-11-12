@@ -54,10 +54,19 @@ class Handler(BaseHTTPRequestHandler):
                 elif path=='/api/device/capabilities':
                     self._json({'capabilities':device_capabilities.detect()})
                 elif path=='/api/models':
-                    self._json({'files':core.local_models(),'backends':core.available_backends(),
+                    files=core.local_models()
+                    memory=device_capabilities.detect()
+                    gpu=device_capabilities.detect_gpu_memory()
+                    recommendation=device_capabilities.recommend_local_model(
+                        files,memory.get('available_ram_bytes'),gpu)
+                    self._json({'files':files,'backends':core.available_backends(),
                        'selected':core.setting('backend','auto'),
                        'ollama_model':core.setting('ollama_model',''),
-                       'llama_binary':core.llama_binary() is not None,'model_directory':str(core.MODELS)})
+                       'llama_binary':core.llama_binary() is not None,
+                       'model_directory':str(core.MODELS),
+                       'hardware':{**memory,'gpu':gpu},
+                       'recommendation':recommendation,
+                       'inference_probe':core.inference_probe_status()})
                 elif path=='/api/company/agents':
                     q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
                     self._json({'agents':company_execution.company_profiles(
@@ -271,6 +280,7 @@ class Handler(BaseHTTPRequestHandler):
                 backend=payload.get('backend')
                 if backend not in ('auto','llamacpp'):
                     raise core.EngineError('Only local model backends supported.')
+                core.invalidate_model_probe()
                 core.set_setting('backend',backend)
                 name=payload.get('ollama_model','')
                 if not isinstance(name,str) or len(name)>100:raise core.EngineError('Invalid model name.')
