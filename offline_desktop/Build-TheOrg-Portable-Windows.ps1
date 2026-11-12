@@ -47,7 +47,9 @@ if(-not (Test-Path (Join-Path $GitRoot 'cmd\git.exe'))){throw 'MinGit extraction
 python -m pip install 'pyinstaller==6.16.0'
 if($LASTEXITCODE -ne 0){throw 'PyInstaller installation failed'}
 $Arguments=@('--noconfirm','--clean','--onefile','--windowed','--name','TheOrg',
-  '--add-data',"$Root\static;static", '--add-binary',"$Bin\llama-server.exe;bin",'--add-data',"$GitRoot;bin\git")
+  '--add-data',"$Root\static;static",
+  '--add-data',"$(Split-Path -Parent $Root)\config\adaptive-model-registry.json;config",
+  '--add-binary',"$Bin\llama-server.exe;bin",'--add-data',"$GitRoot;bin\git")
 foreach($Dll in $Dlls){$Arguments+=@('--add-binary',"$Bin\$($Dll.Name);bin")}
 $Arguments+=@('app.py')
 python -m PyInstaller @Arguments
