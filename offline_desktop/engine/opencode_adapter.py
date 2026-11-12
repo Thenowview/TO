@@ -126,11 +126,16 @@ def _policy(edit: bool) -> dict[str, Any]:
 def _binary() -> str:
     override = os.getenv("THEORG_OPENCODE_BIN", "").strip()
     path = Path(override) if override else None
-    bundled = core.BASE / "opencode" / ("opencode.exe" if os.name == "nt" else "opencode")
+    bundled_root = core.BASE / "opencode"
+    bundled_names = (("opencode2.exe", "opencode.exe") if os.name == "nt"
+                     else ("opencode2", "opencode"))
+    bundled = next((bundled_root / name for name in bundled_names
+                    if (bundled_root / name).is_file()), None)
     if path and not path.is_file():
         raise core.EngineError("Configured OpenCode executable does not exist.")
     executable = (str(path.resolve()) if path else
-                  str(bundled) if bundled.is_file() else shutil.which("opencode"))
+                  str(bundled) if bundled is not None else
+                  (shutil.which("opencode2") or shutil.which("opencode")))
     if not executable:
         raise core.EngineError("OpenCode CLI missing. Install OpenCode separately and verify 'opencode --version'.")
     return executable
