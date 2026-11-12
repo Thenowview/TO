@@ -206,6 +206,9 @@ class CompanyExecutionTests(unittest.TestCase):
         order=self._create()
         ident,stage=self._complete_job(order)
         self.assertTrue(company.structural_qa(ident)["structural_pass"])
+        company.review(ident,"accept",
+                       "Independently inspected the source copy and verified its exact file digest.",
+                       reviewer_role="qa_auditor",confirmed=True)
         with core.conn() as db:
             db.execute("UPDATE company_jobs SET staging_path=? WHERE id=?",
                        (str(self.project),ident))
