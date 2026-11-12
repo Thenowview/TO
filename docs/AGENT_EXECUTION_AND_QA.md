@@ -28,6 +28,7 @@ Owner instruction → SQLite company order → ordered agent tasks and explicit 
 - **Important:** OpenCode runs as a native process under the signed-in OS user. Its config rules are not OS isolation. Use a VM/container to handle untrusted code and avoid sensitive workspace material.
 - External provider transfer is expressly authorized separately on each dispatch; model costs, provider privacy and credentials remain external.
 - Running jobs become interrupted on restart, and are not silently retried. A new attempt requires requeue plus fresh dispatch approval.
+- Owners may now request cancellation of a live OpenCode execution. The worker receives a cancellation event, attempts to stop the OpenCode child process tree, and only then records `cancelled`; an initial cancellation request does **not** imply the process has stopped. Queued/interrupted work can be cancelled without launching any process. The local process running under the user's OS is not a secure sandbox.
 - Independent AI QA launches a separate read-only model session and saves advisory findings, but does not self-approve.
 - Separate QA/security verdicts require evidence and structural-hash integrity. Human reviewer identity is self-attested, not independently authenticated.
 - Accepted developer output can be converted into a Code Studio DRAFT if original file hashes match. Existing Code Studio digest, apply, testing and local commit controls remain mandatory; no automatic merge or push.
@@ -55,7 +56,7 @@ Owner instruction → SQLite company order → ordered agent tasks and explicit 
 ~~~
 
 4. Create order; this creates a queue, not external execution.
-5. Select an authorized OpenCode provider/model. Approve data transfer and any isolated edit before dispatch.
+5. Select an authorized OpenCode provider/model. Approve data transfer and any isolated edit before dispatch. Active jobs have a separately confirmed **Stop running agent** action; use it to request process-tree termination, then inspect the final status before retrying.
 6. Inspect returned source hashes and output. Optionally request independent read-only AI QA. Sign a separate QA/security acceptance only after checking actual evidence.
 7. Accepted jobs send untrusted handoffs to downstream roles; dispatch later jobs with a new approval.
 8. For accepted developer edits, create a Code Studio draft. Review the exact source diff and approve its digest only when satisfied.
@@ -83,7 +84,7 @@ A local hash alone does not prove authenticity. Preserve required open-source co
 
 ## Final acceptance campaign — after integration
 
-- Python source tests: malformed inputs, company isolation, dependency rules, concurrent slot exhaustion, crash recovery, export path safety and approvals; synthetic regressions for read-only file mutation, structured provider errors and invalid staging locations. Added tests are not a claim that CI or Windows integration passed.
+- Python source tests: malformed inputs, company isolation, dependency rules, concurrent slot exhaustion, crash recovery, export path safety and approvals; synthetic regressions for read-only file mutation, structured provider errors, invalid staging locations, owner cancellation and prelaunch refusal. Added tests are not a claim that CI or Windows integration passed.
 - Static JS syntax, dashboard element references, full UI navigation.
 - Real OpenCode V2 CLI command and policy enforcement on a synthetic project.
 - Model produces a real read-only response, then an isolated source change; original source untouched.
