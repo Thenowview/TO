@@ -34,6 +34,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Check preinstalled Windows runner tools (no downloads)
+        shell: powershell
+        run: |
+          ./tools/Test-TheOrg-Runner-Preflight.ps1
       - name: Verify source on local Windows runner
         shell: powershell
         run: |
