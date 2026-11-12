@@ -117,7 +117,7 @@
           <button type="button" id="chatSearchAll" class="chat-search-all" title="Search all saved tasks in this workspace">Search history</button>
           <span id="chatSearchStatus" role="status" aria-live="polite">Showing recent tasks</span>
         </div>
-        <div class="chat-history-results" id="chatHistoryResults" role="region" aria-label="Saved task search results" hidden>
+        <div class="chat-history-results" id="chatHistoryResults" role="region" aria-label="Saved task search results" tabindex="-1" hidden>
           <div class="chat-history-results-head"><strong>Saved task matches</strong><button type="button" id="chatCloseSearch" class="quiet-icon-button" aria-label="Close saved task search">Close</button></div>
           <div id="chatHistoryMatches"></div>
         </div>
@@ -153,7 +153,7 @@
         <div class="composer-disclaimer" id="chatDisclaimer">Tasks are independent by default. Enable Context explicitly to include recent completed messages from this session. Context never grants tool approval. Tasks stay on your device.</div>
         <div class="chat-keyboard-help">Enter to send · Shift+Enter for newline · Ctrl/⌘+K to focus</div>
       </div>
-      <aside id="chatDetailsPanel" class="chat-details-panel" aria-label="Selected task details" hidden>
+      <aside id="chatDetailsPanel" class="chat-details-panel" aria-label="Selected task details" tabindex="-1" hidden>
         <div class="chat-details-header"><h2>Execution inspector</h2><button type="button" id="chatDetailsClose" class="quiet-icon-button" aria-label="Close task details">✕</button></div>
         <div class="chat-details-tabs" role="group" aria-label="Inspector category">
           <button class="chat-details-tab selected" type="button" id="chatInspectorTask" aria-pressed="true">Task</button>
