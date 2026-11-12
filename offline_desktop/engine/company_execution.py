@@ -413,6 +413,11 @@ def _execute(job_id: str) -> None:
         stage = stage_root / job_id / secrets.token_hex(8)
         source, source_job = _approved_execution_source(job, Path(project))
         initial = adapter.make_copy(source, stage)
+        project_baseline = (_read_job(source_job)["report"].get("project_baseline_manifest_sha256")
+                            if source_job else hashlib.sha256(
+                                json.dumps(initial,sort_keys=True).encode()).hexdigest())
+        if not project_baseline or not re.fullmatch(r"[0-9a-f]{64}",project_baseline):
+            raise core.EngineError("Accepted source lineage lacks a verified original project baseline.")
         inbox = read_messages(order["id"], for_job=job_id)
         handoffs = [json.loads(m["payload"]) for m in inbox][-8:]
         profile = next((p for p in company_profiles(order["company_id"])
@@ -433,6 +438,7 @@ def _execute(job_id: str) -> None:
                              model=job["model"], allow_provider_transfer=True,
                              cancel_event=_CANCEL_EVENTS[job_id])
         report["inherited_from_accepted_job"] = source_job or None
+        report["project_baseline_manifest_sha256"] = project_baseline
         report["source_file_count"] = len(initial)
         report["source_manifest_sha256"] = hashlib.sha256(
             json.dumps(initial,sort_keys=True).encode()).hexdigest()
@@ -681,6 +687,9 @@ def create_code_plan(job_id: str, *, confirmed: bool) -> dict:
     # Cumulative change proposal: later developers inherit QA-accepted parent
     # edits, so their own delta is not the complete set of proposed changes.
     baseline=adapter.manifest(Path(repo))
+    baseline_sha=hashlib.sha256(json.dumps(baseline,sort_keys=True).encode()).hexdigest()
+    if report.get("project_baseline_manifest_sha256") != baseline_sha:
+        raise core.EngineError("Original project has changed since agent execution; refusing stale Code Studio draft.")
     output=adapter.manifest(stage)
     changed=sorted(path for path in baseline.keys() | output.keys()
                    if baseline.get(path)!=output.get(path))
