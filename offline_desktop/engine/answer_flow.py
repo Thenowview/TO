@@ -11,7 +11,7 @@ import re
 import secrets
 import shutil
 import time
-from engine import core, adaptive_runtime, online_provider, office_agents, browser_bridge
+from engine import core, adaptive_runtime, online_provider, office_agents, browser_bridge, company_memory
 
 
 def init_schema():
@@ -206,7 +206,8 @@ def _local_answer(job, options):
                 time.sleep(1)
     if not backend:
         return None
-    local_context = '\n'.join(filter(None, [job.get('context_snapshot', ''), _notes(job['prompt'])]))[:3200]
+    company_context = company_memory.context(job.get('company_plan'), job['role'])
+    local_context = '\n'.join(filter(None, [company_context, job.get('context_snapshot', ''), _notes(job['prompt'])]))[:3200]
     prompt = ('Answer the current question using local context when relevant. '
               'If the provided information is insufficient, return exactly [NEEDS_ONLINE]. '
               'Never claim to execute tools or certify an answer.\n\nQuestion:\n' + job['prompt'])
@@ -219,7 +220,9 @@ def _local_answer(job, options):
 def process(job):
     init_schema()
     job=dict(job)
-    job['role']=office_agents.route(job['role'],job['prompt'])
+    job['company_plan']=company_memory.current()['plan']
+    company_role = company_memory.route(job['company_plan'], job['prompt']) if job['role']=='supervisor' else None
+    job['role']=company_role or office_agents.route(job['role'],job['prompt'])
     with core.conn() as db:
         db.execute("UPDATE tasks SET role=? WHERE id=? AND status='running'",(job['role'],job['id']))
     options = policy()
@@ -230,7 +233,7 @@ def process(job):
     # Similarity is an aid to search, never authority to substitute a different answer.
     matches = adaptive_runtime.recall(job['prompt'])['matches'] if len(job['prompt'])<=1000 else []
     # A prior answer is evidence for a draft, not proof it applies to today's task.
-    exact = next((m for m in matches if _normal(m['question']) == _normal(job['prompt'])), None) if not job.get('context_snapshot') else None
+    exact = next((m for m in matches if _normal(m['question']) == _normal(job['prompt'])), None) if not (job.get('context_snapshot') or job['company_plan']) else None
     answer, route = (exact['answer'], 'reviewed-local-memory') if exact else (None, '')
     if answer is None and not options['online_fallback']:
         _record(task_id, 'local_model')

@@ -68,5 +68,81 @@
     }catch(e){status.textContent=e.message;}finally{busy=false;}
   }
   const host=document.querySelector('.chat-stage');if(!host)return;host.insertBefore(root,host.querySelector('.chat-filters'));
+  const setup=el('details');setup.className='office-workflow';
+  setup.append(el('summary','Company Setup'));
+  const setupStatus=el('p');setupStatus.setAttribute('role','status');setup.append(setupStatus);
+  const profile={};
+  for(const [key,label] of [['name','Company name'],['mission','Mission'],['customers','Customers'],['constraints','Budget and constraints']]){
+    profile[key]=field(setup,label);
+  }
+  const sections=[
+    ['departments','Departments and reporting to the CEO',['name','responsibility','role','routing_keywords']],
+    ['goals','Strategic goals',['outcome','owner','measure','target']],
+    ['milestones','90-day plan',['period','deliverable','owner']]
+  ];
+  const lists={};
+  function addRow(key,fields,values={}){
+    const row=el('fieldset');
+    for(const name of fields){
+      const input=field(row,name==='owner'?'Owner department':name.replaceAll('_',' '));
+      input.dataset.field=name;input.value=values[name]||'';input.maxLength=600;
+    }
+    const remove=el('button','Remove row');remove.type='button';remove.onclick=()=>row.remove();
+    row.append(remove);lists[key].append(row);
+  }
+  for(const [key,label,fields] of sections){
+    setup.append(el('h3',label));
+    lists[key]=el('div');setup.append(lists[key]);
+    const add=el('button','Add '+(key==='milestones'?'milestone':key.slice(0,-1)));
+    add.type='button';add.onclick=()=>addRow(key,fields);setup.append(add);
+  }
+  const starter={
+    departments:[
+      {name:'Operations',responsibility:'Deliver work and coordinate handoffs',role:'operations',routing_keywords:'meeting, delivery, scheduling'},
+      {name:'Research',responsibility:'Gather and document evidence',role:'research',routing_keywords:'research, sources, comparison'},
+      {name:'Customer Service',responsibility:'Prepare customer responses',role:'writer',routing_keywords:'customer, response, support'},
+      {name:'Finance',responsibility:'Track costs and financial goals',role:'finance',routing_keywords:'budget, invoice, cost'},
+      {name:'Quality Assurance',responsibility:'Check deliverables against acceptance criteria',role:'qa',routing_keywords:'review, acceptance, quality'}
+    ],
+    goals:[{outcome:'Deliver the first repeatable company workflow',owner:'Operations',measure:'Verified completed tasks',target:''}],
+    milestones:[
+      {period:'Days 1–30',deliverable:'Define priorities, responsibilities and acceptance checks',owner:'Operations'},
+      {period:'Days 31–60',deliverable:'Pilot the workflow and document evidence',owner:'Research'},
+      {period:'Days 61–90',deliverable:'Review results and propose improvements',owner:'Quality Assurance'}
+    ]
+  };
+  let revision=null;
+  function fillPlan(plan){
+    for(const [key,label,fields] of sections){
+      lists[key].replaceChildren();
+      for(const item of plan[key]||[])addRow(key,fields,item);
+    }
+  }
+  async function loadPlan(){
+    try{
+      const data=await api('company/setup');revision=data.revision;
+      if(data.plan){for(const key of Object.keys(profile))profile[key].value=data.plan[key];}
+      fillPlan(data.plan||starter);
+      setupStatus.textContent=revision?'Approved plan version '+revision:'Edit the starter plan before approving it.';
+    }catch(e){setupStatus.textContent=e.message;}
+  }
+  const approve=el('button','Approve company plan');approve.type='button';
+  approve.onclick=async()=>{
+    if(revision===null)return;
+    const plan=Object.fromEntries(Object.entries(profile).map(([key,input])=>[key,input.value]));
+    for(const [key] of sections){
+      plan[key]=Array.from(lists[key].children,row=>Object.fromEntries(
+        Array.from(row.querySelectorAll('[data-field]'),input=>[input.dataset.field,input.value])));
+    }
+    approve.disabled=true;
+    try{
+      const data=await api('company/setup',{plan,revision,confirmed:true});
+      revision=data.revision;setupStatus.textContent='Approved company plan version '+revision+'.';
+    }catch(e){setupStatus.textContent=e.message;}
+    finally{approve.disabled=false;}
+  };
+  setup.append(approve);
+  setup.addEventListener('toggle',()=>{if(setup.open&&revision===null)loadPlan();});
+  host.insertBefore(setup,root);
   root.addEventListener('toggle',()=>{if(root.open)refresh();});setInterval(()=>{if(root.open&&!root.contains(document.activeElement))refresh();},5000);
 })();
