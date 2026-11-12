@@ -57,11 +57,12 @@ jobs:
           $ErrorActionPreference='Stop'
           python -m unittest discover -s offline_desktop/tests -t offline_desktop -q
           if ($LASTEXITCODE -ne 0) { throw 'Offline source tests failed' }
-          node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs
+          node --test tests/company-agent-directory.test.cjs tests/provider-capacity.test.cjs tests/supervisor-starters.test.cjs tests/ui-contract.test.cjs tests/company-ui-contract.test.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Supervisor tests failed' }
           node --check apps/chrome-extension/background.js
           node --check apps/chrome-extension/provider-page-agent.js
           node --check apps/chrome-extension/provider-auto-handoff.js
+          node --check offline_desktop/static/app.js
       - name: Compile self-contained engine and .NET bridge
         shell: pwsh
         run: |
