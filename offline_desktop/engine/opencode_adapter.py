@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import stat
 import shutil
 import subprocess
 import tempfile
@@ -48,6 +49,11 @@ def _safe_file(rel: Path) -> bool:
     return True
 
 
+def _safe_directory(rel: Path) -> bool:
+    return not any(part.lower() in IGNORED_DIRS or part.startswith(".")
+                   for part in rel.parts)
+
+
 def _digest_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as handle:
@@ -73,6 +79,8 @@ def manifest(base: Path) -> dict[str, str]:
                 raise core.EngineError("Unsafe symlink encountered in the staged workspace.")
             if not _safe_file(rel):
                 continue
+            if not stat.S_ISREG(path.stat(follow_symlinks=False).st_mode):
+                raise core.EngineError("Nonregular file encountered in the staged source.")
             if len(result) >= MAX_FILES or path.stat().st_size > MAX_FILE:
                 raise core.EngineError("Project file limit exceeded.")
             total += path.stat().st_size
@@ -89,10 +97,16 @@ def make_copy(source: Path, destination: Path) -> dict[str, str]:
         raise core.EngineError("Invalid or reused execution workspace.")
     source_files = manifest(source)
     destination.mkdir(parents=True, exist_ok=False)
-    for rel in source_files:
+    for rel, expected_sha in source_files.items():
+        origin = source / rel
+        if origin.is_symlink() or not origin.is_file():
+            raise core.EngineError("Source file changed during staging.")
         target = destination / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source / rel, target)
+        shutil.copyfile(origin, target, follow_symlinks=False)
+        if _digest_file(target) != expected_sha:
+            target.unlink(missing_ok=True)
+            raise core.EngineError("Source changed while making the isolated copy; refusing provider transfer.")
     return source_files
 
 
@@ -268,8 +282,10 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
     for folder, dirs, files in os.walk(staged, topdown=True, followlinks=False):
         base = Path(folder)
         for d in dirs:
-            if (base / d).is_symlink():
-                unexpected.append(str((base / d).relative_to(staged)))
+            child = base / d
+            rel_dir = child.relative_to(staged)
+            if child.is_symlink() or not _safe_directory(rel_dir):
+                unexpected.append(rel_dir.as_posix())
         for name in files:
             path = base / name
             rel = path.relative_to(staged)
@@ -292,8 +308,12 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
                     messages.append(text[:8000])
         except (json.JSONDecodeError, TypeError):
             continue
-    summary = "\n".join(messages)[-10000:] if messages else raw[-3500:]
+    summary = "\n".join(messages)[-10000:] if messages else "No structured OpenCode text response was received."
     safety_findings = []
+    if length > MAX_OUTPUT:
+        safety_findings.append("OpenCode output exceeded its audit limit and was truncated.")
+    if not messages:
+        safety_findings.append("OpenCode emitted no structured response text.")
     if unexpected:
         safety_findings.append("New unapproved files or symlinks detected in execution copy.")
     if not edit and changes:
