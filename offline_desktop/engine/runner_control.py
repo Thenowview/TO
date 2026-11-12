@@ -46,7 +46,8 @@ def _spawn_console(root: Path, script_name: str, args: list[str]) -> int:
     try:
         proc = subprocess.Popen(
             [str(cmd), "/k", script_name, *args], cwd=str(root),
-            stdin=subprocess.DEVNULL,
+            # Do not redirect stdin: the user must type their token into
+            # the new Windows console, not into an API payload or file.
             creationflags=subprocess.CREATE_NEW_CONSOLE,
             close_fds=True
         )
