@@ -266,7 +266,9 @@
      a fresh, short-lived digest approval; all source/provider data is text. */
   let operatorCatalog=[];
   async function loadOperator(){
-    const [available,history]=await Promise.all([request('capabilities'),request('capabilities/history')]);
+    const [available,history,integrations]=await Promise.all([
+      request('capabilities'),request('capabilities/history'),request('integrations')
+    ]);
     operatorCatalog=available.capabilities||[];
     const catalog=$('operatorCatalog');catalog.replaceChildren();
     for(const tool of operatorCatalog){
@@ -274,6 +276,14 @@
       card.append(element('strong','',tool.id+' · '+(tool.enabled?'Enabled':'Disabled')));
       card.append(element('div','muted',tool.description||'No description'));
       catalog.append(card);
+    }
+    const providers=$('operatorIntegrations');providers.replaceChildren();
+    for(const item of integrations.integrations||[]){
+      const card=element('div','task-card');
+      card.append(element('strong','',item.provider+' · '+item.status));
+      card.append(element('div','muted','Required scope: '+item.scope));
+      card.append(element('div','muted','No account connected status is inferred from this catalog.'));
+      providers.append(card);
     }
     const recent=$('operatorHistory');recent.replaceChildren();
     const records=(history.requests||[]).slice(0,20);
