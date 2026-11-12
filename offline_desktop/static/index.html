@@ -12,6 +12,7 @@
   <nav id="navigation" aria-label="Main navigation">
     <button class="nav-button active" data-view="overview"><span>▦</span><b>Overview</b></button>
     <button class="nav-button" data-view="supervisor"><span>✳</span><b>AI Supervisor</b></button>
+    <button class="nav-button" data-view="operator"><span>⌁</span><b>Windows Operator</b></button>
     <button class="nav-button" data-view="tasks"><span>☷</span><b>Task queue</b></button>
     <button class="nav-button" data-view="coding"><span>⌘</span><b>Code Studio</b></button>
     <button class="nav-button" data-view="company"><span>◎</span><b>Company agents</b></button>
@@ -29,6 +30,27 @@
       <div class="hero"><div class="hero-shine"></div><div class="hero-text"><div class="eyebrow">LOCAL INTELLIGENCE SYSTEM</div><h1>One workspace.<br><em>Every agent, locally.</em></h1><p>Run compatible AI models, manage work, and keep your files and memories on your own device.</p><div class="hero-actions"><button class="btn primary" data-go="supervisor">✳ &nbsp; Open Supervisor</button><button class="btn secondary" data-go="models">◉ &nbsp; Configure model</button></div></div><div class="hero-orb"><div class="orb-inner">◈</div><div class="orbit orbit1"></div><div class="orbit orbit2"></div></div></div>
       <div class="metrics"><article class="metric"><div class="metric-icon teal">◉</div><small>AI CONNECTION</small><strong id="metricModel">—</strong><span id="metricModelDetail">Checking...</span></article><article class="metric"><div class="metric-icon amber">☷</div><small>TASKS COMPLETED</small><strong id="metricTasks">0</strong><span>Durable SQLite queue</span></article><article class="metric"><div class="metric-icon blue">▤</div><small>LOCAL FILES</small><strong id="metricFiles">0</strong><span>Restricted workspace</span></article><article class="metric"><div class="metric-icon violet">▧</div><small>SAVED MEMORIES</small><strong id="metricMemory">0</strong><span>Private on this device</span></article></div>
       <div class="two-col"><article class="panel"><div class="panel-heading"><div><div class="section-kicker">GET STARTED</div><h2>Quick actions</h2></div></div><div class="quick-actions"><button data-go="supervisor"><span>✳</span><div><strong>Send an AI instruction</strong><small>Assign a role and queue a task</small></div><span class="chevron">›</span></button><button data-go="models"><span>◉</span><div><strong>Connect an offline model</strong><small>Load a GGUF without Ollama</small></div><span class="chevron">›</span></button><button data-go="files"><span>▤</span><div><strong>Open secure workspace</strong><small>Manage approved local text files</small></div><span class="chevron">›</span></button></div></article><article class="panel"><div class="panel-heading"><div><div class="section-kicker">SYSTEM READINESS</div><h2>Live engine status</h2></div></div><div id="systemReadiness" class="readiness"></div></article></div>
+    </section>
+    <section class="view" id="view-operator">
+      <div class="section-header"><div><div class="section-kicker">CONTROLLED COMPUTER USE</div><h1>Windows Operator</h1><p>Plan locally, inspect each tool, and authorize an exact one-time action. No prompt automatically runs shell commands.</p></div></div>
+      <div class="two-col">
+        <article class="panel">
+          <h2>Plan an operation</h2>
+          <label for="operatorInstruction">Task instruction</label>
+          <textarea id="operatorInstruction" rows="4" maxlength="1200" placeholder="Check my GitHub runner and run source tests for TheOrg."></textarea>
+          <button class="btn primary" id="operatorPreview">Preview available tools (no execution)</button>
+          <div class="inline-note" id="operatorPlanStatus" role="status">Planning is rule-based and does not call an AI provider or approve any tools.</div>
+          <div id="operatorPlan" class="task-stack" aria-live="polite"></div>
+        </article>
+        <article class="panel">
+          <h2>Enabled tools and safety</h2>
+          <p class="muted">A tool must be enabled by the local operator and approved using its exact request digest. Actions involving external services or code execution still require confirmation.</p>
+          <button class="btn secondary" id="operatorRefresh">Refresh capabilities and history</button>
+          <div id="operatorCatalog" class="task-stack"></div>
+          <h2>Execution history</h2>
+          <div id="operatorHistory" class="task-stack"></div>
+        </article>
+      </div>
     </section>
     <section class="view" id="view-supervisor"><div class="section-header"><div><div class="section-kicker">AGENT OPERATIONS</div><h1>AI Supervisor</h1><p>Instructions are routed only to local model servers. Tool actions require independent approval.</p></div></div><div class="two-col supervisor-grid"><article class="panel"><h2>New instruction</h2><p class="muted">Choose a specialist and enter the work to perform.</p><label for="roleSelect">Agent role</label><select id="roleSelect"></select><label for="promptInput">Instruction</label><textarea id="promptInput" rows="8" placeholder="Example: Explain how to structure an offline project plan and acceptance criteria."></textarea><div class="inline-note">◈ AI answers require a loaded local model. No simulated completions.</div><button class="btn primary wide" id="submitTask">✳ &nbsp; Queue task</button></article><article class="panel"><div class="panel-heading"><div><div class="section-kicker">EXECUTION HISTORY</div><h2>Recent responses</h2></div><button class="text-btn" data-go="tasks">All tasks ›</button></div><div id="supervisorResults" class="task-stack"></div></article></div></section>
     <section class="view" id="view-tasks"><div class="section-header"><div><div class="section-kicker">DURABLE JOBS</div><h1>Task queue</h1><p>Queued, running, completed and failed tasks are stored locally and survive restarts.</p></div><button class="btn secondary" id="refreshTasks">↻ Refresh</button></div><div class="panel"><div id="taskList" class="task-stack"></div></div></section>
