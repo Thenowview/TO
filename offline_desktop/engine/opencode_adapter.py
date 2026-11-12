@@ -247,7 +247,7 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
               "private external files. Report exact changes and limitations. Do not claim "
               "tests ran unless tool output proves it.\n"
               + instruction.strip())
-    argv = [exe, "run", "--format", "json", "--agent", agent, "--model", model, prompt]
+    argv = [exe, "run", "--standalone", "--format", "json", "--agent", agent, "--model", model, prompt]
     try:
         with tempfile.TemporaryFile(mode="w+b") as log:
             kwargs = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt"
