@@ -234,6 +234,10 @@ class Handler(BaseHTTPRequestHandler):
                 if payload.get('confirmed') is not True:
                     raise core.EngineError('Edition change requires explicit confirmation.')
                 self._json({'adaptive':adaptive_runtime.select(payload.get('tier'))})
+            elif path=='/api/adaptive/start-recommended':
+                if payload.get('confirmed') is not True:
+                    raise core.EngineError('Model startup requires separate explicit confirmation.')
+                self._json({'adaptive_start':adaptive_runtime.start_recommended(confirmed=True)})
             elif path=='/api/adaptive/recall':
                 self._json({'recall':adaptive_runtime.recall(payload.get('query'))})
             elif path=='/api/adaptive/resolve':
