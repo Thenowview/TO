@@ -402,8 +402,8 @@ def review(job_id: str, verdict: str, findings: str, *, reviewer_role: str,
     """Separate QA attestation required. This records a claim, not identity proof."""
     if confirmed is not True:
         raise core.EngineError("An explicit independent QA decision is required.")
-    if reviewer_role not in ("qa", "security"):
-        raise core.EngineError("Only a designated QA or security reviewer may attest.")
+    if reviewer_role not in ("qa_auditor", "security_officer", "qa", "security"):
+        raise core.EngineError("Only an independent QA or security reviewer may attest.")
     if verdict not in ("accept", "reject"):
         raise core.EngineError("QA verdict must be accept or reject.")
     if not isinstance(findings, str) or not 30 <= len(findings.strip()) <= 4000:
@@ -418,7 +418,8 @@ def review(job_id: str, verdict: str, findings: str, *, reviewer_role: str,
                              (_ident(job_id),)).fetchone()
             if not job or job["status"] != "submitted_for_qa":
                 raise core.EngineError("Only submitted jobs may receive their first QA verdict.")
-            if job["agent_role"] == reviewer_role:
+            normalized={"qa":"qa_auditor","security":"security_officer"}
+            if normalized.get(job["agent_role"],job["agent_role"]) == normalized.get(reviewer_role,reviewer_role):
                 raise core.EngineError("An agent may not approve its own assigned work.")
             decision_id = secrets.token_hex(12)
             db.execute("""INSERT INTO company_qa VALUES(?,?,?,?,?,?,?)""",
