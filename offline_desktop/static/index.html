@@ -47,6 +47,13 @@
           <p class="muted">A tool must be enabled by the local operator and approved using its exact request digest. Actions involving external services or code execution still require confirmation.</p>
           <button class="btn secondary" id="operatorRefresh">Refresh capabilities and history</button>
           <div id="operatorCatalog" class="task-stack"></div>
+          <h2>Verify an existing CI run</h2>
+          <label for="operatorRunId">GitHub Actions run ID</label>
+          <input id="operatorRunId" type="number" min="1" step="1" placeholder="Run ID">
+          <label for="operatorRunSha">Exact reviewed commit SHA</label>
+          <input id="operatorRunSha" maxlength="40" placeholder="40 lowercase hexadecimal characters">
+          <button class="btn secondary" id="operatorVerifyRun">Verify GitHub source-test evidence</button>
+          <div id="operatorRunStatus" class="inline-note" role="status">Requires the authenticated GitHub read-only integration.</div>
           <h2>Execution history</h2>
           <div id="operatorHistory" class="task-stack"></div>
         </article>
