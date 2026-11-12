@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -58,6 +58,24 @@ class Handler(BaseHTTPRequestHandler):
                        'selected':core.setting('backend','auto'),
                        'ollama_model':core.setting('ollama_model',''),
                        'llama_binary':core.llama_binary() is not None,'model_directory':str(core.MODELS)})
+                elif path=='/api/company/orders':
+                    q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'orders':company_execution.list_orders(q.get('company_id',[''])[0])})
+                elif path=='/api/company/messages':
+                    q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'messages':company_execution.read_messages(
+                        q.get('order_id',[''])[0],for_job=q.get('job_id',[''])[0])})
+                elif path=='/api/company/qa':
+                    q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'reviews':company_execution.qa_history(q.get('job_id',[''])[0])})
+                elif path=='/api/company/qa/structural':
+                    q=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    self._json({'assessment':company_execution.structural_qa(q.get('job_id',[''])[0])})
+                elif path=='/api/company/runtime':
+                    self._json({'opencode':opencode_adapter.installed(),
+                                'max_active_local_jobs':company_execution.MAX_ACTIVE,
+                                'provider_data_transfer_requires_approval':True,
+                                'external_runtime_not_sandboxed':True})
                 elif path=='/api/workflows':self._json({'workflows':orchestration.list_workflows()})
                 elif path=='/api/agents/reviews':self._json({'reviews':coordination.list_reviews()})
                 elif path=='/api/capabilities':self._json({'capabilities':capabilities.catalog()})
@@ -121,7 +139,25 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({'error':'Payload must be between 1 byte and 150 KB.'},413);return
             payload=json.loads(self.rfile.read(n).decode('utf-8'))
             if not isinstance(payload,dict):raise core.EngineError('Request body must be an object.')
-            if path=='/api/workflows':
+            if path=='/api/company/orders':
+                self._json({'order':company_execution.create_order(
+                    payload.get('company_id'),payload.get('project_id'),
+                    payload.get('objective'),payload.get('tasks'),confirmed=payload.get('confirmed'))},201)
+            elif path=='/api/company/jobs/dispatch':
+                self._json(company_execution.dispatch(
+                    payload.get('job_id'),payload.get('model'),confirmed=payload.get('confirmed'),
+                    data_transfer_confirmed=payload.get('data_transfer_confirmed'),
+                    isolated_edit_confirmed=payload.get('isolated_edit_confirmed')),202)
+            elif path=='/api/company/messages':
+                self._json(company_execution.add_owner_message(
+                    payload.get('order_id'),payload.get('to_job'),
+                    payload.get('message'),confirmed=payload.get('confirmed')),201)
+            elif path=='/api/company/qa/review':
+                self._json(company_execution.review(
+                    payload.get('job_id'),payload.get('verdict'),payload.get('findings'),
+                    reviewer_role=payload.get('reviewer_role'),
+                    confirmed=payload.get('confirmed')))
+            elif path=='/api/workflows':
                 if payload.get('confirmed') is not True:raise core.EngineError('Explicit workflow creation confirmation required.')
                 self._json({'workflow':orchestration.create(payload.get('project_id'),payload.get('objective'),payload.get('steps'))},201)
             elif path=='/api/workflows/authorize':
@@ -323,6 +359,7 @@ def main():
         orchestration.init_schema()
         coordination.init_schema()
         capabilities.init_schema()
+        company_execution.init_schema()
         try:
             outcome=core.benchmark_local_model()
             print(json.dumps(outcome,ensure_ascii=False))
@@ -342,6 +379,7 @@ def main():
         orchestration.init_schema()
         coordination.init_schema()
         capabilities.init_schema()
+        company_execution.init_schema()
         print('PASS bundled dashboard, engine, SQLite and role registry')
         return 0
     TOKEN=core.init()
@@ -350,6 +388,7 @@ def main():
     orchestration.init_schema()
     coordination.init_schema()
     capabilities.init_schema()
+    company_execution.init_schema()
     _create_desktop_shortcut_if_needed()
     if args.host not in ('127.0.0.1','::1','localhost'):
         if os.environ.get('THEORG_ALLOW_LAN_HTTP')!='1':
