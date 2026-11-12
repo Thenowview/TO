@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import shutil
 import subprocess
 import tempfile
@@ -146,6 +147,28 @@ def installed() -> dict:
                 "mode": "opt-in-external-runtime"}
 
 
+def _stop_process_tree(proc: subprocess.Popen) -> None:
+    """Best-effort termination of the agent and descendants after timeout."""
+    if os.name == "nt":
+        try:
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           timeout=8, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    if proc.poll() is None:
+        proc.kill()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+
+
 def run(staged: Path, instruction: str, *, edit: bool, model: str,
         allow_provider_transfer: bool, deadline_seconds: int = 180) -> dict:
     """Run only after app-side explicit authorization, never automatically.
@@ -190,14 +213,15 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
     argv = [exe, "run", "--format", "json", "--agent", agent, "--model", model, prompt]
     try:
         with tempfile.TemporaryFile(mode="w+b") as log:
+            kwargs = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt"
+                      else {"start_new_session": True})
             proc = subprocess.Popen(argv, cwd=str(staged), env=env, stdin=subprocess.DEVNULL,
-                                    stdout=log, stderr=subprocess.STDOUT)
+                                    stdout=log, stderr=subprocess.STDOUT, **kwargs)
             try:
                 exit_code = proc.wait(timeout=deadline_seconds)
             except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait(timeout=5)
-                raise core.EngineError("OpenCode timed out; work remains unverified.")
+                _stop_process_tree(proc)
+                raise core.EngineError("OpenCode timed out; process tree terminated on a best-effort basis; work remains unverified.")
             log.seek(0, 2)
             length = log.tell()
             log.seek(max(0, length - MAX_OUTPUT))
@@ -222,10 +246,14 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
     changes = [{"path": key, "before": original.get(key), "after": after.get(key)}
                for key in sorted(original.keys() | after.keys()) if original.get(key) != after.get(key)]
     messages = []
+    provider_errors = []
     for line in raw.splitlines():
         try:
             event = json.loads(line)
             part = event.get("part", {}) if isinstance(event, dict) else {}
+            if isinstance(event, dict) and (event.get("type") == "error" or
+                                             (isinstance(part, dict) and part.get("type") == "error")):
+                provider_errors.append("OpenCode reported an error event.")
             if isinstance(part, dict) and part.get("type") == "text":
                 text = part.get("text", "")
                 if isinstance(text, str) and text:
@@ -233,11 +261,21 @@ def run(staged: Path, instruction: str, *, edit: bool, model: str,
         except (json.JSONDecodeError, TypeError):
             continue
     summary = "\n".join(messages)[-10000:] if messages else raw[-3500:]
+    safety_findings = []
+    if unexpected:
+        safety_findings.append("New unapproved files or symlinks detected in execution copy.")
+    if not edit and changes:
+        safety_findings.append("Read-only agent changed copied project files.")
+    if provider_errors:
+        safety_findings.append("OpenCode emitted structured error events.")
+    clean = exit_code == 0 and not safety_findings
     after_digest = hashlib.sha256(json.dumps(after, sort_keys=True).encode()).hexdigest()
-    return {"engine": "opencode", "status": "submitted_for_qa" if exit_code == 0 else "failed",
+    return {"engine": "opencode", "status": "submitted_for_qa" if clean else "failed",
             "exit_code": exit_code, "agent": agent, "model": model,
             "changed_files": changes[:60], "changed_count": len(changes),
             "unexpected_files": unexpected[:60],
+            "safety_findings": safety_findings,
+            "provider_error_event_count": len(provider_errors),
             "final_manifest_sha256": after_digest,
             "summary": summary, "output_bytes": length,
             "structural_only": True, "independent_qa_passed": False,
