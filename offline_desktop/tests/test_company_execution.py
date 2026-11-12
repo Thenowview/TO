@@ -87,7 +87,7 @@ class CompanyExecutionTests(unittest.TestCase):
         with self.assertRaisesRegex(core.EngineError,"safe audit size limit"):
             company._bounded_json(payload,exact-1,"Agent report")
         # Do not silently corrupt Unicode JSON or store non-serializable objects.
-        with self.assertRaisesRegex(core.EngineError,"valid JSON"):
+        with self.assertRaisesRegex(core.EngineError,"valid UTF-8 JSON"):
             company._bounded_json({"unserializable":object()},30000,"Agent report")
         with self.assertRaisesRegex(core.EngineError,"valid UTF-8 JSON"):
             company._bounded_json({"invalid_unicode":chr(0xD800)},30000,"Agent report")
