@@ -216,18 +216,18 @@ jobs:
         with:
           persist-credentials: false
       - name: Verify source on local Windows runner
-        shell: pwsh
+        shell: powershell
         run: |
           ./tools/Test-TheOrg-Source-Local.ps1
       - name: Optional unsigned Windows build on local machine
         if: ${{ inputs.build_unsigned_windows_candidate }}
-        shell: pwsh
+        shell: powershell
         run: |
           ./tools/Build-TheOrg-Windows-Local.ps1
           ./tools/Build-TheOrg-Windows-Local.ps1 -CheckOnly
       - name: Record verification scope
         if: always()
-        shell: pwsh
+        shell: powershell
         run: |
           Add-Content -Path $env:GITHUB_STEP_SUMMARY 'Self-hosted Windows check only. No merge or deployment. No GitHub-hosted compute used.'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY 'Source tests are not proof of live AI provider execution or a clean-machine install.'
