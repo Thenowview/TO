@@ -9,6 +9,16 @@ Open source/license: https://github.com/anomalyco/opencode
 
 TheOrg invokes the documented OpenCode CLI with an exact user-selected provider/model identifier and JSON output. The OpenCode binary is installed separately or optionally bundled from an independently checksum-verified official Windows CLI ZIP. TheOrg never silently installs the runtime or copies user credentials. Provider access and any usage costs remain under the user's separate account.
 
+## Bulk integration changes — November 12
+
+- The company dashboard now offers an editable rule-based plan preview from a free-text objective. Planning makes **no AI call**, writes no order, and grants no execution permission. External actions in the objective cause the preview to stay read-only.
+- QA-accepted dependent work now inherits the verified source snapshot of an approved predecessor. Parallel branches with divergent source are blocked instead of silently merged. Every dependent job still needs a fresh owner-approved OpenCode dispatch.
+- Source ancestry records the original project's SHA-256 manifest through dependent jobs. Code Studio drafts are cumulative across inherited changes, and are rejected if the original project changed while the agents worked.
+- Real OpenCode execution now uses **`run --standalone`** to request a private server rather than automatically attaching to the user's shared service. CLI flags and ordered V2 permissions were checked against the current official CLI and permissions documentation; a real Windows invocation is still mandatory for acceptance.
+- A missing structured response, truncated audit output, changed read-only source, V2 mismatch, unsafe output or symlink causes failure, not QA submission. Copies are checked against source hashes before provider transfer.
+- Startup recovery marks orphaned AI QA review jobs interrupted, releasing abandoned concurrency slots. A new review requires separate owner authorization.
+- The dashboard shows inherited-job source provenance and lets reviewers inspect changed-file hashes. No automatic merge, push or deployment was added.
+
 ## Flow
 
 Owner instruction → SQLite company order → ordered agent tasks and explicit dependencies → approved OpenCode dispatch → copied source workspace → source hashes and report → separate optional AI QA advisory → independent QA/security attestation → dependency handoff message → optional Code Studio draft diff → separately approved apply, verify, commit → company results export.
