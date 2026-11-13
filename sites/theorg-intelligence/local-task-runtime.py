@@ -5,12 +5,11 @@ Requires a different configured secret per actor/role. No generic shell/browser 
 """
 from __future__ import annotations
 import hmac
+import math
 import hashlib
 import json
 import os
-import secrets
 import sqlite3
-import time
 import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -62,6 +61,9 @@ def token_identities():
         if not all(isinstance(v,str) and v.isascii() and v.replace("_","").replace("-","").isalnum() and 1<=len(v)<=64 for v in [tenant,company]):
             raise RuntimeError("Invalid identity scope")
         used.add(token); identities.append(dict(actor=actor,role=role,tenant=tenant,company=company,token=token))
+    roles={item["role"] for item in identities}
+    if not {"executive","runtime","reviewer"}.issubset(roles):
+        raise RuntimeError("Executive, runtime and independent reviewer identities required")
     return identities
 def authorize(headers, identities):
     supplied=headers.get("Authorization","")
@@ -97,6 +99,7 @@ def events(db, task, identity, action, previous, current, digest=None):
 def create(db, identity, body):
     if identity["role"] not in ("analyst","executive"):
         raise PermissionError("Only analyst or executive creates tasks")
+    if not isinstance(body,dict): raise ValueError("Expected object")
     title=body.get("title"); tool=body.get("tool"); inputs=body.get("inputs")
     if not isinstance(title,str) or not 8<=len(title.strip())<=240 or tool not in TOOLS:
         raise ValueError("Invalid title or unsupported tool")
@@ -193,15 +196,20 @@ class Service(BaseHTTPRequestHandler):
         identity=self.identity()
         if not identity: return self.reply(401,{"error":"Unauthorized"})
         path=self.path.split("?")[0]
+        if "?" in self.path: return self.reply(400,{"error":"Query strings not supported"})
+
         if self.command=="GET":
             if path=="/v1/health":return self.reply(200,{"status":"ready","mode":"loopback-only","cloud_sync":False})
             if path=="/v1/tasks":return self.reply(200,{"tasks":list_tasks(self.server.db,identity)})
             if path=="/v1/dashboard":return self.reply(200,dashboard(self.server.db,identity))
             return self.reply(404,{"error":"Not found"})
-        length=int(self.headers.get("Content-Length","0") or "0")
+        try: length=int(self.headers.get("Content-Length","0") or "0")
+        except (ValueError,OverflowError):return self.reply(400,{"error":"Invalid content length"})
         if not 0<length<=MAX_BODY:return self.reply(413,{"error":"Invalid body length"})
-        try: body=json.loads(self.rfile.read(length))
-        except Exception:return self.reply(400,{"error":"Invalid JSON"})
+        try:
+            body=json.loads(self.rfile.read(length))
+            if not isinstance(body,dict):return self.reply(400,{"error":"Expected JSON object"})
+        except (ValueError,UnicodeDecodeError):return self.reply(400,{"error":"Invalid JSON"})
         try:
             if path=="/v1/tasks" and self.command=="POST":return self.reply(201,create(self.server.db,identity,body))
             if path.startswith("/v1/tasks/") and self.command=="POST":
@@ -224,8 +232,9 @@ def main():
     if os.environ.get("THEORG_ENABLE_LOCAL_HTTP")!="YES":
         raise SystemExit("Disabled. Set THEORG_ENABLE_LOCAL_HTTP=YES explicitly.")
     identities=token_identities()
-    location=Path(os.environ.get("THEORG_TASK_DB","theorg-tasks.sqlite3")).resolve()
-    if location.is_symlink():raise SystemExit("Refuse symlink database")
+    raw_location=Path(os.environ.get("THEORG_TASK_DB","theorg-tasks.sqlite3")).expanduser()
+    if raw_location.is_symlink():raise SystemExit("Refuse symlink database")
+    location=raw_location.resolve()
     location.parent.mkdir(parents=True,exist_ok=True)
     db=connect(location)
     srv=HTTPServer((HOST,PORT),Service)
