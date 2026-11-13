@@ -27,3 +27,23 @@ Every analytics outcome explicitly returns `data_status: caller-supplied`, `sour
 4. Source data connectors to actual EPMO daily operations, email, calendar and third-party tools require explicit authorization and tenant isolation; none are connected.
 5. Enterprise performance metrics must come from verified, accepted task events; this reporting demo operates only on synthetic/user-provided data.
 6. No changes or new dependencies were introduced into the THEEPMO frontend, backend, DNS, Cloudflare account, or database.
+
+## Preview deployment — Theorgnet only
+- Isolated Cloudflare Worker `theorg-intelligence-lab` uploaded to verified `theorgnet@gmail.com` account (`8c3498934294713cb33f436ff86fc361`).
+- URL: https://theorg-intelligence-lab.theorgnet.workers.dev/operations
+- Cloudflare deployment ID: `04d37ed4-8335-4a8f-8f5d-1cf5cde9f1fe`, API reports 100%.
+- Original public Worker `theorg-intelligence` was deliberately **not replaced**, last observed deployment `883b1621-25cd-4314-9a0b-7055f1dfdcc6`.
+- Public preview serves only standalone HTML and first-party JS modules, CSP blocks network calls from site JS. External live browser acceptance could not be confirmed by web retrieval.
+
+## Optional local AI advisor (not on Cloudflare)
+`local-ai-cli.mjs` can draft a narrative for any deterministic tool outcome through an already running **Ollama service at 127.0.0.1:11434**, with explicit opt-in and a chosen model. No cloud model billing, installed weights, system login, execution authorization or native device connection are provided by this source. The output is untrusted advisory prose and cannot approve or verify work.
+
+Example on an operator-controlled machine (after installing Node 22 and a compatible local Ollama model):
+
+```bash
+THEORG_ENABLE_OLLAMA=YES node sites/theorg-intelligence/local-ai-cli.mjs kpi-intelligence qwen3:8b < example-input.json
+```
+
+The model name above is an example, not a statement that it is installed. `example-input.json` must have `{"rows":[{"name":"Execution","actual":83,"target":90}]}`. Use no confidential records until local model configuration and data handling are verified.
+
+**Remaining actual gaps:** live model/runtime acceptance, authenticated Windows Supervisor pairing, company-owned D1 storage, native Office files, full Actions CI, source-backed evidence/QA, enterprise connectors and production release gates.
