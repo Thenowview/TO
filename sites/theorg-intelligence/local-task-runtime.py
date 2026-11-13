@@ -204,6 +204,8 @@ def task_metric_summary(task):
 
 def export_bundle(db, identity):
     """Owner-authorized local export; never a public synchronization endpoint."""
+    if identity["role"] not in ("executive","analyst","reviewer"):
+        raise PermissionError("Report exports require executive, analyst or reviewer role")
     tasks=list_tasks(db,identity)
     ids=[t["id"] for t in tasks]
     summaries={}
