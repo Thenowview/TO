@@ -15,7 +15,7 @@ const str=(x,limit=1500)=>typeof x==='string'?x.slice(0,limit):x===null||x===und
 const esc=x=>str(x,5000).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 const list=(a)=>Array.isArray(a)?a.slice(0,200):[];
 const toCell=v=>v===null||v===undefined?'':typeof v==='object'?JSON.stringify(v):String(v);
-const csvCell=v=>'"'+toCell(v).replace(/"/g,'""')+'"';
+const csvCell=v=>{const raw=toCell(v);const safe=/^[\s]*[=+@\-]/.test(raw)?"'"+raw:raw;return '"'+safe.replace(/"/g,'""')+'"';};
 export function buildReport({type,title,company,period,metrics={},findings=[],recommendations=[],tasks=[],evidence=[],approval=null,data_status='synthetic'}={}){
  const recipe=REPORT_CATALOG.find(r=>r.id===type);if(!recipe)fail('Unknown report template');
  const cleanTitle=str(title||recipe.name,160),cleanCompany=str(company||'Example Company',120);
