@@ -37,6 +37,7 @@ COMMANDS=[
  ("commerce-payment-fulfillment",["node","--test",str(ROOT/"commerce-fulfillment.test.mjs")]),
  ("commerce-policy-content",["node","--test",str(ROOT/"commerce-pages.test.mjs")]),
  ("commerce-database", [sys.executable,"-m","unittest","discover","-s",str(ROOT),"-p","test_commerce_schema.py","-v"]),
+ ("commercial-launch-readiness",["node","--test",str(ROOT/"commercial-readiness.test.mjs")]),
  ("commercial-worker-build",["node",str(ROOT/"build-commerce-worker.mjs")]),
  ("commercial-worker-routes",["node",str(ROOT/"verify-commerce-worker.mjs")]),
 ]
