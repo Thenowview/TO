@@ -16,7 +16,7 @@ async function check(p,expect=200,mime=null){
  assert.match(res.headers.get('content-security-policy')||'',/connect-src 'none'/);
  return res;
 }
-for(const p of ['/','/marketplace','/quick-wins','/reports','/pricing'])
+for(const p of ['/','/marketplace','/quick-wins','/reports','/pricing','/privacy','/terms','/refunds','/sample-reports','/how-it-works','/my-reports','/account','/checkout'])
  await check(p,200,/text\/html/);
 for(const t of COMMERCIAL_TOOLS){
  const r=await check('/tools/'+t.id,200,/text\/html/);
@@ -32,6 +32,16 @@ assert.equal(state.checkout_enabled,false);
 assert.equal(state.hosted_ai_enabled,false);
 assert.equal(state.source_verified,false);
 assert.equal((await (await check('/robots.txt',200,/text\/plain/)).text()).includes('Disallow: /'),true);
+const commercial=await check('/api/commercial-status',200,/application\\/json/);
+const commerceStatus=await commercial.json();
+assert.equal(commerceStatus.checkout_enabled,false);
+assert.equal(commerceStatus.accounts_enabled,false);
+assert.equal(commerceStatus.payment_provider_connected,false);
+assert.equal(commerceStatus.legal_policies_approved,false);
+assert.match(await (await check('/privacy')).text(),/Draft/);
+assert.match(await (await check('/terms')).text(),/not the final contract/);
+assert.match(await (await check('/checkout')).text(),/no funds collected/i);
+assert.match(await (await check('/sample-reports')).text(),/synthetic/i);
 await check('/tools/not-a-product',404);
 await check('/not-found',404);
 const bad=await worker.fetch(new Request(origin+'/tools/project-health',{method:'POST'}),{});
