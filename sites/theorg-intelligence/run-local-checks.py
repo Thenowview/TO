@@ -30,6 +30,7 @@ COMMANDS=[
  ("synthetic-local-e2e",[sys.executable,str(ROOT/"local-e2e.py")]),
  ("browser-module-contract",["node",str(ROOT/"operations-ui.verify.mjs")]),
  ("commercial-tools",["node","--test",str(ROOT/"commercial-tools.test.mjs")]),
+ ("commercial-local-ai-boundary",["node","--test",str(ROOT/"commercial-ai-cli.test.mjs")]),
  ("marketplace-ui",["node",str(ROOT/"marketplace-ui.verify.mjs")]),
  ("worker-build",["node",str(ROOT/"build-worker.mjs")]),
  ("worker-routes",["node",str(ROOT/"verify-worker.mjs")]),
