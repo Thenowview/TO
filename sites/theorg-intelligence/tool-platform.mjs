@@ -1,5 +1,6 @@
 // TheOrg standalone task-to-dashboard contracts. No model/provider or tool execution occurs here.
 export const TOOL_TEMPLATES=Object.freeze([
+ {id:'kpi-variance',name:'KPI variance calculator',category:'Analytics',description:'Compute arithmetic variances from supplied values without claiming source verification',kind:'analysis',trigger:'manual',steps:['Validate supplied KPI inputs','Calculate KPI variances','Prepare arithmetic summary'],metric:'delivery_health'},
  {id:'epmo-status',name:'Project status analyst',category:'Project delivery',description:'Review milestone, delivery and blocker evidence',steps:['Collect status','Validate evidence','Summarize variance','Prepare decision brief'],metric:'delivery_health'},
  {id:'epmo-risk',name:'Risk register analyst',category:'Risk',description:'Review open risks, probability and impact, with owner actions',steps:['Collect risks','Score exposure','Review mitigation','Prepare risk dashboard'],metric:'risk_exposure'},
  {id:'epmo-approval',name:'Approval gate reviewer',category:'Governance',description:'Check criteria, evidence and assigned approval before an advisory recommendation',steps:['Gather criteria','Verify evidence','Identify blockers','Prepare approval recommendation'],metric:'approval_readiness'},
