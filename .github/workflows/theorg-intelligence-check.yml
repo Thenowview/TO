@@ -22,6 +22,10 @@ jobs:
           node-version: '22'
       - name: Standalone website syntax and boundaries
         run: node sites/theorg-intelligence/verify.mjs
+      - name: Generate reproducible Cloudflare Worker
+        run: |
+          node sites/theorg-intelligence/build-worker.mjs
+          node sites/theorg-intelligence/verify-worker.mjs
       - name: Verify no forbidden external assets
         shell: bash
         run: |
