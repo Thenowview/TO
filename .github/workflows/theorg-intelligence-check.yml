@@ -50,7 +50,7 @@ jobs:
           node --test sites/theorg-intelligence/commerce-fulfillment.test.mjs
           node --test sites/theorg-intelligence/commerce-pages.test.mjs
           python3 -m unittest discover -s sites/theorg-intelligence -p 'test_commerce_schema.py' -v
-      - name: Generate reproducible Cloudflare Worker
+      - name: Commercial launch gate remains closed until verified\n        run: node --test sites/theorg-intelligence/commercial-readiness.test.mjs\n      - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
           node sites/theorg-intelligence/verify-worker.mjs
