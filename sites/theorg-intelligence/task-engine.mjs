@@ -108,3 +108,25 @@ export async function acceptVerifiedTask(task,context){
  // The private module-scoped token cannot be fabricated through arbitrary API input.
  return transition(task,'accept',{...context,digest:task.evidence_digest,[QA_VERIFIED]:true});
 }
+
+export function summarizeCompanyTasks(tasks,scope){
+ const company=validateScope(scope?.tenant_id,scope?.company_id);
+ assert(Array.isArray(tasks)&&tasks.length<=10000,'Invalid task collection');
+ const data=tasks.filter(t=>t?.tenant_id===company.tenant_id&&t?.company_id===company.company_id);
+ const byTool={};
+ for(const task of data){const key=String(task.tool_id||'unknown').slice(0,50);const x=byTool[key]||(byTool[key]={total:0,verified:0,pending:0,failed:0});
+  x.total++;if(task.status==='accepted'&&task.qa?.verified===true)x.verified++;
+  else if(task.status==='failed'||task.status==='rejected')x.failed++;else x.pending++;}
+ return {scope:company,total:data.length,verified:data.filter(t=>t.status==='accepted'&&t.qa?.verified===true).length,
+  not_verified:data.filter(t=>t.status!=='accepted'||t.qa?.verified!==true).length,
+  by_tool:byTool,source:'verified-task-events-only',cost:null,elapsed_ms:null};
+}
+export function taskReport(task){
+ const a=analyzeTask(task);
+ const lines=['# TheOrg Task Evidence Report','',`Task: ${task.title}`,`Status: ${a.status}`,`Tool: ${a.tool_id} @ ${task.tool_version}`,
+ `Company: ${a.company_id}`,`Steps with outputs: ${a.steps_with_outputs}/${a.steps_total}`,
+ `QA: ${a.qa_state}`,`Evidence digest: ${a.evidence_digest||'none'}`,
+ `Verified completion: ${a.verified?'yes':'no'}`,'',
+ 'No time or cost is inferred where actual telemetry is absent.'];
+ return lines.join('\n');
+}
