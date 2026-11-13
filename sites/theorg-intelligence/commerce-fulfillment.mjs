@@ -80,7 +80,7 @@ export function verifyStripeWebhook({rawBody,signatureHeader,secret,nowSeconds=M
  return event;
 }
 /** Payment is credited only if a signed, expected, complete provider session matches this order. */
-export function applyVerifiedPaymentEvent(order,event,{now=new Date().toISOString()}={}){
+function applyVerifiedPaymentEvent(order,event,{now=new Date().toISOString()}={}){
  must(order?.state==='pending_payment'||order?.state==='paid_pending_fulfillment','Payment event not expected');
  must(event&&SUPPORTED.includes(event.type),'Unsupported or incomplete payment event');
  must(boundString(event.id,120),'Invalid event id');
@@ -93,6 +93,10 @@ export function applyVerifiedPaymentEvent(order,event,{now=new Date().toISOStrin
  must(obj.payment_status==='paid'&&obj.status==='complete','Payment not complete');
  return Object.freeze({...order,state:'paid_pending_fulfillment',payment_event_id:event.id,
    processed_events:[...order.processed_events,event.id],updated_at:now});
+}
+export function acceptSignedStripeWebhook(order,{rawBody,signatureHeader,secret,nowSeconds,now}={}){
+ const event=verifyStripeWebhook({rawBody,signatureHeader,secret,nowSeconds});
+ return applyVerifiedPaymentEvent(order,event,{now});
 }
 export function beginFulfillment(order,{now=new Date().toISOString()}={}){
  must(order?.state==='paid_pending_fulfillment','Paid provider receipt required before fulfillment');
