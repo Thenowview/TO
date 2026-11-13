@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createTask,transition,analyzeTask,runBoundedAnalysis} from './task-engine.mjs';
+import {TOOL_TEMPLATES} from './tool-platform.mjs';
+const tool={...TOOL_TEMPLATES[0],kind:'analysis',trigger:'manual'};
+const scope={tenant_id:'tenantA',company_id:'companyA'};
+const mk=()=>createTask({...scope,title:'Analyze milestone execution',owner_id:'ownerA'},tool);
+const digest='sha256:'+'a'.repeat(64);
+const ctx=(role,actor,more={})=>({...scope,role,actor,...more});
+test('creates tenant-scoped draft without pretending execution',()=>{const task=mk();assert.equal(task.status,'draft');assert.equal(analyzeTask(task).completion_pct,0);assert.equal(analyzeTask(task).verified,false)});
+test('cross-company actions denied',()=>assert.throws(()=>transition(mk(),'approve',{...ctx('executive','ceo'),company_id:'other'})));
+test('analyst cannot approve their own job',()=>assert.throws(()=>transition(mk(),'approve',ctx('analyst','ownerA'))));
+test('runtime must have executive approval',()=>assert.throws(()=>transition(mk(),'begin',ctx('runtime','agent'))));
+test('submit requires evidence and approved runtime',()=>{const approved=transition(mk(),'approve',ctx('executive','ceo'));const running=transition(approved,'begin',ctx('runtime','agent'));assert.throws(()=>transition(running,'submit',ctx('runtime','agent',{digest:'bad',results:[{step:1,output:'Test'}]})));});
+test('QA cannot accept incomplete steps',()=>{
+ const approved=transition(mk(),'approve',ctx('executive','ceo'));
+ const running=transition(approved,'begin',ctx('runtime','agent'));
+ const submitted=transition(running,'submit',ctx('runtime','agent',{digest,results:[{step:1,output:'One result'}]}));
+ assert.throws(()=>transition(submitted,'accept',ctx('reviewer','independent',{digest,evidence_verified:true})));
+});
+test('no self-review and no forged proof',()=>{
+ const running=transition(transition(mk(),'approve',ctx('executive','ceo')),'begin',ctx('runtime','agent'));
+ const results=running.steps.map(s=>({step:s.step,output:'Synthetic inspected data'}));
+ const sub=transition(running,'submit',ctx('runtime','agent',{digest,results}));
+ assert.throws(()=>transition(sub,'accept',ctx('reviewer','ownerA',{digest,evidence_verified:true})));
+ assert.throws(()=>transition(sub,'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:false})));
+});
+test('evidence accepted only with independent QA on all steps',()=>{
+ const running=transition(transition(mk(),'approve',ctx('executive','ceo')),'begin',ctx('runtime','agent'));
+ const sub=transition(running,'submit',ctx('runtime','agent',{digest,results:running.steps.map(s=>({step:s.step,output:'Evidence result'}))}));
+ const accepted=transition(sub,'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:true}));
+ assert.equal(accepted.status,'accepted');assert.equal(analyzeTask(accepted).verified,true);assert.equal(analyzeTask(accepted).completion_pct,100);
+ assert.equal(accepted.events.length,5);
+});
+test('deterministic bounded analysis has zero external/model calls',()=>{
+ const result=runBoundedAnalysis(tool,{rows:[{name:'Delivery',actual:83,target:90}]});
+ assert.equal(result.average_variance,-7);assert.equal(result.external_actions,0);assert.equal(result.model_calls,0);assert.equal(result.verified,false);
+});
+test('reject unbounded inputs',()=>assert.throws(()=>runBoundedAnalysis(tool,{rows:Array(101).fill({actual:80,target:90})})));
+test('no direct action can mark draft accepted',()=>assert.throws(()=>transition(mk(),'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:true}))));
