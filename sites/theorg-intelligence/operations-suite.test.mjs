@@ -33,3 +33,5 @@ test('HTML export escapes injected title and findings',()=>{const doc=buildRepor
 test('no false verified report from caller flag alone',()=>assert.throws(()=>buildReport({type:'daily-brief',data_status:'verified'})));
 test('CSV quotes and Markdown sanitized',()=>{const doc=buildReport({type:'task-report',metrics:{'a,b':'a"b'},findings:['Hello\nworld']});assert.match(reportCSV(doc),/"a,b"/);assert.match(reportMarkdown(doc),/Hello world/)});
 test('unimplemented native office exports are rejected',()=>{const doc=buildReport({type:'daily-brief'});for(const f of ['pptx','xlsx','docx','pdf'])assert.throws(()=>exportArtifact(doc,f))});
+
+test('forged reviewer and evidence cannot self-publish a verified report',()=>assert.throws(()=>buildReport({type:'board-pack',data_status:'verified',approval:{authorized:true,reviewer:'someone'},evidence:[{ref:'fake',digest:'fake'}]})));
