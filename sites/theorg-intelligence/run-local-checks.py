@@ -34,6 +34,8 @@ COMMANDS=[
  ("marketplace-ui",["node",str(ROOT/"marketplace-ui.verify.mjs")]),
  ("worker-build",["node",str(ROOT/"build-worker.mjs")]),
  ("worker-routes",["node",str(ROOT/"verify-worker.mjs")]),
+ ("commercial-worker-build",["node",str(ROOT/"build-commerce-worker.mjs")]),
+ ("commercial-worker-routes",["node",str(ROOT/"verify-commerce-worker.mjs")]),
 ]
 def main():
     if not shutil.which("node"):
