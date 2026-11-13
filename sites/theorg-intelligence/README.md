@@ -56,3 +56,12 @@ The Worker exposes `GET /api/health` with `mode: synthetic-demo`, and makes no c
 - Basic KPI and approval rule cases were independently exercised in a JS sandbox, with 7 selected cases passing. This is not a substitute for the full GitHub/Windows/browser test suite.
 - See [GATEWAY_SETUP.md](GATEWAY_SETUP.md) before configuring any cloud enterprise backend.
 - The public website remains the last confirmed synthetic-only Worker deployment; no new public business API has been created or enabled.
+
+## Bulk source repair — November 13, 2026 (runtime and CI)
+- Replaced an outdated `verify-worker.mjs` route assertion referencing the retired single-route Worker. The new check covers `/`, `/api/health`, `/operations`, first-party analytics/report modules, CSP and allowed HTTP methods.
+- Corrected `task-engine.test.mjs` independent QA success case to compute a **real** SHA-256 receipt instead of a hard-coded placeholder digest.
+- Hardened `local-task-runtime.py` (source-only opt-in loopback service): reject NaN/Infinity and invalid task inputs, require distinct runtime/executive/reviewer identities, reject malformed JSON/content lengths and unexpected queries, verify symlinks before path resolution, preserve atomic SQLite task/audit changes.
+- Added `test_local_task_runtime.py` with **10** standard-library SQLite/authorization/evidence/restart test methods. The GitHub site CI workflow now includes `python3 -m unittest discover -s sites/theorg-intelligence -p 'test_local_task_runtime.py' -v`.
+- Independently checked source-level JavaScript syntax/contract markers; full Python regression suite and GitHub CI execution are **not independently verified**.
+- Latest GitHub Actions commit run `43445433463` (site CI) and run `43445433424` (minimal runner diagnostic) still show failure. This indicates a separate unresolved Actions execution/scheduling or account-level issue; root cause not established without runner logs.
+- No source-to-production merge, Windows runtime start, credential provisioning, paid action or new Cloudflare Worker upload occurred in this repair batch. The existing `theorg-intelligence-lab` demo remains on its previous confirmed preview deployment.
