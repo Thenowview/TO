@@ -52,7 +52,7 @@
 <div class="cta"><div class="eyebrow">For ongoing project operations</div><h2>One report shows the gap. A system helps manage the response.</h2><p>When a project assessment reveals recurring risks, approvals, resource conflicts or portfolio issues, THEEPMO may provide a longer-term workflow. The two services remain independent. We do not automatically transfer your data or accounts.</p><a class="btn primary" href="https://theepmo.com/?utm_source=theorg&utm_medium=report&utm_campaign=project-followup" target="_blank" rel="noopener noreferrer">Explore THEEPMO</a></div>
 </section>
 </main>
-<footer class="footer"><div class="container line"><div><b style="color:var(--text)">TheOrg</b> — business intelligence on demand.<p>Commercial concept preview. No live AI inference, verified paid reports, checkout or customer signup.</p></div><div><a href="/operations">Operations demo</a> · <a href="/">Executive demo</a> · <a href="#pricing">Planned packages</a></div></div></footer>
+<footer class="footer"><div class="container line"><div><b style="color:var(--text)">TheOrg</b> — business intelligence on demand.<p>Commercial concept preview. No live AI inference, verified paid reports, checkout or customer signup.</p></div><div><a href="https://theorg-intelligence-lab.theorgnet.workers.dev/operations" target="_blank" rel="noopener noreferrer">Operations demo</a> · <a href="https://theorg-intelligence-lab.theorgnet.workers.dev/" target="_blank" rel="noopener noreferrer">Executive demo</a> · <a href="#pricing">Planned packages</a></div></div></footer>
 <script type="module">
 import {COMMERCIAL_TOOLS,analyzeCommercialTool,exampleForTool,commercialCategories,saleSummary} from '/assets/commercial-tools.mjs';
 import {buildReport,exportArtifact} from '/assets/report-engine.mjs';
@@ -102,7 +102,7 @@ el('toolForm').addEventListener('submit',e=>{e.preventDefault();try{last=analyze
 el('downloadJson').addEventListener('click',()=>{try{const file=exportArtifact(report(),'json');download(file.content,file.filename,file.mime)}catch(e){el('formStatus').textContent=e.message}});
 el('downloadHtml').addEventListener('click',()=>{try{const file=exportArtifact(report(),'html');download(file.content,file.filename,file.mime)}catch(e){el('formStatus').textContent=e.message}});
 renderFilters();renderCards();
-const requested=new URLSearchParams(location.search).get('tool');
+const requested=new URLSearchParams(location.search).get('tool')||(location.pathname.startsWith('/tools/')?location.pathname.split('/').at(-1):null);
 selectTool(COMMERCIAL_TOOLS.some(t=>t.id===requested)?requested:'project-health',false);
 </script>
 </body></html>
