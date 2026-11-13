@@ -34,6 +34,9 @@ COMMANDS=[
  ("marketplace-ui",["node",str(ROOT/"marketplace-ui.verify.mjs")]),
  ("worker-build",["node",str(ROOT/"build-worker.mjs")]),
  ("worker-routes",["node",str(ROOT/"verify-worker.mjs")]),
+ ("commerce-payment-fulfillment",["node","--test",str(ROOT/"commerce-fulfillment.test.mjs")]),
+ ("commerce-policy-content",["node","--test",str(ROOT/"commerce-pages.test.mjs")]),
+ ("commerce-database", [sys.executable,"-m","unittest","discover","-s",str(ROOT),"-p","test_commerce_schema.py","-v"]),
  ("commercial-worker-build",["node",str(ROOT/"build-commerce-worker.mjs")]),
  ("commercial-worker-routes",["node",str(ROOT/"verify-commerce-worker.mjs")]),
 ]
@@ -41,8 +44,9 @@ def main():
     if not shutil.which("node"):
         raise SystemExit("Node is unavailable; install Node 22+ on your local development machine")
     # Guard against leaking local API credentials into child processes.
-    clean_env={k:v for k,v in os.environ.items()
-        if not k.startswith(("THEORG_LOCAL_IDENTITIES","THEORG_ENABLE_OLLAMA","CLOUDFLARE_API","CF_API_TOKEN"))}
+    allowed_env={"PATH","HOME","USERPROFILE","SYSTEMROOT","WINDIR","TEMP","TMP","TMPDIR",
+                 "COMSPEC","PATHEXT","LANG","LC_ALL","LC_CTYPE","CI","PYTHONIOENCODING"}
+    clean_env={k:v for k,v in os.environ.items() if k.upper() in allowed_env}
     outcomes=[]
     for name,args in COMMANDS:
         try:
