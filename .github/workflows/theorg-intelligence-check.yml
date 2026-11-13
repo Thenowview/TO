@@ -32,6 +32,8 @@ jobs:
         run: node --test sites/theorg-intelligence/operations-suite.test.mjs
       - name: Local AI advisor opt-in and localhost boundary tests
         run: node --test sites/theorg-intelligence/local-ai-cli.test.mjs
+      - name: Local runtime SQLite and authorization regression tests
+        run: python3 -m unittest discover -s sites/theorg-intelligence -p 'test_local_task_runtime.py' -v
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
