@@ -254,7 +254,10 @@ class Service(BaseHTTPRequestHandler):
             if path.startswith("/v1/tasks/") and path.endswith("/evidence"):
                 parts=path.split("/")
                 if len(parts)==5 and parts[-1]=="evidence":
-                    return self.reply(200,evidence_for_review(self.server.db,identity,parts[3]))
+                    try: return self.reply(200,evidence_for_review(self.server.db,identity,parts[3]))
+                    except PermissionError as error: return self.reply(403,{"error":str(error)})
+                    except KeyError: return self.reply(404,{"error":"Task not found"})
+                    except (ValueError,TypeError) as error: return self.reply(400,{"error":str(error)})
             return self.reply(404,{"error":"Not found"})
         try: length=int(self.headers.get("Content-Length","0") or "0")
         except (ValueError,OverflowError):return self.reply(400,{"error":"Invalid content length"})
