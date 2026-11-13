@@ -185,10 +185,30 @@ def dashboard(db,identity):
             "ai_model_calls":0,"external_actions":0,
             "source_evidence_verified":False,"mode":"local-deterministic",
             "warning":"Task acceptance verifies integrity and reviewer identity, not external KPI truth"}
+def task_metric_summary(task):
+    """Computed local arithmetic only; not source-authenticated evidence."""
+    data=json.loads(task["result_json"] or "null")
+    if not isinstance(data,dict) or data.get("tool")!="kpi-variance":
+        return None
+    value=data.get("mean_variance")
+    rows=data.get("rows")
+    if type(value) not in (int,float) or not math.isfinite(value) or not isinstance(rows,list) or not 1<=len(rows)<=100:
+        return None
+    return {"mean_variance":value,"metrics_count":len(rows),
+            "data_status":"caller-supplied","source_provenance_verified":False}
+
 def export_bundle(db, identity):
     """Owner-authorized local export; never a public synchronization endpoint."""
     tasks=list_tasks(db,identity)
     ids=[t["id"] for t in tasks]
+    summaries={}
+    if ids:
+        placeholders=",".join("?" for _ in ids)
+        for record in db.execute(
+            "SELECT * FROM tasks WHERE tenant=? AND company=? AND id IN ("+placeholders+")",
+            (identity["tenant"],identity["company"],*ids)
+        ).fetchall():
+            summaries[record["id"]]=task_metric_summary(record)
     if ids:
         placeholders=",".join("?" for _ in ids)
         events_rows=db.execute(
@@ -207,6 +227,7 @@ def export_bundle(db, identity):
         "cloud_sync":False,
         "tasks":[{"id":t["id"],"title":t["title"],"tool":t["tool"],
                   "status":t["status"],"digest":t["digest"],"reviewer":t["reviewer"],
+                  "metric_summary":summaries.get(t["id"]),
                   "created":t["created"],"updated":t["updated"]} for t in tasks],
         "events":[dict(r) for r in events_rows],
         "warning":"Local acceptance verifies evidence integrity and reviewer identity only; business source provenance is unverified"
