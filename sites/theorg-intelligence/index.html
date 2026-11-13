@@ -57,7 +57,7 @@ input[type=number]{background:#0c1c2c;color:#fff;border:1px solid #3c5a6d;paddin
 <label class="wide">Workflow steps, one per line (2–8)<textarea id="toolSteps" maxlength="1000" placeholder="Collect evidence&#10;Validate findings&#10;Prepare a decision brief"></textarea></label>
 <label class="wide">Dashboard outcome<select id="toolMetric"><option value="delivery_health">Delivery health</option><option value="risk_exposure">Risk exposure</option><option value="approval_readiness">Approval readiness</option><option value="capacity_utilization">Capacity utilization</option><option value="evidence_completeness">Evidence completeness</option></select></label>
 </div><div class="input-row section"><button class="btn primary" id="saveTool">Save local tool</button><button class="btn" id="exportTools">Export definitions</button></div><div id="toolNotice" role="status" class="metric-detail"></div></div>
-<div class="card"><h3>Tool library</h3><p>Five example enterprise operations and any tools defined in this browser.</p><div id="toolLibrary"></div></div></div></section>
+<div class="card"><h3>Tool library</h3><p>Five PMO-inspired examples, one arithmetic calculator, and your browser-local definitions.</p><div id="toolLibrary"></div></div></div></section>
 <section id="tasks" class="view hidden"><div class="hero"><div><div class="eyebrow">Task by Task</div><h1>Every task ends with evidence and analysis.</h1><p class="lead">Select a tool, define the objective, and inspect a step-by-step execution plan. This view never claims a simulated plan has actually run.</p></div></div>
 <div class="tool-layout section">
 <div class="card"><h3>New task from a tool</h3>
@@ -119,6 +119,7 @@ el('decisionDraftBtn').addEventListener('click',()=>{el('decisionOutput').textCo
 el('printBtn').addEventListener('click',()=>window.print());
 
 const EXAMPLES=[
+{id:'kpi-variance',name:'KPI variance calculator',category:'Analytics',description:'Calculate variances from supplied sample values (offline arithmetic only)',kind:'analysis',trigger:'manual',steps:['Validate supplied KPI inputs','Calculate KPI variances','Prepare arithmetic summary'],metric:'delivery_health'},
 {id:'epmo-status',name:'Project status analyst',category:'Project delivery',description:'Review milestone evidence and summarize delivery variance',kind:'analysis',trigger:'manual',steps:['Collect status','Validate evidence','Summarize variance','Prepare decision brief'],metric:'delivery_health'},
 {id:'epmo-risk',name:'Risk register analyst',category:'Risk',description:'Assess open risk exposure and mitigation needs',kind:'analysis',trigger:'manual',steps:['Collect risks','Score exposure','Review mitigation','Prepare risk dashboard'],metric:'risk_exposure'},
 {id:'epmo-approval',name:'Approval gate reviewer',category:'Governance',description:'Prepare an evidence-led stage gate recommendation',kind:'reporting',trigger:'manual',steps:['Gather criteria','Verify evidence','Identify blockers','Prepare recommendation'],metric:'approval_readiness'},
