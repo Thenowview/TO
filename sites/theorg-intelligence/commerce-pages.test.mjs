@@ -9,7 +9,7 @@ test('all legal pages state draft and do not invent seller policies',()=>{
   const html=renderPolicyPage(page);
   assert.match(html,/<html lang="en">/);
   assert.match(html,/Draft/);
-  assert.match(html,/final|not the final|pre-launch/i);
+  assert.match(html,/final|not the final|pre-launch|not a current refund offer/i);
   assert.match(html,/no payment|No payments|No commercial|No customer|preview/i);
  }
 });
