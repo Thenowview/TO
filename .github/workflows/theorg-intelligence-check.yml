@@ -36,6 +36,8 @@ jobs:
         run: python3 -m unittest discover -s sites/theorg-intelligence -p 'test_local_task_runtime.py' -v
       - name: Local-to-report integration tests
         run: node --test sites/theorg-intelligence/local-report-cli.test.mjs
+      - name: Synthetic local end-to-end task, audit and report acceptance
+        run: python3 sites/theorg-intelligence/local-e2e.py
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
