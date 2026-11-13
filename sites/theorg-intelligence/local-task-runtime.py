@@ -164,6 +164,28 @@ def dashboard(db,identity):
             "ai_model_calls":0,"external_actions":0,
             "source_evidence_verified":False,"mode":"local-deterministic",
             "warning":"Task acceptance verifies integrity and reviewer identity, not external KPI truth"}
+def export_bundle(db, identity):
+    """Owner-authorized local export; never a public synchronization endpoint."""
+    tasks=list_tasks(db,identity)
+    events_rows=db.execute(
+        "SELECT id,task_id,actor,action,previous,current,at,evidence_digest "
+        "FROM events WHERE tenant=? AND company=? ORDER BY at,id LIMIT 500",
+        (identity["tenant"],identity["company"])
+    ).fetchall()
+    return {
+        "schema_version":"theorg-local-bundle-1",
+        "exported_at":now(),
+        "tenant":identity["tenant"],"company":identity["company"],
+        "source":"operator-controlled-local-runtime",
+        "source_provenance_verified":False,
+        "cloud_sync":False,
+        "tasks":[{"id":t["id"],"title":t["title"],"tool":t["tool"],
+                  "status":t["status"],"digest":t["digest"],"reviewer":t["reviewer"],
+                  "created":t["created"],"updated":t["updated"]} for t in tasks],
+        "events":[dict(r) for r in events_rows],
+        "warning":"Local acceptance verifies evidence integrity and reviewer identity only; business source provenance is unverified"
+    }
+
 def model_advisory(prompt,model):
     """Optional human-initiated Ollama advisory. Its output is never approval/evidence."""
     if os.environ.get("THEORG_ENABLE_OLLAMA")!="YES" or not isinstance(model,str) or not 1<=len(model)<=80 or not all(c.isalnum() or c in ".:_-" for c in model):
@@ -202,6 +224,7 @@ class Service(BaseHTTPRequestHandler):
             if path=="/v1/health":return self.reply(200,{"status":"ready","mode":"loopback-only","cloud_sync":False})
             if path=="/v1/tasks":return self.reply(200,{"tasks":list_tasks(self.server.db,identity)})
             if path=="/v1/dashboard":return self.reply(200,dashboard(self.server.db,identity))
+            if path=="/v1/export":return self.reply(200,export_bundle(self.server.db,identity))
             return self.reply(404,{"error":"Not found"})
         try: length=int(self.headers.get("Content-Length","0") or "0")
         except (ValueError,OverflowError):return self.reply(400,{"error":"Invalid content length"})
