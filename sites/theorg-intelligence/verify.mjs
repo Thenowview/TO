@@ -9,6 +9,11 @@ for(const id of ['overview','agents','portfolio','risk','decisions','knowledge',
 assert.match(html,/Synthetic data|synthetic scenario/i,'Must label synthetic demo');
 assert.match(html,/No connection to THEEPMO systems/,'Enforce standalone boundary');
 assert.match(html,/function calculate\(\)/,'Deterministic KPI workbench');
+assert.match(html,/function valid\(a,t\)/,'Bounded KPI values');
+assert.match(html,/function syncDashboard\(\)/,'Cross-view KPI synchronization');
+assert.match(html,/function getScenario\(\)/,'Versioned scenario export');
+assert.match(html,/id="resetScenario"/,'Reset controls');
+assert.match(html,/id="exportReport"/,'Executive report download');
 assert.match(html,/localStorage\.setItem/,'Local-only demo persistence');
 assert.match(html,/function audit\(o,status\)/,'Auditable demo-state transitions');
 assert.match(html,/o\.status==='qa-reviewed'/,'QA gate on simulated closure');
