@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence,acceptVerifiedTask,summarizeCompanyTasks,taskReport} from './task-engine.mjs';
+import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence,acceptVerifiedTask,evidenceDigest,summarizeCompanyTasks,taskReport} from './task-engine.mjs';
 import {TOOL_TEMPLATES} from './tool-platform.mjs';
 const tool=TOOL_TEMPLATES.find(t=>t.id==='kpi-variance');
 const unsupported=TOOL_TEMPLATES.find(t=>t.id==='epmo-status');
@@ -28,7 +28,9 @@ test('no self-review and no forged proof',()=>{
 });
 test('evidence accepted only with independent QA on all steps',async()=>{
  const running=transition(transition(mk(),'approve',ctx('executive','ceo')),'begin',ctx('runtime','agent'));
- const sub=transition(running,'submit',ctx('runtime','agent',{digest,results:running.steps.map(s=>({step:s.step,output:'Evidence result'}))}));
+ const results=running.steps.map(step=>({step:step.step,status:'completed',output:'Evidence result'}));
+ const actualDigest=await evidenceDigest(results);
+ const sub=transition(running,'submit',ctx('runtime','agent',{digest:actualDigest,results}));
  const accepted=await acceptVerifiedTask(sub,ctx('reviewer','reviewerB'));
  assert.throws(()=>transition(sub,'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:true})),'Caller-supplied verified flag must not bypass verification');
  assert.equal(accepted.status,'accepted');assert.equal(analyzeTask(accepted).verified,true);assert.equal(analyzeTask(accepted).completion_pct,100);
