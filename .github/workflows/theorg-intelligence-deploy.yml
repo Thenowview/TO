@@ -1,0 +1,64 @@
+name: Deploy TheOrg Intelligence (manual, isolated)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type DEPLOY_THEORG_INTELLIGENCE to confirm the target account and Worker'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: theorg-intelligence-deployment
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: ${{ inputs.confirmation == 'DEPLOY_THEORG_INTELLIGENCE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source and contract validation
+        run: |
+          node sites/theorg-intelligence/verify.mjs
+          node --test sites/theorg-intelligence/enterprise.test.mjs
+          node sites/theorg-intelligence/build-worker.mjs
+          node sites/theorg-intelligence/verify-worker.mjs
+      - name: Guard deployment inputs
+        env:
+          CF_TOKEN: ${{ secrets.THEORG_CF_TOKEN }}
+        run: |
+          test -n "$CF_TOKEN" || { echo 'Missing THEORG_CF_TOKEN secret'; exit 1; }
+          test -s sites/theorg-intelligence/dist/worker.mjs
+      - name: Upload only standalone Worker to pinned account
+        env:
+          CF_TOKEN: ${{ secrets.THEORG_CF_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT='8c3498934294713cb33f436ff86fc361'
+          SERVICE='theorg-intelligence'
+          printf '%s' '{"main_module":"worker.mjs","compatibility_date":"2026-11-01"}' > /tmp/theorg-metadata.json
+          curl --fail-with-body --silent --show-error \
+            -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/workers/scripts/$SERVICE" \
+            -H "Authorization: Bearer $CF_TOKEN" \
+            -F "metadata=@/tmp/theorg-metadata.json;type=application/json" \
+            -F "worker.mjs=@sites/theorg-intelligence/dist/worker.mjs;type=application/javascript+module" \
+            -o /tmp/theorg-deployment-response.json
+          jq -e '.success == true' /tmp/theorg-deployment-response.json >/dev/null
+          echo 'Worker upload accepted by pinned Cloudflare account'
+      - name: Verify Worker deployment metadata
+        env:
+          CF_TOKEN: ${{ secrets.THEORG_CF_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CF_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/8c3498934294713cb33f436ff86fc361/workers/scripts/theorg-intelligence/deployments" \
+            -o /tmp/theorg-deployments.json
+          jq -e '.success == true and (.result.deployments | length > 0)' /tmp/theorg-deployments.json >/dev/null
+          echo 'Deployment metadata verified (not a browser smoke test)'
