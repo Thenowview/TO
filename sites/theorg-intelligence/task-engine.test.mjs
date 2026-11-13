@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence} from './task-engine.mjs';
+import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence,acceptVerifiedTask} from './task-engine.mjs';
 import {TOOL_TEMPLATES} from './tool-platform.mjs';
 const tool={...TOOL_TEMPLATES[0],kind:'analysis',trigger:'manual'};
 const scope={tenant_id:'tenantA',company_id:'companyA'};
@@ -25,10 +25,11 @@ test('no self-review and no forged proof',()=>{
  assert.throws(()=>transition(sub,'accept',ctx('reviewer','ownerA',{digest,evidence_verified:true})));
  assert.throws(()=>transition(sub,'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:false})));
 });
-test('evidence accepted only with independent QA on all steps',()=>{
+test('evidence accepted only with independent QA on all steps',async()=>{
  const running=transition(transition(mk(),'approve',ctx('executive','ceo')),'begin',ctx('runtime','agent'));
  const sub=transition(running,'submit',ctx('runtime','agent',{digest,results:running.steps.map(s=>({step:s.step,output:'Evidence result'}))}));
- const accepted=transition(sub,'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:true}));
+ const accepted=await acceptVerifiedTask(sub,ctx('reviewer','reviewerB'));
+ assert.throws(()=>transition(sub,'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:true})),'Caller-supplied verified flag must not bypass verification');
  assert.equal(accepted.status,'accepted');assert.equal(analyzeTask(accepted).verified,true);assert.equal(analyzeTask(accepted).completion_pct,100);
  assert.equal(accepted.events.length,5);
 });
@@ -56,4 +57,11 @@ test('tampered output fails evidence verification',async()=>{
 });
 test('execution refused before approval',async()=>{
  await assert.rejects(()=>runApprovedOfflineTask(mk(),tool,{rows:[]}));
+});
+
+test('verified acceptance refuses modified outputs even with reviewer role',async()=>{
+ const approved=transition(mk(),'approve',ctx('executive','ceo'));
+ const result=await runApprovedOfflineTask(approved,tool,{rows:[{name:'Progress',actual:83,target:90}]});
+ result.results[0].output='fraudulent evidence';
+ await assert.rejects(()=>acceptVerifiedTask(result,ctx('reviewer','reviewerB')));
 });
