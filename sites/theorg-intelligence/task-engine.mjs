@@ -83,8 +83,15 @@ export async function runApprovedOfflineTask(approvedTask,tool,inputs,actor='loc
  const runtimeContext={tenant_id:approvedTask.tenant_id,company_id:approvedTask.company_id,role:'runtime',actor};
  const running=transition(approvedTask,'begin',runtimeContext);
  // Concrete deterministic analysis only; no model, shell, network or filesystem side effects.
+ const supported=['Validate supplied KPI inputs','Calculate KPI variances','Prepare arithmetic summary'];
+ assert(running.steps.length===supported.length&&running.steps.every((step,i)=>step.name===supported[i]),
+  'Tool workflow contains unimplemented steps: real collection and evidence checks require an approved agent adapter');
  const analysis=runBoundedAnalysis(tool,inputs);
- const results=running.steps.map(step=>({step:step.step,status:'completed',output:JSON.stringify({step:step.name,metric_summary:analysis})}));
+ const results=[
+  {step:1,status:'completed',output:JSON.stringify({provided_metric_rows:analysis.metrics_count,validation:'0-100 range only; external provenance not verified'})},
+  {step:2,status:'completed',output:JSON.stringify({rows:analysis.rows})},
+  {step:3,status:'completed',output:JSON.stringify({average_variance:analysis.average_variance,external_actions:0,model_calls:0,source_status:'user-supplied-unverified'})}
+ ];
  const digest=await evidenceDigest(results);
  return transition(running,'submit',{...runtimeContext,digest,results});
 }
