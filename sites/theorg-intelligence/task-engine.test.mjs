@@ -86,3 +86,11 @@ test('task evidence report clearly distinguishes unverified draft',()=>{
  assert.match(report,/Verified completion: no/);
  assert.match(report,/Evidence digest: none/);
 });
+
+test('KPI runtime rejects strings, nulls, empty rows and missing metric names',()=>{
+ for(const rows of [[],[{name:'A',actual:'83',target:90}],[{name:'A',actual:null,target:90}],[{name:'A',actual:83,target:90}], [{name:'',actual:83,target:90}]]){
+   if(rows.length===1&&rows[0].name==='A'&&rows[0].actual===83)continue;
+   assert.throws(()=>runBoundedAnalysis(tool,{rows}));
+ }
+ assert.equal(runBoundedAnalysis(tool,{rows:[{name:'Valid',actual:83,target:90}]}).average_variance,-7);
+});
