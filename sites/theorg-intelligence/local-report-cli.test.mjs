@@ -17,7 +17,7 @@ test('rejects missing company scope and duplicate task ids',()=>{const b=valid()
 test('report never fabricates source verification from local QA state',()=>{
  const report=buildLocalTaskReport(valid());
  assert.equal(report.status,'caller-supplied');
- assert.equal(report.metrics.integrity_reviewed,1);
+ assert.equal(report.metrics.claimed_local_acceptances,1);
  assert.equal(report.metrics.verified_business_sources,0);
  assert.equal(report.tasks[0].verified,false);
  assert.match(report.warning,/not independently verified/);
