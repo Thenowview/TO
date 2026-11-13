@@ -50,3 +50,12 @@ test('forecast horizon requires whole periods',()=>{
  assert.throws(()=>analyzeOperations('forecasting',{rows:samples.forecasting,horizon:1.5}));
  assert.equal(analyzeOperations('forecasting',{rows:samples.forecasting,horizon:3}).details.length,3);
 });
+
+test('5 by 5 risk matrix rejects fractional likelihood and impact',()=>{
+ for(const [likelihood,impact] of [[2.5,3],[3,4.5],[0,4],[5,6]])assert.throws(()=>analyzeOperations('risk-compliance',{rows:[{risk:'Example',likelihood,impact}]}));
+ assert.equal(analyzeOperations('risk-compliance',{rows:[{risk:'Example',likelihood:3,impact:5}]}).metrics.high,1);
+});
+test('workforce dashboard does not fabricate zero cost with absent telemetry',()=>{
+ assert.equal(workforceSummary([]).cost_usd,null);
+ assert.equal(workforceSummary([{status:'draft'}]).cost_usd,null);
+});
