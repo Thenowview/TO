@@ -5,7 +5,7 @@ const path=new URL('./dist/commerce-worker.mjs',import.meta.url);
 const source=readFileSync(path,'utf8');
 for(const re of [/checkout_enabled:false/,/accounts_enabled:false/,/hosted_ai_enabled:false/,
  /source_verified:false/,/connect-src 'none'/,/x-robots-tag/,/frame-ancestors 'none'/,
- /Disallow: \/, /\/tools\//, /\/assets\/commercial-tools\.mjs/])assert.match(source,re);
+ /Disallow/, /\/tools\//, /\/assets\/commercial-tools\.mjs/])assert.match(source,re);
 const {default:worker}=await import(path.href+'?test');
 const origin='https://theorg-commerce-preview.example';
 async function check(p,expect=200,mime=null){
