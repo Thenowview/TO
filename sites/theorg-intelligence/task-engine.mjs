@@ -13,6 +13,7 @@ export function createTask(input,tool) {
  const scope=validateScope(input?.tenant_id,input?.company_id);
  const definition=validateTool(tool);
  const title=validateObjective(input?.title);
+ assert(/^[0-9]+\.[0-9]+\.[0-9]+$/.test(String(input.tool_version||'1.0.0')),'Invalid tool version');
  assert(typeof input.owner_id==='string'&&/^[A-Za-z0-9_-]{2,64}$/.test(input.owner_id),'Invalid owner');
  const id=mkid(),at=stamp();
  return {...scope,id,title,owner_id:input.owner_id,tool_id:definition.id,tool_version:String(input.tool_version||'1.0.0'),status:'draft',created_at:at,updated_at:at,steps:definition.steps.map((name,i)=>({step:i+1,name,status:'pending'})),results:[],qa:null,execution_mode:'bounded-deterministic',events:[{event_id:mkid(),type:'draft',actor:input.owner_id,at}]};
@@ -67,4 +68,28 @@ export function runBoundedAnalysis(tool,inputs) {
   return {name:String(r.name||'Metric').slice(0,80),actual,target,gap:Math.round((actual-target)*100)/100};});
  const avg=rows.length?rows.reduce((a,b)=>a+b.gap,0)/rows.length:0;
  return {mode:'deterministic-offline',tool_id:t.id,metrics_count:rows.length,average_variance:Math.round(avg*100)/100,rows,external_actions:0,model_calls:0,verified:false};
+}
+
+export async function evidenceDigest(results) {
+ assert(Array.isArray(results)&&results.length>0&&results.length<=8,'Invalid evidence list');
+ const text=JSON.stringify(results.map(r=>({step:r.step,status:r.status||'completed',output:String(r.output||'').slice(0,2000)})));
+ const sum=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+ return 'sha256:'+Array.from(new Uint8Array(sum),x=>x.toString(16).padStart(2,'0')).join('');
+}
+export async function runApprovedOfflineTask(approvedTask,tool,inputs,actor='local-runtime') {
+ assert(approvedTask?.status==='approved','Only approved tasks can run');
+ assert(approvedTask.tool_id===tool?.id,'Tool identity mismatch');
+ const runtimeContext={tenant_id:approvedTask.tenant_id,company_id:approvedTask.company_id,role:'runtime',actor};
+ const running=transition(approvedTask,'begin',runtimeContext);
+ // Concrete deterministic analysis only; no model, shell, network or filesystem side effects.
+ const analysis=runBoundedAnalysis(tool,inputs);
+ const results=running.steps.map(step=>({step:step.step,status:'completed',output:JSON.stringify({step:step.name,metric_summary:analysis})}));
+ const digest=await evidenceDigest(results);
+ return transition(running,'submit',{...runtimeContext,digest,results});
+}
+export async function verifyTaskEvidence(task) {
+ if(task?.status!=='awaiting-qa'||!Array.isArray(task.results)||!digestOK(task.evidence_digest))return false;
+ return (await evidenceDigest(task.results))===task.evidence_digest &&
+   task.results.length===task.steps.length &&
+   new Set(task.results.map(r=>r.step)).size===task.steps.length;
 }
