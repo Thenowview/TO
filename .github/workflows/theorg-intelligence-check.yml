@@ -26,6 +26,8 @@ jobs:
         run: node --test sites/theorg-intelligence/enterprise.test.mjs
       - name: AI tool studio and task analytics contracts
         run: node --test sites/theorg-intelligence/tool-platform.test.mjs
+      - name: Task engine and evidence integration tests
+        run: node --test sites/theorg-intelligence/task-engine.test.mjs
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
