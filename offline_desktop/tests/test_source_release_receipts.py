@@ -18,4 +18,6 @@ class ReleaseReceiptSourceTests(unittest.TestCase):
         self.assertFalse(r['production_go'])
         self.assertFalse(r['windows_exe_accepted'])
         self.assertFalse(r['android_device_accepted'])
-        self.assertTrue(r['source_checks_passed'])
+        self.assertTrue(r['inspection_passed'])
+        self.assertFalse(r['source_checks_passed'])
+        self.assertFalse(r['tests_executed'])
