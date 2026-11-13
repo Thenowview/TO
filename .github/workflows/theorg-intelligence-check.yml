@@ -33,7 +33,7 @@ jobs:
       - name: Local AI advisor opt-in and localhost boundary tests
         run: node --test sites/theorg-intelligence/local-ai-cli.test.mjs
       - name: Local runtime SQLite and authorization regression tests
-        run: python3 -m unittest discover -s sites/theorg-intelligence -p 'test_local_task_runtime.py' -v
+        run: python3 -m unittest discover -s sites/theorg-intelligence -p 'test_local_*.py' -v
       - name: Local-to-report integration tests
         run: node --test sites/theorg-intelligence/local-report-cli.test.mjs
       - name: Synthetic local end-to-end task, audit and report acceptance
