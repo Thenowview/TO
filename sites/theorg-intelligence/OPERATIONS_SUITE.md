@@ -31,7 +31,7 @@ Every analytics outcome explicitly returns `data_status: caller-supplied`, `sour
 ## Preview deployment — Theorgnet only
 - Isolated Cloudflare Worker `theorg-intelligence-lab` uploaded to verified `theorgnet@gmail.com` account (`8c3498934294713cb33f436ff86fc361`).
 - URL: https://theorg-intelligence-lab.theorgnet.workers.dev/operations
-- Cloudflare deployment ID: `04d37ed4-8335-4a8f-8f5d-1cf5cde9f1fe`, API reports 100%.
+- Cloudflare deployment ID: `949dc2c0-0b10-4aa4-b594-6c5939b2c5c4`, API reports 100% (supersedes preview `04d37ed4-8335-4a8f-8f5d-1cf5cde9f1fe`).
 - Original public Worker `theorg-intelligence` was deliberately **not replaced**, last observed deployment `883b1621-25cd-4314-9a0b-7055f1dfdcc6`.
 - Public preview serves only standalone HTML and first-party JS modules, CSP blocks network calls from site JS. External live browser acceptance could not be confirmed by web retrieval.
 
@@ -47,3 +47,9 @@ THEORG_ENABLE_OLLAMA=YES node sites/theorg-intelligence/local-ai-cli.mjs kpi-int
 The model name above is an example, not a statement that it is installed. `example-input.json` must have `{"rows":[{"name":"Execution","actual":83,"target":90}]}`. Use no confidential records until local model configuration and data handling are verified.
 
 **Remaining actual gaps:** live model/runtime acceptance, authenticated Windows Supervisor pairing, company-owned D1 storage, native Office files, full Actions CI, source-backed evidence/QA, enterprise connectors and production release gates.
+
+## Security and acceptance addendum
+- CSV writer now neutralizes spreadsheet formula prefixes on untrusted cells; negative/positive formula-injection regression added.
+- In an isolated JavaScript harness, **16 of 16** operations/report tests passed, including 13 recipes, eight report templates, the export pipeline and approval/CSV safety. This is not a successful GitHub Actions run.
+- Separate local advisor mock verification confirmed that invocation without consent stops before any fetch; with consent, target is pinned to `127.0.0.1:11434` and output remains unverified advisory prose.
+- Existing standalone `theorg-intelligence` Worker remains unchanged while the lab Worker was re-deployed.
