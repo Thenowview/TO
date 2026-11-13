@@ -57,7 +57,7 @@ export function analyzeOperations(toolId,input){
    recommendations=details.filter(x=>x.late_days>0).map(x=>'Investigate '+x.project+' / '+x.milestone);break;
  }
  case 'risk-compliance':{
-   details=rows.map(r=>({risk:key(r.risk),likelihood:num(r.likelihood,1,5),impact:num(r.impact,1,5),owner:r.owner||null,mitigation:r.mitigation||null})).map(r=>({...r,score:r.likelihood*r.impact,tier:r.likelihood*r.impact>=15?'high':r.likelihood*r.impact>=8?'medium':'low'}));
+   details=rows.map(r=>{const likelihood=num(r.likelihood,1,5),impact=num(r.impact,1,5);assert(Number.isInteger(likelihood)&&Number.isInteger(impact),'Risk matrix ratings must be whole numbers 1-5');return {risk:key(r.risk),likelihood,impact,owner:r.owner||null,mitigation:r.mitigation||null}}).map(r=>({...r,score:r.likelihood*r.impact,tier:r.likelihood*r.impact>=15?'high':r.likelihood*r.impact>=8?'medium':'low'}));
    metrics={total:details.length,high:details.filter(x=>x.tier==='high').length,average_exposure:avg(details.map(x=>x.score)),without_mitigation:details.filter(x=>!x.mitigation).length};
    recommendations=details.filter(x=>x.tier==='high').map(x=>'Review high risk: '+x.risk);break;
  }
@@ -115,6 +115,6 @@ export function workforceSummary(tasks){
  return {tasks:all.length,verified_accepted:accepted.length,failed:failed.length,active_or_pending:running.length,
    success_pct:all.length?round(accepted.length/all.length*100):null,
    avg_duration_ms:avg(accepted.filter(t=>Number.isFinite(t.duration_ms)).map(t=>t.duration_ms)),
-   cost_usd:all.every(t=>Number.isFinite(t.cost_usd))?round(all.reduce((a,b)=>a+b.cost_usd,0)):null,
+   cost_usd:all.length>0&&all.every(t=>typeof t.cost_usd==='number'&&Number.isFinite(t.cost_usd))?round(all.reduce((a,b)=>a+b.cost_usd,0)):null,
    verified:'task-state-only; requires authenticated evidence store'};
 }
