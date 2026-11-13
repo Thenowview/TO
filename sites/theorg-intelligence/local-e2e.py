@@ -41,6 +41,8 @@ def main():
             assert runtime.move(db,qa,task,"accept")["status"]=="accepted"
             bundle=runtime.export_bundle(db,owner)
             assert len(bundle["tasks"])==1 and len(bundle["events"])==4
+            assert bundle["tasks"][0]["metric_summary"]["mean_variance"] == -7
+            assert bundle["tasks"][0]["metric_summary"]["source_provenance_verified"] is False
             assert bundle["source_provenance_verified"] is False
             output=root/"reports"
             result=subprocess.run(["node",str(ROOT/"local-report-cli.mjs"),str(output)],
@@ -51,6 +53,8 @@ def main():
             assert report["status"]=="caller-supplied"
             assert report["metrics"]["claimed_local_acceptances"]==1
             assert report["metrics"]["verified_business_sources"]==0
+            assert report["metrics"]["measured_local_analyses"]==1
+            assert report["metrics"]["mean_supplied_kpi_variance"]==-7
             assert report["tasks"][0]["verified"] is False
             assert "Not verified" in (output/"theorg-ai-workforce-report.html").read_text(encoding="utf-8")
             print("PASS: bounded execution + independently authorized local QA + durable audit + 8 unverified report exports")
