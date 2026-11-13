@@ -46,3 +46,13 @@ The Worker exposes `GET /api/health` with `mode: synthetic-demo`, and makes no c
 - **CI remains blocked:** The newest site job failed with no step summaries, and GitHub returned 404 BlobNotFound for its job logs; the unrelated bridge/Windows workflows likewise fail. Treat this as an unresolved runner/infrastructure or workflow-initialization issue until GitHub exposes evidence. No green-build or root-cause claim.
 - The **previously deployed website remains unchanged** by this build/CI-only source batch. Cloudflare did not receive another upload.
 - For repeatable future deployment, generate `dist/worker.mjs`, validate it, and deploy that artifact to account `8c3498934294713cb33f436ff86fc361` under service `theorg-intelligence`. Never deploy while validation is red.
+
+## Bulk integration foundation — November 13, 2026
+
+- Added a separately staged, **not deployed** Cloudflare Access JWT + D1 gateway (`enterprise-gateway.mjs`) with company-scoped read endpoints and a proposal-only create endpoint; **no agent execution or approval authorization** is exposed.
+- Added isolated enterprise D1 schema (`schema.sql`), deterministic KPI/state machine rules (`intelligence-rules.mjs`) and built-in Node tests (`enterprise.test.mjs`).
+- Added manual-only website deployment workflow pinned to the verified Theorgnet Cloudflare account; it requires a dedicated `THEORG_CF_TOKEN` GitHub secret before any run.
+- Added minimal `TheOrg Runner Diagnostic` workflow. Both the diagnostic and site CI jobs failed before reporting step output; GitHub logs remain unavailable. CI recovery is **blocked externally**, not verified fixed.
+- Basic KPI and approval rule cases were independently exercised in a JS sandbox, with 7 selected cases passing. This is not a substitute for the full GitHub/Windows/browser test suite.
+- See [GATEWAY_SETUP.md](GATEWAY_SETUP.md) before configuring any cloud enterprise backend.
+- The public website remains the last confirmed synthetic-only Worker deployment; no new public business API has been created or enabled.
