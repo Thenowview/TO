@@ -38,6 +38,8 @@ jobs:
         run: node --test sites/theorg-intelligence/local-report-cli.test.mjs
       - name: Synthetic local end-to-end task, audit and report acceptance
         run: python3 sites/theorg-intelligence/local-e2e.py
+      - name: Verify local-import dashboard UI boundaries
+        run: node sites/theorg-intelligence/operations-ui.verify.mjs
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
