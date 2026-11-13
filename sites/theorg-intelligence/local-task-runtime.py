@@ -180,8 +180,9 @@ def dashboard(db,identity):
     tasks=list_tasks(db,identity)
     accepted=sum(t["status"]=="accepted" for t in tasks)
     return {"tenant":identity["tenant"],"company":identity["company"],"task_total":len(tasks),
-            "accepted":accepted,"not_verified":len(tasks)-accepted,
-            "by_status":{k:sum(t["status"]==k for t in tasks) for k in ["draft","approved","awaiting-qa","accepted","rejected"]},
+            "accepted":accepted,"locally_accepted":accepted,
+            "business_verified":0,"not_verified":len(tasks),
+            "by_status":{k:sum(t["status"]==k for t in tasks) for k in ["draft","approved","awaiting-qa","accepted","rejected","failed","running"]},
             "ai_model_calls":0,"external_actions":0,
             "source_evidence_verified":False,"mode":"local-deterministic",
             "warning":"Task acceptance verifies integrity and reviewer identity, not external KPI truth"}
@@ -194,7 +195,11 @@ def task_metric_summary(task):
     rows=data.get("rows")
     if type(value) not in (int,float) or not math.isfinite(value) or not isinstance(rows,list) or not 1<=len(rows)<=100:
         return None
+    digest=task["digest"]
+    if not isinstance(digest,str) or not hmac.compare_digest(digest,sha(data)):
+        return None
     return {"mean_variance":value,"metrics_count":len(rows),
+            "integrity_matches":True,
             "data_status":"caller-supplied","source_provenance_verified":False}
 
 def export_bundle(db, identity):
