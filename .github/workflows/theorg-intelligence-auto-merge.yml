@@ -4,7 +4,7 @@ on:
     workflows: ['TheOrg Intelligence site checks']
     types: [completed]
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 jobs:
   merge-site-pr:
@@ -14,7 +14,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SHA: ${{ github.event.workflow_run.head_sha }}
       RUN_ID: ${{ github.event.workflow_run.id }}
     steps:
       - name: Auto-merge reviewed site-only PR when safe
@@ -35,9 +34,10 @@ jobs:
             BASE=$(jq -r '.base.ref' <<<"$JSON")
             HEAD=$(jq -r '.head.sha' <<<"$JSON")
             HEADREPO=$(jq -r '.head.repo.full_name // ""' <<<"$JSON")
+            RUN_HEAD=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq ".pull_requests[] | select(.number == $PR) | .head.sha")
             DRAFT=$(jq -r '.draft' <<<"$JSON")
             STATE=$(jq -r '.state' <<<"$JSON")
-            if [[ "$BASE" != "main" || "$HEAD" != "$SHA" || "$HEADREPO" != "$REPO" || "$DRAFT" != "false" || "$STATE" != "open" ]]; then
+            if [[ "$BASE" != "main" || "$HEAD" != "$RUN_HEAD" || "$HEADREPO" != "$REPO" || "$DRAFT" != "false" || "$STATE" != "open" ]]; then
               echo "Skipping PR $PR: not an eligible current same-repo, non-draft PR"
               continue
             fi
