@@ -49,7 +49,7 @@ def main():
             assert len(created_files)==8
             report=json.loads((output/"theorg-ai-workforce-report.json").read_text(encoding="utf-8"))
             assert report["status"]=="caller-supplied"
-            assert report["metrics"]["integrity_reviewed"]==1
+            assert report["metrics"]["claimed_local_acceptances"]==1
             assert report["metrics"]["verified_business_sources"]==0
             assert report["tasks"][0]["verified"] is False
             assert "Not verified" in (output/"theorg-ai-workforce-report.html").read_text(encoding="utf-8")
