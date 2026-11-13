@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence,acceptVerifiedTask} from './task-engine.mjs';
+import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence,acceptVerifiedTask,summarizeCompanyTasks,taskReport} from './task-engine.mjs';
 import {TOOL_TEMPLATES} from './tool-platform.mjs';
 const tool=TOOL_TEMPLATES.find(t=>t.id==='kpi-variance');
 const unsupported=TOOL_TEMPLATES.find(t=>t.id==='epmo-status');
@@ -71,4 +71,16 @@ test('non-implemented EPMO workflow is not falsely executed',async()=>{
  const task=createTask({...scope,title:'Review milestone execution',owner_id:'ownerA'},unsupported);
  const approved=transition(task,'approve',ctx('executive','ceo'));
  await assert.rejects(()=>runApprovedOfflineTask(approved,unsupported,{rows:[{actual:80,target:90}]}),/unimplemented steps/);
+});
+
+test('company dashboard omits cross-tenant tasks and never counts drafts as verified',()=>{
+ const current=mk(),other={...mk(),tenant_id:'other'};
+ const report=summarizeCompanyTasks([current,other],scope);
+ assert.equal(report.total,1);assert.equal(report.verified,0);assert.equal(report.not_verified,1);
+ assert.equal(report.cost,null);assert.equal(report.elapsed_ms,null);
+});
+test('task evidence report clearly distinguishes unverified draft',()=>{
+ const report=taskReport(mk());
+ assert.match(report,/Verified completion: no/);
+ assert.match(report,/Evidence digest: none/);
 });
