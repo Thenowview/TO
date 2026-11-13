@@ -84,6 +84,23 @@ class LocalTaskRuntimeTests(unittest.TestCase):
         self.db=runtime.connect(Path(self.folder.name)/"tasks.db")
         self.assertEqual(runtime.get(self.db,self.owner,task_id)["status"],"draft")
         self.assertEqual(len(self.db.execute("SELECT * FROM events").fetchall()),1)
+    def test_export_bundle_company_isolation_and_event_membership(self):
+        own_id=self.new_task()
+        other=identity("analyst","bob","differentTenant","companyA")
+        runtime.create(self.db,other,self.input)
+        bundle=runtime.export_bundle(self.db,self.owner)
+        self.assertEqual(bundle["schema_version"],"theorg-local-bundle-1")
+        self.assertEqual(bundle["company"],"companyA")
+        self.assertEqual(len(bundle["tasks"]),1)
+        self.assertEqual(bundle["tasks"][0]["id"],own_id)
+        self.assertEqual(len(bundle["events"]),1)
+        self.assertEqual(bundle["events"][0]["task_id"],own_id)
+        self.assertFalse(bundle["source_provenance_verified"])
+        self.assertFalse(bundle["cloud_sync"])
+    def test_empty_company_export(self):
+        bundle=runtime.export_bundle(self.db,identity("viewer","reader"))
+        self.assertEqual(bundle["tasks"],[])
+        self.assertEqual(bundle["events"],[])
     def test_model_advice_disabled_by_default(self):
         original=os.environ.pop("THEORG_ENABLE_OLLAMA",None)
         try:
