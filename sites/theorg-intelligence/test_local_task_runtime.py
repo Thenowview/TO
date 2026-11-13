@@ -1,0 +1,96 @@
+"""Run: python -m unittest discover -s sites/theorg-intelligence -p 'test_local_task_runtime.py' -v
+No network server is started and no production DB or credentials are read.
+"""
+import importlib.util
+import os
+import tempfile
+import unittest
+from pathlib import Path
+
+MODULE_PATH = Path(__file__).with_name("local-task-runtime.py")
+spec = importlib.util.spec_from_file_location("theorg_local_task_runtime", MODULE_PATH)
+runtime = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runtime)
+
+def identity(role, actor, tenant="tenantA", company="companyA"):
+    return {"role": role, "actor": actor, "tenant": tenant, "company": company}
+
+class LocalTaskRuntimeTests(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.db = runtime.connect(Path(self.folder.name) / "tasks.db")
+        self.owner = identity("analyst", "alice")
+        self.executive = identity("executive", "ceo")
+        self.worker = identity("runtime", "worker")
+        self.reviewer = identity("reviewer", "qa")
+        self.input = {"title":"Analyze example KPI variance","tool":"kpi-variance",
+                      "inputs":{"rows":[{"name":"Delivery", "actual":83,"target":90}]}}
+    def tearDown(self):
+        self.db.close()
+        self.folder.cleanup()
+    def new_task(self):
+        return runtime.create(self.db,self.owner,self.input)["id"]
+    def test_draft_persists_and_is_scoped(self):
+        task_id = self.new_task()
+        self.assertEqual(runtime.get(self.db,self.owner,task_id)["status"],"draft")
+        with self.assertRaises(KeyError):
+            runtime.get(self.db,identity("viewer","eve","otherTenant"),task_id)
+    def test_approve_run_independent_review_and_dashboard(self):
+        task_id = self.new_task()
+        with self.assertRaises(PermissionError):
+            runtime.move(self.db,self.worker,task_id,"run")
+        runtime.move(self.db,self.executive,task_id,"approve")
+        result = runtime.move(self.db,self.worker,task_id,"run")
+        self.assertEqual(result["status"],"awaiting-qa")
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["accepted"],0)
+        runtime.move(self.db,self.reviewer,task_id,"accept")
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["accepted"],1)
+        events = self.db.execute("SELECT action FROM events WHERE task_id=? ORDER BY at,id",(task_id,)).fetchall()
+        self.assertEqual(len(events),4)
+    def test_owner_cannot_review_own_job_even_if_role_claimed(self):
+        task_id=self.new_task()
+        runtime.move(self.db,self.executive,task_id,"approve")
+        runtime.move(self.db,self.worker,task_id,"run")
+        with self.assertRaises(PermissionError):
+            runtime.move(self.db,identity("reviewer","alice"),task_id,"accept")
+    def test_tampered_digest_blocks_acceptance(self):
+        task_id=self.new_task()
+        runtime.move(self.db,self.executive,task_id,"approve")
+        runtime.move(self.db,self.worker,task_id,"run")
+        with self.db:
+            self.db.execute("UPDATE tasks SET digest=? WHERE id=?",("sha256:"+"0"*64,task_id))
+        with self.assertRaises(ValueError):
+            runtime.move(self.db,self.reviewer,task_id,"accept")
+    def test_audit_rows_are_immutable(self):
+        task_id=self.new_task()
+        with self.assertRaises(Exception):
+            with self.db:self.db.execute("UPDATE events SET action='forged' WHERE task_id=?",(task_id,))
+        with self.assertRaises(Exception):
+            with self.db:self.db.execute("DELETE FROM events WHERE task_id=?",(task_id,))
+    def test_nonfinite_and_invalid_rows_are_denied(self):
+        for value in [float("nan"),float("inf"),-1,101,True]:
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    runtime.validate_rows({"rows":[{"name":"Score","actual":value,"target":90}]})
+    def test_unapproved_tools_rejected(self):
+        with self.assertRaises(ValueError):
+            runtime.create(self.db,self.owner,{**self.input,"tool":"shell"})
+    def test_invalid_task_payload_rejected(self):
+        with self.assertRaises(ValueError):
+            runtime.create(self.db,self.owner,["not-a-task"])
+    def test_boundaries_survive_database_restart(self):
+        task_id=self.new_task()
+        self.db.close()
+        self.db=runtime.connect(Path(self.folder.name)/"tasks.db")
+        self.assertEqual(runtime.get(self.db,self.owner,task_id)["status"],"draft")
+        self.assertEqual(len(self.db.execute("SELECT * FROM events").fetchall()),1)
+    def test_model_advice_disabled_by_default(self):
+        original=os.environ.pop("THEORG_ENABLE_OLLAMA",None)
+        try:
+            with self.assertRaises(PermissionError):
+                runtime.model_advisory("Describe","qwen3")
+        finally:
+            if original is not None:os.environ["THEORG_ENABLE_OLLAMA"]=original
+
+if __name__=="__main__":
+    unittest.main()
