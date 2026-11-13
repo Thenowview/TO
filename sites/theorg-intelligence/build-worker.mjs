@@ -19,7 +19,7 @@ export default {
  async fetch(request){
   const url=new URL(request.url);
   if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Method Not Allowed',{status:405,headers:{'allow':'GET, HEAD'}});
-  if(url.pathname === '/api/health')return Response.json({status:'ok',service:'theorg-intelligence',mode:'synthetic-demo',connected_agent_runtime:false,epmo_connected:false,live_ai:false},{headers:{'cache-control':'no-store'}});
+  if(url.pathname === '/api/health'){const payload={status:'ok',service:'theorg-intelligence',mode:'synthetic-demo',connected_agent_runtime:false,epmo_connected:false,live_ai:false};return new Response(request.method==='HEAD'?null:JSON.stringify(payload),{headers:{'cache-control':'no-store','content-type':'application/json; charset=utf-8','x-content-type-options':'nosniff'}});}
   let body,mime;
   if(url.pathname === '/' || url.pathname === '/index.html'){body=home;mime='text/html; charset=utf-8';}
   else if(url.pathname === '/operations' || url.pathname === '/operations.html'){body=operations;mime='text/html; charset=utf-8';}
