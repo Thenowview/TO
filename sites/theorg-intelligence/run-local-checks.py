@@ -25,7 +25,7 @@ COMMANDS=[
  ("task-engine",["node","--test",str(ROOT/"task-engine.test.mjs")]),
  ("operations-and-reports",["node","--test",str(ROOT/"operations-suite.test.mjs")]),
  ("local-model-boundary",["node","--test",str(ROOT/"local-ai-cli.test.mjs")]),
- ("python-sqlite", [sys.executable,"-m","unittest","discover","-s",str(ROOT),"-p","test_local_task_runtime.py","-v"]),
+ ("python-sqlite", [sys.executable,"-m","unittest","discover","-s",str(ROOT),"-p","test_local_*.py","-v"]),
  ("local-reporting",["node","--test",str(ROOT/"local-report-cli.test.mjs")]),
  ("synthetic-local-e2e",[sys.executable,str(ROOT/"local-e2e.py")]),
  ("browser-module-contract",["node",str(ROOT/"operations-ui.verify.mjs")]),
