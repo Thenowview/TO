@@ -75,3 +75,16 @@ These are hypotheses; unit economics, inference costs, labor, jurisdiction, refu
 
 ## Release reality and owner actions
 The source-only PR is draft while GitHub hosted-runner checks are failing before steps. Separate Cloudflare preview uploads previously returned API 500 error 10013. Do not claim public release, signed orders, real account creation or automated AI execution before those are implemented and verified. Promote a separate preview first, then switch the commercial root after release approval.
+
+## Implementation / live preview record — November 13, 2026
+- Public commercial preview implemented in `marketplace.html`, with brand positioning, five free assessments, a 22-product catalog, pricing hypotheses, standalone draft report exports, repeat-visit path and THEEPMO context referral. No customer data is transferred through a backend in this preview.
+- Reusable `commercial-tools.mjs`: **22 distinct bounded workflows** (5 free, 3 smaller one-off, 14 advanced) with validated inputs, deterministic calculations or structured drafts, actionable outputs, report type, tier and explicit non-verification labels.
+- `commercial-ai-cli.mjs`: optional *separate* loopback Ollama narrative adapter for all 22, requiring per-invocation user consent; deliberately omitted from the public Worker. No real installed model/inference was certified.
+- Dedicated `build-commerce-worker.mjs` and `verify-commerce-worker.mjs` package a standalone *noindex* Worker with `/`, `/marketplace`, `/quick-wins`, `/reports`, `/pricing`, 22 specific `/tools/{id}` links, health/robots and 2 static JS assets.
+- Source-level checks in isolated JavaScript: 12/12 commercial engine regression tests, 4/4 local model mock boundary tests, and **31/31** smoke routes in a simulated Worker environment. These do not replace real live browser or GitHub-hosted CI acceptance.
+- Cloudflare account was verified as `theorgnet@gmail.com` (account `8c3498934294713cb33f436ff86fc361`). New, separate `theorg-commerce-lab` Worker was uploaded successfully; Cloudflare reports deployment `004c7a5c-bfa5-439d-8578-b95c367035d0` at **100%**, and its workers.dev subdomain is enabled.
+- **Preview URL:** https://theorg-commerce-lab.theorgnet.workers.dev/ . External web retrieval from the model environment was inconclusive; platform deployment metadata is confirmed, browser-rendering acceptance is **not**.
+- Original TheOrg public Worker remains on deployment `883b1621-25cd-4314-9a0b-7055f1dfdcc6`; previous intelligence lab Worker was not touched in this commercial preview upload.
+- `x-robots-tag: noindex, nofollow` and `/robots.txt` disallow crawling until terms, payment, product QA, analytics privacy and launch approval are ready. No paid orders or registrations can be taken by this build.
+
+**Remaining launch gates:** full Node/Python and browser CI; merchant selection and eligible legal seller; privacy/terms/refund policies; transactional hosted checkout with verified server-side events; secure customer accounts and private paid report storage; real source provenance, review and user support; production domain choice; and independently validated, opt-in model execution. Keep PR draft until these are resolved.
