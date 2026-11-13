@@ -33,7 +33,12 @@ const round=(n)=>Math.round(n*100)/100;
 const avg=v=>v.length?round(v.reduce((a,b)=>a+b,0)/v.length):null;
 const key=(v)=>text(v,80);
 const counts=(a,f)=>Object.fromEntries(a.map(k=>[k,f(k)]));
-const validDate=d=>{const dt=Date.parse(d);assert(Number.isFinite(dt),'Invalid date');return dt};
+const validDate=d=>{
+ assert(typeof d==='string'&&/^\\d{4}-\\d{2}-\\d{2}$/.test(d),'Expected ISO YYYY-MM-DD');
+ const dt=Date.parse(d+'T00:00:00.000Z');
+ assert(Number.isFinite(dt)&&new Date(dt).toISOString().slice(0,10)===d,'Invalid calendar date');
+ return dt;
+};
 export function analyzeOperations(toolId,input){
  const tool=OPERATIONS_TOOLS.find(x=>x.id===toolId);assert(tool,'Unknown tool');
  assert(input&&typeof input==='object'&&!Array.isArray(input),'Invalid inputs');
@@ -87,7 +92,7 @@ export function analyzeOperations(toolId,input){
  case 'forecasting':{
    const points=rows.map(r=>({period:key(r.period),value:num(r.value)}));assert(points.length>=2,'Need at least two historical points');
    const n=points.length,delta=round((points[n-1].value-points[0].value)/(n-1));
-   const horizon=num(input.horizon??3,1,12);
+   const horizon=num(input.horizon??3,1,12);assert(Number.isInteger(horizon),'Forecast horizon must be an integer');
    details=Array.from({length:horizon},(_,i)=>({period:'future+'+(i+1),value:round(points[n-1].value+delta*(i+1)),assumption:'linear change; no confidence interval'}));
    metrics={observations:n,linear_change_per_period:delta,horizon,method:'simple linear scenario (NOT statistical prediction)'};break;
  }
