@@ -12,6 +12,11 @@ const literals=[
  /\/assets\/operations-analytics\.mjs/,
  /\/assets\/report-engine\.mjs/,
  /script-src 'self'/,
+ /\/marketplace/,
+ /\/quick-wins/,
+ /\/assets\/commercial-tools\.mjs/,
+ /checkout_enabled:false/,
+ /source_verified:false/,
  /request\.method\s*!==\s*'GET'/
 ];
 for (const check of literals) assert.match(source,check,'Missing Worker contract '+check);
@@ -24,8 +29,10 @@ const origin='https://theorg-intelligence-lab.example';
 for(const [path,mime] of [
  ['/',/text\/html/],['/index.html',/text\/html/],
  ['/operations',/text\/html/],['/operations.html',/text\/html/],
+ ['/marketplace',/text\/html/],['/quick-wins',/text\/html/],['/reports',/text\/html/],
  ['/assets/operations-analytics.mjs',/text\/javascript/],
- ['/assets/report-engine.mjs',/text\/javascript/]
+ ['/assets/report-engine.mjs',/text\/javascript/],
+ ['/assets/commercial-tools.mjs',/text\/javascript/]
 ]){
  const response=await worker.fetch(new Request(origin+path),{});
  assert.equal(response.status,200,path+' did not return HTTP 200');
