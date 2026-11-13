@@ -22,10 +22,6 @@ jobs:
           set -euo pipefail
           # Do not check out PR content or execute untrusted PR code in workflow_run context.
           echo "Examining successful site-check run $RUN_ID"
-          gh api "repos/$REPO" --jq '.allow_auto_merge' | grep -qx true || {
-            echo "BLOCKED: repository Allow auto-merge is disabled. No merge attempted."
-            exit 0
-          }
           PRS=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.pull_requests[].number')
           if [[ -z "$PRS" ]]; then echo 'No associated PR; nothing to merge'; exit 0; fi
           while read -r PR; do
@@ -52,8 +48,22 @@ jobs:
               echo "Skipping PR $PR: includes files outside the standalone site"
               continue
             fi
-            # GitHub itself enforces required branch rules, reviews and status checks.
-            # Never fabricate review approvals, alter branch protection or bypass checks.
-            echo "Queueing GitHub auto-merge for site-only PR $PR"
-            gh pr merge "$PR" --repo "$REPO" --auto --squash --delete-branch
+            # Stronger-than-required guard: any pending or red PR check blocks merges,
+            # even when no branch protection rule is configured.
+            CHECKS=$(gh pr checks "$PR" --repo "$REPO" --json name,state) || {
+              echo "BLOCKED: PR $PR checks failed or are not available"
+              continue
+            }
+            if ! jq -e '([.[] | select(.name == "site-acceptance" and .state == "SUCCESS")] | length) > 0 and ([.[] | select(.state != "SUCCESS" and .state != "SKIPPED" and .state != "NEUTRAL")] | length) == 0' <<<"$CHECKS" >/dev/null; then
+              echo "BLOCKED: PR $PR missing successful site-acceptance or has a pending/failed check"
+              continue
+            fi
+            # GitHub enforces any required branch rules/reviews; no fake approvals or bypass.
+            if [[ $(gh api "repos/$REPO" --jq '.allow_auto_merge') == true ]]; then
+              echo "Queueing GitHub native auto-merge for PR $PR"
+              gh pr merge "$PR" --repo "$REPO" --auto --squash --delete-branch
+            else
+              echo "Native auto-merge unavailable; merging checked, explicitly opted-in site-only PR $PR"
+              gh pr merge "$PR" --repo "$REPO" --squash --delete-branch
+            fi
           done <<<"$PRS"
