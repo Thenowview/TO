@@ -14,8 +14,11 @@ export function validateLocalBundle(raw){
  const tasks=raw.tasks.map(t=>{
   if(!t||typeof t.id!=='string'||t.id.length>64||seen.has(t.id)||typeof t.title!=='string'||t.title.length>240||!STATUS.has(t.status)||typeof t.tool!=='string'||t.tool.length>80)throw new Error('Invalid task');
   seen.add(t.id);
+  const metric=t.metric_summary;
+  const summary=metric&&typeof metric==='object'&&typeof metric.mean_variance==='number'&&Number.isFinite(metric.mean_variance)&&metric.mean_variance>=-100&&metric.mean_variance<=100&&Number.isInteger(metric.metrics_count)&&metric.metrics_count>=1&&metric.metrics_count<=100?
+    {mean_variance:metric.mean_variance,metrics_count:metric.metrics_count,data_status:'caller-supplied'}:null;
   return {id:t.id,title:t.title,tool:t.tool,status:t.status,reviewer:typeof t.reviewer==='string'?t.reviewer:null,
-   digest:typeof t.digest==='string'&&/^sha256:[a-f0-9]{64}$/.test(t.digest)?t.digest:null};
+   digest:typeof t.digest==='string'&&/^sha256:[a-f0-9]{64}$/.test(t.digest)?t.digest:null,metric_summary:summary};
  });
  const events=raw.events.map(e=>{
   if(!e||typeof e.id!=='string'||typeof e.task_id!=='string'||!seen.has(e.task_id)||!CODE.test(e.actor||'')||typeof e.action!=='string'||e.action.length>64)throw new Error('Invalid event');
@@ -29,7 +32,10 @@ export function buildLocalTaskReport(bundle,reportType='ai-workforce-report'){
  const tally={total:local.tasks.length,claimed_local_acceptances:local.tasks.filter(t=>t.status==='accepted'&&t.reviewer&&t.digest).length,
   pending_qa:local.tasks.filter(t=>t.status==='awaiting-qa').length,
   failures:local.tasks.filter(t=>t.status==='failed'||t.status==='rejected').length,
-  tracked_events:local.events.length,verified_business_sources:0};
+  tracked_events:local.events.length,verified_business_sources:0,
+  measured_local_analyses:local.tasks.filter(t=>t.metric_summary!==null).length,
+  mean_supplied_kpi_variance:local.tasks.some(t=>t.metric_summary!==null)?
+    Math.round(local.tasks.filter(t=>t.metric_summary).reduce((a,t)=>a+t.metric_summary.mean_variance,0)/local.tasks.filter(t=>t.metric_summary).length*100)/100:null};
  const stateCount=Object.fromEntries([...STATUS].map(s=>[s,local.tasks.filter(t=>t.status===s).length]));
  return buildReport({type:reportType,
   title:reportType==='task-report'?'Local Task Execution Summary':'AI Workforce Operational Report',
@@ -38,6 +44,7 @@ export function buildLocalTaskReport(bundle,reportType='ai-workforce-report'){
    id:t.id,title:t.title,status:t.status,qa:{verified:false}
   })),
   findings:['Source: operator-controlled local runtime bundle, not an authenticated enterprise data connector',
+   ...local.tasks.filter(t=>t.metric_summary).slice(0,25).map(t=>'Local task '+t.id+' | '+t.title+' | mean variance '+t.metric_summary.mean_variance+' points (source not verified)'),
    'Accepted states represent local integrity/reviewer checks, not verified external KPI provenance',
    ...local.tasks.filter(t=>t.status==='failed'||t.status==='rejected').slice(0,15).map(t=>'Investigate task '+t.id)],
   recommendations:['Review original evidence before any executive publication',
