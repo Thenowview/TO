@@ -6,6 +6,7 @@ import { validateTool } from './tool-platform.mjs';
 
 const allowedStates=['draft','approved','running','awaiting-qa','accepted','failed','rejected'];
 const digestOK=d=>typeof d==='string'&&/^sha256:[a-f0-9]{64}$/.test(d);
+const QA_VERIFIED=Symbol('independent-qa-evidence-verified');
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
 const stamp=()=>new Date().toISOString();
 const mkid=()=>crypto.randomUUID();
@@ -38,7 +39,7 @@ export function transition(task,action,context={}) {
   status='awaiting-qa';
  }else if(action==='accept'){
   assert(task.status==='awaiting-qa'&&context.role==='reviewer'&&context.actor!==task.owner_id,'Independent reviewer required');
-  assert(digestOK(context.digest)&&context.digest===task.evidence_digest&&context.evidence_verified===true,'Evidence must be independently verified');
+  assert(digestOK(context.digest)&&context.digest===task.evidence_digest&&context[QA_VERIFIED]===true,'Evidence must be independently verified');
   assert(task.results.length===task.steps.length&&new Set(task.results.map(r=>r.step)).size===task.steps.length,'All steps need evidence');
   patch={qa:{reviewer:context.actor,digest:context.digest,accepted_at:stamp(),verified:true}};
   status='accepted';
@@ -92,4 +93,11 @@ export async function verifyTaskEvidence(task) {
  return (await evidenceDigest(task.results))===task.evidence_digest &&
    task.results.length===task.steps.length &&
    new Set(task.results.map(r=>r.step)).size===task.steps.length;
+}
+
+export async function acceptVerifiedTask(task,context){
+ assert(context?.role==='reviewer','Independent reviewer role required');
+ assert(await verifyTaskEvidence(task),'Evidence hash or step coverage invalid');
+ // The private module-scoped token cannot be fabricated through arbitrary API input.
+ return transition(task,'accept',{...context,digest:task.evidence_digest,[QA_VERIFIED]:true});
 }
