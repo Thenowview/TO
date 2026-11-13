@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<header class="header"><nav class="container nav" aria-label="Main navigation"><a href="/marketplace" class="brand">The<span>Org</span><small style="display:block;font-size:10px;font-weight:500;letter-spacing:2px;color:var(--sub)">INTELLIGENCE ON DEMAND</small></a><div class="nav-links"><a href="#tools">Explore tools</a><a href="#studio">Try a Quick Win</a><a href="#pricing">Pricing</a><a href="#how">How it works</a><a href="https://theepmo.com/" target="_blank" rel="noopener noreferrer">THEEPMO</a></div></nav></header>
+<header class="header"><nav class="container nav" aria-label="Main navigation"><a href="/marketplace" class="brand">The<span>Org</span><small style="display:block;font-size:10px;font-weight:500;letter-spacing:2px;color:var(--sub)">INTELLIGENCE ON DEMAND</small></a><div class="nav-links"><a href="#tools">Explore tools</a><a href="/quick-wins">Free Quick Wins</a><a href="/sample-reports">Sample reports</a><a href="#pricing">Pricing</a><a href="/how-it-works">How it works</a><a href="https://theepmo.com/" target="_blank" rel="noopener noreferrer">THEEPMO</a></div></nav></header>
 <main>
 <section class="container hero">
  <div><div class="eyebrow">Practical intelligence for every business</div><h1>Know what to do <em>next.</em></h1><p>Start with a useful business assessment, understand your numbers, and explore professional report packages—without buying a full management system.</p><div class="hero-actions"><a class="btn primary" href="#studio">Try a free Quick Win</a><a class="btn secondary" href="#tools">Explore report tools</a></div><p class="proof">No signup for sample assessments · No payment requested in this preview · Your inputs stay in your browser</p><span class="notice-tag">Commercial website preview — payments, accounts and live AI are not yet enabled</span></div>
@@ -34,7 +34,7 @@
 </section>
 <div class="strip"><div class="container"><div class="trust"><b>Instant Quick Wins</b><span>Clear calculations from your own values</span></div><div class="trust"><b>Customized reports</b><span>Structured report drafts and future premium fulfillment</span></div><div class="trust"><b>Keep progress moving</b><span>Move from a one-time insight to ongoing governance when needed</span></div></div></div>
 <section class="section container" id="tools"><div class="section-head"><div><div class="eyebrow">Explore by business problem</div><h2>Find the right tool for the job</h2><p>Twenty-two purpose-built previews, from fast KPI checks to board reporting drafts. Premium fulfillment is planned, not currently sold.</p></div><span class="tier">22 tool workflows</span></div>
-<div id="filters" class="filters" role="group" aria-label="Filter tools"></div>
+<label for="catalogSearch" style="display:block;margin-bottom:10px">Find a business tool<input id="catalogSearch" type="search" maxlength="90" placeholder="Search project health, risk, strategy, finance…" autocomplete="off" style="max-width:520px"></label><div id="filters" class="filters" role="group" aria-label="Filter tools"></div><p id="resultsCount" class="micro" role="status" aria-live="polite"></p>
 <div class="grid" id="toolCards" aria-live="polite"></div>
 </section>
 <section class="section container" id="studio"><div class="section-head"><div><div class="eyebrow">Try before you commit</div><h2>Interactive report studio</h2><p>Use illustrative examples or provide your own non-sensitive figures. The result is a self-reported draft, not an AI-verified report.</p></div></div>
@@ -52,20 +52,21 @@
 <div class="cta"><div class="eyebrow">For ongoing project operations</div><h2>One report shows the gap. A system helps manage the response.</h2><p>When a project assessment reveals recurring risks, approvals, resource conflicts or portfolio issues, THEEPMO may provide a longer-term workflow. The two services remain independent. We do not automatically transfer your data or accounts.</p><a class="btn primary" href="https://theepmo.com/?utm_source=theorg&utm_medium=report&utm_campaign=project-followup" target="_blank" rel="noopener noreferrer">Explore THEEPMO</a></div>
 </section>
 </main>
-<footer class="footer"><div class="container line"><div><b style="color:var(--text)">TheOrg</b> — business intelligence on demand.<p>Commercial concept preview. No live AI inference, verified paid reports, checkout or customer signup.</p></div><div><a href="https://theorg-intelligence-lab.theorgnet.workers.dev/operations" target="_blank" rel="noopener noreferrer">Operations demo</a> · <a href="https://theorg-intelligence-lab.theorgnet.workers.dev/" target="_blank" rel="noopener noreferrer">Executive demo</a> · <a href="#pricing">Planned packages</a></div></div></footer>
+<footer class="footer"><div class="container line"><div><b style="color:var(--text)">TheOrg</b> — business intelligence on demand.<p>Commercial concept preview. No live AI inference, verified paid reports, checkout or customer signup.</p></div><div><a href="https://theorg-intelligence-lab.theorgnet.workers.dev/operations" target="_blank" rel="noopener noreferrer">Operations demo</a> · <a href="https://theorg-intelligence-lab.theorgnet.workers.dev/" target="_blank" rel="noopener noreferrer">Executive demo</a> · <a href="/sample-reports">Example reports</a> · <a href="/privacy">Privacy draft</a> · <a href="/terms">Terms draft</a> · <a href="/refunds">Refund draft</a> · <a href="#pricing">Planned packages</a></div></div></footer>
 <script type="module">
 import {COMMERCIAL_TOOLS,analyzeCommercialTool,exampleForTool,commercialCategories,saleSummary} from '/assets/commercial-tools.mjs';
 import {buildReport,exportArtifact} from '/assets/report-engine.mjs';
 const el=id=>document.getElementById(id);
 const escapeText=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-let selected='project-health',filter='all',last=null;
+let selected='project-health',filter=location.pathname==='/quick-wins'?'free':location.pathname==='/reports'?'advanced':'all',last=null,searchTerm='';
 const tiers={free:'Free Quick Win','quick-win':'One-off preview',advanced:'Advanced preview'};
 const categoryNames={all:'All tools',free:'Free Quick Wins','quick-win':'One-off',advanced:'Advanced',epmo:'EPMO-related'};
 const keyFilter=['all','free','quick-win','advanced','epmo'];
 function renderFilters(){el('filters').innerHTML=keyFilter.map(k=>'<button type="button" data-filter="'+k+'" aria-pressed="'+(filter===k)+'">'+categoryNames[k]+'</button>').join('')}
-function visibleTools(){return COMMERCIAL_TOOLS.filter(t=>filter==='all'||t.tier===filter||filter==='epmo'&&t.epmo_fit)}
+function visibleTools(){return COMMERCIAL_TOOLS.filter(t=>(filter==='all'||t.tier===filter||filter==='epmo'&&t.epmo_fit)&&(!searchTerm||(t.name+' '+t.category+' '+t.description).toLowerCase().includes(searchTerm)))}
 function renderCards(){
  const tools=visibleTools();
+ el('resultsCount').textContent=tools.length+' of '+COMMERCIAL_TOOLS.length+' tools shown.';
  el('toolCards').innerHTML=tools.map(tool=>'<article class="card"><span class="tier '+tool.tier+'">'+escapeText(tiers[tool.tier])+'</span><h3>'+escapeText(tool.name)+'</h3><p>'+escapeText(tool.description)+'</p><span class="small">'+escapeText(tool.category)+' · '+(tool.epmo_fit?'Relevant to project governance':'General business')+'</span><div class="foot"><b>'+ (tool.tier==='free'?'Free snapshot':'Proposed $'+tool.price_usd+' report')+'</b><button class="btn secondary" type="button" data-tool="'+escapeText(tool.id)+'">Try preview</button></div></article>').join('')||'<p>No tools in this category.</p>';
 }
 function selectTool(id,scroll=true){
@@ -95,6 +96,7 @@ function resultView(r){
 }
 function download(content,name,mime){const blob=new Blob([content],{type:mime+';charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function report(){if(!last)throw Error('Run a preview first');return buildReport({type:last.report_type,title:last.tool_name+' — sample analytical draft',company:'User-provided report preview',period:'Single assessment',metrics:last.calculated_metrics,findings:last.findings,recommendations:last.proposed_actions,data_status:'caller-supplied'})}
+el('catalogSearch').addEventListener('input',e=>{searchTerm=String(e.target.value||'').trim().toLowerCase().slice(0,90);renderCards()});
 el('filters').addEventListener('click',e=>{const btn=e.target.closest('[data-filter]');if(!btn)return;filter=btn.dataset.filter;renderFilters();renderCards()});
 el('toolCards').addEventListener('click',e=>{const btn=e.target.closest('[data-tool]');if(btn)selectTool(btn.dataset.tool)});
 el('resetExample').addEventListener('click',()=>selectTool(selected,false));
