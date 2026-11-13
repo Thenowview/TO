@@ -50,3 +50,12 @@ The e2e test creates a **temporary local SQLite database** and synthetic sample 
 - The local report CLI and offline browser import can show KPI mean variance and task status without claiming a source-verified executive KPI.
 
 **Current release gate:** The static multi-route Worker check now handles whitespace variations in serialized health fields and includes actual offline route assertions and HEAD behavior. GitHub Actions remains unavailable; Cloudflare preview upload attempts received API HTTP 500 / code 10013 twice, so these latest UI changes remain source-only on PR #25. The existing preview and primary Worker were not replaced by the failed uploads.
+
+## Bulk security and CI repair — November 13, 2026
+- **Business-verification semantics:** local `accepted` is not equivalent to externally authenticated source evidence. `GET /v1/dashboard` reports `locally_accepted`, `business_verified: 0` and all local records in `not_verified` until genuine source verification exists.
+- **Digest integrity for dashboard metrics:** `GET /v1/export` includes KPI `metric_summary` only if its stored SHA-256 digest matches the JSON result; tampered results are not exported as valid metrics.
+- **Least-privilege audit exports:** runtime-worker and viewer tokens cannot call `GET /v1/export`. Executive, analyst and reviewer roles remain permitted.
+- **HTTP receipt coverage:** `test_local_http_api.py` tests evidence inspection, explicit reviewer acknowledgment and exact digest, cross-company denial, malformed input and no implicit QA acceptance, without starting a network listener.
+- **Portable acceptance without GitHub:** Run `python sites/theorg-intelligence/run-local-checks.py` on a trusted machine with Python 3.11+ and Node 22+. It executes the existing source, enterprise, tool, report, SQLite, synthetic e2e and Worker route checks, without deploying or starting servers; a JSON report is saved under `sites/theorg-intelligence/dist/local-acceptance-report.json`.
+- **GitHub CI:** workflow now discovers both `test_local_task_runtime.py` and `test_local_http_api.py`. The standalone minimal runner still fails without job steps/logs, and this repository has no connector action for account billing, runner scheduling, or Actions policy modifications. Full tests are therefore not certified.
+- **Cloudflare:** prior Worker upload attempts returned HTTP 500/code 10013. Do not interpret a successful source commit as a new Workers deployment; the isolated lab and main deployment IDs must be rechecked separately.
