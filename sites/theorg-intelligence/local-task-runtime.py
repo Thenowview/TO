@@ -151,6 +151,27 @@ def move(db,identity,task_id,action):
         events(db,task,identity,action,previous,nxt,update.get("digest",task["digest"]))
     return {"id":task_id,"status":nxt,"reviewed":action=="accept","source_verified":False}
 def body_truth(value): return isinstance(value,dict) and bool(value.get("rows"))
+def evidence_for_review(db, identity, task_id):
+    """Read-only evidence for reviewer/executive; never returns source secrets."""
+    if identity["role"] not in ("reviewer","executive"):
+        raise PermissionError("Evidence review role required")
+    task=get(db,identity,task_id)
+    if task["status"] not in ("awaiting-qa","accepted","rejected"):
+        raise PermissionError("Evidence not ready for review")
+    result=json.loads(task["result_json"] or "null")
+    if not body_truth(result):
+        raise ValueError("No evidence available")
+    digest=sha(result)
+    return {
+        "task_id":task["id"],"title":task["title"],"tool":task["tool"],
+        "company":identity["company"],"tenant":identity["tenant"],
+        "status":task["status"],"stored_digest":task["digest"],
+        "recomputed_digest":digest,
+        "integrity_matches":hmac.compare_digest(task["digest"] or "",digest),
+        "result":result,"source_provenance_verified":False,
+        "warning":"Local evidence integrity does not establish authenticity of source records"
+    }
+
 def list_tasks(db,identity):
     rows=db.execute("SELECT id,title,tool,status,digest,created,updated,reviewer FROM tasks WHERE tenant=? AND company=? ORDER BY created DESC LIMIT 100",
                     (identity["tenant"],identity["company"])).fetchall()
@@ -230,6 +251,10 @@ class Service(BaseHTTPRequestHandler):
             if path=="/v1/tasks":return self.reply(200,{"tasks":list_tasks(self.server.db,identity)})
             if path=="/v1/dashboard":return self.reply(200,dashboard(self.server.db,identity))
             if path=="/v1/export":return self.reply(200,export_bundle(self.server.db,identity))
+            if path.startswith("/v1/tasks/") and path.endswith("/evidence"):
+                parts=path.split("/")
+                if len(parts)==5 and parts[-1]=="evidence":
+                    return self.reply(200,evidence_for_review(self.server.db,identity,parts[3]))
             return self.reply(404,{"error":"Not found"})
         try: length=int(self.headers.get("Content-Length","0") or "0")
         except (ValueError,OverflowError):return self.reply(400,{"error":"Invalid content length"})
@@ -243,6 +268,10 @@ class Service(BaseHTTPRequestHandler):
             if path.startswith("/v1/tasks/") and self.command=="POST":
                 parts=path.split("/")
                 if len(parts)!=5 or parts[-1] not in ("approve","run","accept","reject"):return self.reply(404,{"error":"Not found"})
+                if parts[4]=="accept":
+                    evidence=evidence_for_review(self.server.db,identity,parts[3])
+                    if body.get("review_confirmed") is not True or not isinstance(body.get("evidence_digest"),str) or not hmac.compare_digest(body["evidence_digest"],evidence["stored_digest"] or "") or not evidence["integrity_matches"]:
+                        raise PermissionError("Explicit reviewer acknowledgement of matching evidence digest is required")
                 return self.reply(200,move(self.server.db,identity,parts[3],parts[4]))
             if path=="/v1/ai/advice" and self.command=="POST":
                 if identity["role"] not in ("analyst","executive"):raise PermissionError("Role denied")
