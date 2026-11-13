@@ -122,6 +122,17 @@ class LocalTaskRuntimeTests(unittest.TestCase):
             self.db.execute("UPDATE tasks SET digest=? WHERE id=?",("sha256:"+"0"*64,task_id))
         evidence=runtime.evidence_for_review(self.db,self.reviewer,task_id)
         self.assertFalse(evidence["integrity_matches"])
+    def test_export_contains_bounded_task_metrics_but_no_source_rows(self):
+        task_id=self.new_task()
+        runtime.move(self.db,self.executive,task_id,"approve")
+        runtime.move(self.db,self.worker,task_id,"run")
+        bundle=runtime.export_bundle(self.db,self.owner)
+        summary=bundle["tasks"][0]["metric_summary"]
+        self.assertEqual(summary["mean_variance"],-7)
+        self.assertEqual(summary["metrics_count"],1)
+        self.assertFalse(summary["source_provenance_verified"])
+        self.assertNotIn("rows",str(summary))
+        self.assertFalse(bundle["source_provenance_verified"])
     def test_model_advice_disabled_by_default(self):
         original=os.environ.pop("THEORG_ENABLE_OLLAMA",None)
         try:
