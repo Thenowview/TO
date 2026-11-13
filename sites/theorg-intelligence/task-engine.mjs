@@ -63,11 +63,15 @@ export function analyzeTask(task){
 export function runBoundedAnalysis(tool,inputs) {
  const t=validateTool(tool);
  assert(t.kind==='analysis'||t.kind==='reporting','Only safe deterministic analysis/reporting supported');
- assert(inputs&&Array.isArray(inputs.rows)&&inputs.rows.length<=100,'Bound input set');
- const rows=inputs.rows.map(r=>{const actual=Number(r.actual),target=Number(r.target);
-  assert(Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(target)&&target>=0&&target<=100,'Invalid metric row');
-  return {name:String(r.name||'Metric').slice(0,80),actual,target,gap:Math.round((actual-target)*100)/100};});
- const avg=rows.length?rows.reduce((a,b)=>a+b.gap,0)/rows.length:0;
+ assert(inputs&&typeof inputs==='object'&&!Array.isArray(inputs)&&Array.isArray(inputs.rows)&&inputs.rows.length>=1&&inputs.rows.length<=100,'Bound input set');
+ const rows=inputs.rows.map(r=>{
+  assert(r&&typeof r==='object'&&!Array.isArray(r),'Invalid metric row');
+  const {actual,target,name}=r;
+  assert(typeof actual==='number'&&Number.isFinite(actual)&&actual>=0&&actual<=100&&typeof target==='number'&&Number.isFinite(target)&&target>=0&&target<=100,'Invalid metric values');
+  assert(typeof name==='string'&&name.trim().length>=1&&name.length<=80,'Metric name required');
+  return {name:name.trim(),actual,target,gap:Math.round((actual-target)*100)/100};
+ });
+ const avg=rows.reduce((a,b)=>a+b.gap,0)/rows.length;
  return {mode:'deterministic-offline',tool_id:t.id,metrics_count:rows.length,average_variance:Math.round(avg*100)/100,rows,external_actions:0,model_calls:0,verified:false};
 }
 
