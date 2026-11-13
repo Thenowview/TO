@@ -35,3 +35,5 @@ test('CSV quotes and Markdown sanitized',()=>{const doc=buildReport({type:'task-
 test('unimplemented native office exports are rejected',()=>{const doc=buildReport({type:'daily-brief'});for(const f of ['pptx','xlsx','docx','pdf'])assert.throws(()=>exportArtifact(doc,f))});
 
 test('forged reviewer and evidence cannot self-publish a verified report',()=>assert.throws(()=>buildReport({type:'board-pack',data_status:'verified',approval:{authorized:true,reviewer:'someone'},evidence:[{ref:'fake',digest:'fake'}]})));
+
+test('CSV exports neutralize spreadsheet formulas from untrusted source fields',()=>{const doc=buildReport({type:'task-report',metrics:{'=HYPERLINK("https://evil")':'+1+1'}});const csv=reportCSV(doc);assert.doesNotMatch(csv,/"=HYPERLINK/);assert.match(csv,/"'=HYPERLINK/);assert.match(csv,/"'\+1\+1"/)});
