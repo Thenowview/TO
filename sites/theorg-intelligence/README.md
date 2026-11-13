@@ -65,3 +65,12 @@ The Worker exposes `GET /api/health` with `mode: synthetic-demo`, and makes no c
 - Independently checked source-level JavaScript syntax/contract markers; full Python regression suite and GitHub CI execution are **not independently verified**.
 - Latest GitHub Actions commit run `43445433463` (site CI) and run `43445433424` (minimal runner diagnostic) still show failure. This indicates a separate unresolved Actions execution/scheduling or account-level issue; root cause not established without runner logs.
 - No source-to-production merge, Windows runtime start, credential provisioning, paid action or new Cloudflare Worker upload occurred in this repair batch. The existing `theorg-intelligence-lab` demo remains on its previous confirmed preview deployment.
+
+## Continued repair and isolated preview — 2026-11-13
+- Hardened deterministic task KPI validation: rejects empty datasets, coercible numeric strings, nulls, missing metric names and out-of-range values instead of silently coercing them.
+- Project delays now require strict ISO `YYYY-MM-DD` calendar dates and compute day differences using UTC, not locale/ambiguous parsing. Forecast horizon must be an integer.
+- Risk scoring requires whole-number likelihood and impact (1–5). An empty workforce or incomplete telemetry returns `cost_usd: null`, not fabricated $0.
+- Added regression cases for all four issues. **20/20 operations/reporting checks** passed in an isolated JavaScript harness; **19/19 task engine checks** passed with a deterministic mock for WebCrypto. These are partial validations, not a Node CI or real browser acceptance certificate.
+- Preview was rebuilt and uploaded to **`theorg-intelligence-lab`**, verified Cloudflare account `theorgnet@gmail.com` / `8c3498934294713cb33f436ff86fc361`. Cloudflare last confirmed preview deployment `248c1a11-9039-49d1-a4de-89a56fee4d1f` at 100%. Live URL: https://theorg-intelligence-lab.theorgnet.workers.dev/operations
+- Original Worker `theorg-intelligence` remains unchanged on deployment `883b1621-25cd-4314-9a0b-7055f1dfdcc6`.
+- The latest GitHub site run `43447118854` and minimal runner run `43447118587` still failed; the diagnostic job exposes no steps or job logs. Actual runner/account root cause is not confirmed. PR #25 remains draft, unmerged; automatic merging/production deployment are **not activated**.
