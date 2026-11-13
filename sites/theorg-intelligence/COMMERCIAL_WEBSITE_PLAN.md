@@ -88,3 +88,13 @@ The source-only PR is draft while GitHub hosted-runner checks are failing before
 - `x-robots-tag: noindex, nofollow` and `/robots.txt` disallow crawling until terms, payment, product QA, analytics privacy and launch approval are ready. No paid orders or registrations can be taken by this build.
 
 **Remaining launch gates:** full Node/Python and browser CI; merchant selection and eligible legal seller; privacy/terms/refund policies; transactional hosted checkout with verified server-side events; secure customer accounts and private paid report storage; real source provenance, review and user support; production domain choice; and independently validated, opt-in model execution. Keep PR draft until these are resolved.
+
+## Commercial readiness implementation batch — 13 Nov 2026
+- Searchable 22-tool public catalog, five synthetic sample report examples, contextual THEEPMO referral CTA after eligible results, and honest customer paths: `/privacy`, `/terms`, `/refunds`, `/sample-reports`, `/how-it-works`, `/my-reports`, `/account`, `/checkout`. Policy, account and checkout pages are explicitly draft/unavailable.
+- First-party Worker provides read-only `/api/commercial-status` indicating payments, accounts, provider connections, private report storage, live AI and approved legal policies are disabled.
+- Server-side-only order state machine, signed Stripe-compatible raw webhook verification, exact amount/tenant/order binding, replay rejection, report QA gate and private delivery reference. It is NOT reachable from the public Worker or configured to an active merchant.
+- `commerce-private-schema.sql` provides additive D1 tables and append-only audit constructs for independent TheOrg storage; **not migrated to Cloudflare**.
+- Commercial launch checks: `commercial-release-gates.json`, `commercial-readiness.mjs`. Production readiness is false until 13 essential gates have independently inspected evidence.
+- Added automated source checks for payment verification, legal drafts, synthetic samples, multi-route Worker and private schema. See `COMMERCE_FULFILLMENT_RUNBOOK.md`.
+- Updated isolated `theorg-commerce-lab` preview on Theorgnet; deployment `7e7e74f0-e8ab-4e7c-96a4-81b7c9280b70` confirmed at 100%. Main TheOrg Worker and THEEPMO infrastructure unchanged.
+- **Outstanding:** GitHub Actions pre-step runner failures; native Node/Python/real-browser acceptance, live merchant eligibility, approved final legal policies, customer auth, private D1/R2, model/source evidence validation, chargebacks/refunds and actual purchase-to-delivery remain blocked.
