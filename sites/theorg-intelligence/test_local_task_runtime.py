@@ -101,6 +101,27 @@ class LocalTaskRuntimeTests(unittest.TestCase):
         bundle=runtime.export_bundle(self.db,identity("viewer","reader"))
         self.assertEqual(bundle["tasks"],[])
         self.assertEqual(bundle["events"],[])
+    def test_review_evidence_endpoint_scopes_and_integrity(self):
+        task_id=self.new_task()
+        runtime.move(self.db,self.executive,task_id,"approve")
+        runtime.move(self.db,self.worker,task_id,"run")
+        evidence=runtime.evidence_for_review(self.db,self.reviewer,task_id)
+        self.assertEqual(evidence["task_id"],task_id)
+        self.assertTrue(evidence["integrity_matches"])
+        self.assertFalse(evidence["source_provenance_verified"])
+        self.assertIn("mean_variance",evidence["result"])
+        with self.assertRaises(PermissionError):
+            runtime.evidence_for_review(self.db,self.owner,task_id)
+        with self.assertRaises(KeyError):
+            runtime.evidence_for_review(self.db,identity("reviewer","qa2","otherTenant"),task_id)
+    def test_evidence_read_detects_tampering(self):
+        task_id=self.new_task()
+        runtime.move(self.db,self.executive,task_id,"approve")
+        runtime.move(self.db,self.worker,task_id,"run")
+        with self.db:
+            self.db.execute("UPDATE tasks SET digest=? WHERE id=?",("sha256:"+"0"*64,task_id))
+        evidence=runtime.evidence_for_review(self.db,self.reviewer,task_id)
+        self.assertFalse(evidence["integrity_matches"])
     def test_model_advice_disabled_by_default(self):
         original=os.environ.pop("THEORG_ENABLE_OLLAMA",None)
         try:
