@@ -1,0 +1,29 @@
+name: TheOrg Intelligence site checks
+on:
+  pull_request:
+    paths:
+      - 'sites/theorg-intelligence/**'
+      - '.github/workflows/theorg-intelligence-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'sites/theorg-intelligence/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  site-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Standalone website syntax and boundaries
+        run: node sites/theorg-intelligence/verify.mjs
+      - name: Verify no forbidden external assets
+        shell: bash
+        run: |
+          test -s sites/theorg-intelligence/index.html
+          ! grep -Eiq '<script[^>]+src=|<link[^>]+href=' sites/theorg-intelligence/index.html
