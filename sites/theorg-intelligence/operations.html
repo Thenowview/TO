@@ -40,6 +40,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <p id="reportStatus" role="status" aria-live="polite"></p>
 <div class="notice">PDF is obtained through the browser's Print → Save as PDF. Native XLSX, PowerPoint and Word export require separately validated document adapters; this preview does not claim those formats are available.</div>
 </section></div>
+<section class="card section" aria-labelledby="localTaskHeading"><div class="row"><div><h2 id="localTaskHeading">Local task execution & QA dashboard</h2><p>Import a company-scoped JSON export from your own TheOrg local runtime. Analysis stays inside this browser; no file is uploaded.</p></div><span class="pill">Unverified imported claims</span></div>
+<label>Select TheOrg local export JSON (maximum 1 MB)<input id="localBundleFile" type="file" accept=".json,application/json"></label>
+<p id="localBundleStatus" role="status" aria-live="polite">No local task export selected. The public preview cannot connect to your PC.</p>
+<div class="grid" id="localBundleMetrics"><div class="metric"><strong>—</strong><small>Imported task records</small></div></div>
+<div class="tablewrap section"><table><thead><tr><th>Task</th><th>Tool</th><th>State</th><th>Reviewer claim</th></tr></thead><tbody id="localBundleRows"><tr><td colspan="4">Nothing imported</td></tr></tbody></table></div>
+<p class="notice">Imported status, reviewer, and digest values are not cryptographically authenticated in this browser. Acceptance here is a local claim, not independently verified source evidence or permission to publish.</p></section>
 <footer class="foot">THEORG only · No THEEPMO backend integration · No external AI inference · No live customer data · Reports are drafts until separately reviewed and signed</footer>
 </div>
 <script type="module">
@@ -81,5 +87,35 @@ el('analyze').addEventListener('click',()=>{try{const rows=JSON.parse(el('rows')
 function download(artifact){const blob=new Blob([artifact.content],{type:artifact.mime+';charset=utf-8'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=artifact.filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 function report(){if(!current)throw new Error('Analyze a tool dataset first');return buildReport({type:reportType,company:el('company').value,period:el('period').value,metrics:current.metrics,findings:current.details.map(x=>JSON.stringify(x)).slice(0,30),recommendations:current.recommendations,data_status:'caller-supplied'})}
 [['jsonExport','json'],['csvExport','csv'],['markdownExport','md'],['htmlExport','html']].forEach(([id,format])=>el(id).addEventListener('click',()=>{try{download(exportArtifact(report(),format));el('reportStatus').textContent='Exported draft '+format.toUpperCase()+'. Source and approval remain unverified.'}catch(e){el('reportStatus').textContent=e.message}}));
+function validateImportedBundle(bundle){
+ if(!bundle||bundle.schema_version!=='theorg-local-bundle-1'||typeof bundle.tenant!=='string'||typeof bundle.company!=='string'||!/^[a-zA-Z0-9_-]{1,64}$/.test(bundle.tenant)||!/^[a-zA-Z0-9_-]{1,64}$/.test(bundle.company))throw new Error('Unsupported company-scoped export');
+ if(!Array.isArray(bundle.tasks)||bundle.tasks.length>100||!Array.isArray(bundle.events)||bundle.events.length>500)throw new Error('Export exceeds task/event limits');
+ const seen=new Set();
+ for(const t of bundle.tasks){
+  if(!t||typeof t.id!=='string'||t.id.length>64||seen.has(t.id)||typeof t.title!=='string'||t.title.length>240||typeof t.tool!=='string'||t.tool.length>80||!['draft','approved','running','awaiting-qa','accepted','failed','rejected'].includes(t.status))throw new Error('Invalid task record');
+  seen.add(t.id);
+ }
+ for(const ev of bundle.events){
+  if(!ev||typeof ev.task_id!=='string'||!seen.has(ev.task_id))throw new Error('Invalid task event reference');
+ }
+ return bundle;
+}
+function renderImportedBundle(bundle){
+ const tasks=bundle.tasks,claims=tasks.filter(t=>t.status==='accepted'&&typeof t.reviewer==='string'&&t.reviewer.length>0&&typeof t.digest==='string').length;
+ const counters=[['Task records',tasks.length],['Claimed local acceptances',claims],['Awaiting QA',tasks.filter(t=>t.status==='awaiting-qa').length],['Verified business sources',0]];
+ el('localBundleMetrics').innerHTML=counters.map(([label,n])=>'<div class="metric"><strong>'+esc(n)+'</strong><small>'+esc(label)+'</small></div>').join('');
+ el('localBundleRows').innerHTML=tasks.slice(0,100).map(t=>'<tr><td>'+esc(t.title)+'</td><td>'+esc(t.tool)+'</td><td>'+esc(t.status)+'</td><td>'+esc(t.reviewer||'None')+'</td></tr>').join('')||'<tr><td colspan="4">No tasks in export</td></tr>';
+ el('localBundleStatus').textContent='Imported '+tasks.length+' task records for '+bundle.company+' / '+bundle.tenant+'. Data remains in this browser session. No underlying business evidence has been verified.';
+}
+el('localBundleFile').addEventListener('change',async()=>{
+ const file=el('localBundleFile').files?.[0];
+ if(!file)return;
+ try{
+  if(file.size>1048576)throw new Error('File exceeds 1 MB limit');
+  const body=await file.text();
+  const bundle=validateImportedBundle(JSON.parse(body));
+  renderImportedBundle(bundle);
+ }catch(e){el('localBundleStatus').textContent='Import refused: '+e.message}
+});
 displayTools();displayReports();sample();showHistory();
 </script></body></html>
