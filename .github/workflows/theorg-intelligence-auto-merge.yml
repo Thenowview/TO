@@ -1,0 +1,59 @@
+name: TheOrg Intelligence conditional auto-merge
+on:
+  workflow_run:
+    workflows: ['TheOrg Intelligence site checks']
+    types: [completed]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  merge-site-pr:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+    steps:
+      - name: Auto-merge reviewed site-only PR when safe
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Do not check out PR content or execute untrusted PR code in workflow_run context.
+          echo "Examining successful site-check run $RUN_ID"
+          gh api "repos/$REPO" --jq '.allow_auto_merge' | grep -qx true || {
+            echo "BLOCKED: repository Allow auto-merge is disabled. No merge attempted."
+            exit 0
+          }
+          PRS=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.pull_requests[].number')
+          if [[ -z "$PRS" ]]; then echo 'No associated PR; nothing to merge'; exit 0; fi
+          while read -r PR; do
+            [[ -n "$PR" ]] || continue
+            JSON=$(gh api "repos/$REPO/pulls/$PR")
+            BASE=$(jq -r '.base.ref' <<<"$JSON")
+            HEAD=$(jq -r '.head.sha' <<<"$JSON")
+            HEADREPO=$(jq -r '.head.repo.full_name // ""' <<<"$JSON")
+            DRAFT=$(jq -r '.draft' <<<"$JSON")
+            STATE=$(jq -r '.state' <<<"$JSON")
+            if [[ "$BASE" != "main" || "$HEAD" != "$SHA" || "$HEADREPO" != "$REPO" || "$DRAFT" != "false" || "$STATE" != "open" ]]; then
+              echo "Skipping PR $PR: not an eligible current same-repo, non-draft PR"
+              continue
+            fi
+            if ! jq -e '[.labels[].name] | index("automerge-theorg-site") != null' <<<"$JSON" >/dev/null; then
+              echo "Skipping PR $PR: missing automerge-theorg-site opt-in label"
+              continue
+            fi
+            FILES=$(gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" --jq '.[].filename')
+            if [[ -z "$FILES" ]]; then echo "Skipping empty PR $PR"; continue; fi
+            INVALID=$(printf '%s\n' "$FILES" | grep -Ev '^sites/theorg-intelligence/' || true)
+            if [[ -n "$INVALID" ]]; then
+              echo "Skipping PR $PR: includes files outside the standalone site"
+              continue
+            fi
+            # GitHub itself enforces required branch rules, reviews and status checks.
+            # Never fabricate review approvals, alter branch protection or bypass checks.
+            echo "Queueing GitHub auto-merge for site-only PR $PR"
+            gh pr merge "$PR" --repo "$REPO" --auto --squash --delete-branch
+          done <<<"$PRS"
