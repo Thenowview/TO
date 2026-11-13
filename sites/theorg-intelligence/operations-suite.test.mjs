@@ -37,3 +37,16 @@ test('unimplemented native office exports are rejected',()=>{const doc=buildRepo
 test('forged reviewer and evidence cannot self-publish a verified report',()=>assert.throws(()=>buildReport({type:'board-pack',data_status:'verified',approval:{authorized:true,reviewer:'someone'},evidence:[{ref:'fake',digest:'fake'}]})));
 
 test('CSV exports neutralize spreadsheet formulas from untrusted source fields',()=>{const doc=buildReport({type:'task-report',metrics:{'=HYPERLINK("https://evil")':'+1+1'}});const csv=reportCSV(doc);assert.doesNotMatch(csv,/"=HYPERLINK/);assert.match(csv,/"'=HYPERLINK/);assert.match(csv,/"'\+1\+1"/)});
+
+test('milestone dates must be valid ISO calendar days',()=>{
+ const base={project:'Team A',milestone:'Plan',planned:'2026-02-28'};
+ for(const actual of ['2026-02-30','yesterday','2026/03/01']){
+  assert.throws(()=>analyzeOperations('project-performance',{rows:[{...base,actual}]}));
+ }
+ const result=analyzeOperations('project-performance',{rows:[{...base,actual:'2026-03-03'}]});
+ assert.equal(result.details[0].late_days,3);
+});
+test('forecast horizon requires whole periods',()=>{
+ assert.throws(()=>analyzeOperations('forecasting',{rows:samples.forecasting,horizon:1.5}));
+ assert.equal(analyzeOperations('forecasting',{rows:samples.forecasting,horizon:3}).details.length,3);
+});
