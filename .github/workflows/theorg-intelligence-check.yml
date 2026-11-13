@@ -30,6 +30,8 @@ jobs:
         run: node --test sites/theorg-intelligence/task-engine.test.mjs
       - name: Operations suite analytics and reporting regression
         run: node --test sites/theorg-intelligence/operations-suite.test.mjs
+      - name: Local AI advisor opt-in and localhost boundary tests
+        run: node --test sites/theorg-intelligence/local-ai-cli.test.mjs
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
