@@ -43,7 +43,11 @@ def inspect(allow_tests=True):
         results['javascript']=run([node,'--test',*test_files],REPO) if node and test_files else {"passed":False,"error":"Node.js or tests missing"}
         results['js_syntax']=run([node,'--check','static/app.js'],SOURCE) if node else {"passed":False,"error":"Node.js missing"}
         results['self_test']=run([sys.executable,'app.py','--self-test'],SOURCE)
-    results['source_checks_passed']=bool(results['android_source_contract']['passed'] and
+    results['inspection_passed']=bool(results['android_source_contract']['passed'] and
+        results['readiness']['source']['engine_files_present'] and
+        results['readiness']['source']['adaptive_1_2_3_registry_present'])
+    results['tests_executed']=bool(allow_tests)
+    results['source_checks_passed']=bool(allow_tests and results['inspection_passed'] and
         results['readiness']['source']['engine_files_present'] and
         results['readiness']['source']['adaptive_1_2_3_registry_present'] and
         all(v.get('passed') for k,v in results.items() if k in ('python','javascript','js_syntax','self_test')))
