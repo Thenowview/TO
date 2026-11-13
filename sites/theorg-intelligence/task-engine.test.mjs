@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTask,transition,analyzeTask,runBoundedAnalysis} from './task-engine.mjs';
+import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence} from './task-engine.mjs';
 import {TOOL_TEMPLATES} from './tool-platform.mjs';
 const tool={...TOOL_TEMPLATES[0],kind:'analysis',trigger:'manual'};
 const scope={tenant_id:'tenantA',company_id:'companyA'};
@@ -38,3 +38,22 @@ test('deterministic bounded analysis has zero external/model calls',()=>{
 });
 test('reject unbounded inputs',()=>assert.throws(()=>runBoundedAnalysis(tool,{rows:Array(101).fill({actual:80,target:90})})));
 test('no direct action can mark draft accepted',()=>assert.throws(()=>transition(mk(),'accept',ctx('reviewer','reviewerB',{digest,evidence_verified:true}))));
+
+test('approved deterministic offline tool produces evidence awaiting QA',async()=>{
+ const approved=transition(mk(),'approve',ctx('executive','ceo'));
+ const result=await runApprovedOfflineTask(approved,tool,{rows:[{name:'Progress',actual:83,target:90}]});
+ assert.equal(result.status,'awaiting-qa');
+ assert.equal(result.results.length,result.steps.length);
+ assert.equal(result.events.at(-1).type,'submit');
+ assert.equal(await verifyTaskEvidence(result),true);
+ assert.equal(analyzeTask(result).verified,false);
+});
+test('tampered output fails evidence verification',async()=>{
+ const approved=transition(mk(),'approve',ctx('executive','ceo'));
+ const result=await runApprovedOfflineTask(approved,tool,{rows:[{name:'Progress',actual:83,target:90}]});
+ result.results[0].output='forged evidence';
+ assert.equal(await verifyTaskEvidence(result),false);
+});
+test('execution refused before approval',async()=>{
+ await assert.rejects(()=>runApprovedOfflineTask(mk(),tool,{rows:[]}));
+});
