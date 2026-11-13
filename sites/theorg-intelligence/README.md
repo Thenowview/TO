@@ -37,3 +37,12 @@ The Worker exposes `GET /api/health` with `mode: synthetic-demo`, and makes no c
 5. Enable real queued work orders, explicit owner approval, independent QA and evidence receipts.
 6. Connect a separate governed KPI data store if desired; leave THEEPMO unchanged.
 7. Introduce dedicated deployment workflow with least-privilege Cloudflare credentials and safety gates.
+
+## Bulk-fix follow-up — 2026-11-13
+- Added `build-worker.mjs`, a deterministic generation path from the reviewed HTML to `dist/worker.mjs`. It preserves the existing read-only synthetic demo health endpoint, strict CSP, and blocked external/network integrations.
+- Added `verify-worker.mjs` checking the generated Worker boundaries and health route.
+- Updated site-only GitHub Actions to generate and verify the Worker during the site acceptance job. No paid dependencies, secrets, new Cloudflare resources, or production-domain changes.
+- Source script syntax and six workspace markers were checked separately from the GitHub runner.
+- **CI remains blocked:** The newest site job failed with no step summaries, and GitHub returned 404 BlobNotFound for its job logs; the unrelated bridge/Windows workflows likewise fail. Treat this as an unresolved runner/infrastructure or workflow-initialization issue until GitHub exposes evidence. No green-build or root-cause claim.
+- The **previously deployed website remains unchanged** by this build/CI-only source batch. Cloudflare did not receive another upload.
+- For repeatable future deployment, generate `dist/worker.mjs`, validate it, and deploy that artifact to account `8c3498934294713cb33f436ff86fc361` under service `theorg-intelligence`. Never deploy while validation is red.
