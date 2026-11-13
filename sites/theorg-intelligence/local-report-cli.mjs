@@ -3,7 +3,7 @@
 // Inbound local task acceptance is NOT independent verification of real business sources.
 import {buildReport,exportArtifact} from './report-engine.mjs';
 import {writeFile,mkdir} from 'node:fs/promises';
-import {resolve,join} from 'node:path';
+import {resolve,join,relative,isAbsolute} from 'node:path';
 const STATUS=new Set(['draft','approved','awaiting-qa','accepted','rejected','failed','running']);
 const CODE=/^[a-zA-Z0-9_-]{1,64}$/;
 export function validateLocalBundle(raw){
@@ -55,7 +55,8 @@ export async function createLocalReportFiles(bundle,outputDir,{types=['ai-workfo
   for(const format of formats){
    const file=exportArtifact(report,format);
    const dest=join(root,file.filename);
-   if(resolve(dest)!==dest||!dest.startsWith(root+'/')&&dest!==root)throw new Error('Unsafe export path');
+   const rel=relative(root,dest);
+   if(!rel||rel.startsWith('..')||isAbsolute(rel))throw new Error('Unsafe export path');
    await writeFile(dest,file.content,{encoding:'utf8',flag:'w',mode:0o600});
    results.push(dest);
   }
