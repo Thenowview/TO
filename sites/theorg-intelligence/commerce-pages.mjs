@@ -71,6 +71,9 @@ export function renderHowItWorks(){
  ['4. Keep projects progressing','If a project needs ongoing governance, you may independently explore THEEPMO. No data or account is transferred automatically.']
  ].map(([a,b])=>'<section class="card"><h2>'+html(a)+'</h2><p>'+html(b)+'</p></section>').join('')+'</div>');
 }
+export function renderDisabledCheckout(){
+ return pageShell('Checkout is not active','<h1>Checkout is not active</h1><p class="warning">No orders can be placed, no funds collected, and no subscriptions started in this pre-launch preview.</p><p>Proposed report prices are research hypotheses. A verified merchant account, server-side order verification, consumer terms and private fulfillment must be completed before accepting payment.</p><p><a href="/">Explore free assessments</a></p>');
+}
 export function renderDisabledAccount(){
  return pageShell('Customer reports — not active','<h1>My reports</h1><p class="warning">Customer accounts and private report downloads are not active in this commercial preview. No signup, login, file upload or purchase is possible.</p><p>You can use the free assessments without creating an account. Please do not send sensitive business files to a public preview.</p><p><a href="/">Return to free tools</a></p>');
 }
