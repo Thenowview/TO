@@ -101,9 +101,16 @@ class LocalTaskRuntimeTests(unittest.TestCase):
         self.assertFalse(bundle["source_provenance_verified"])
         self.assertFalse(bundle["cloud_sync"])
     def test_empty_company_export(self):
-        bundle=runtime.export_bundle(self.db,identity("viewer","reader"))
+        bundle=runtime.export_bundle(self.db,identity("analyst","reader"))
         self.assertEqual(bundle["tasks"],[])
         self.assertEqual(bundle["events"],[])
+    def test_runtime_and_viewer_cannot_export_company_audit(self):
+        self.new_task()
+        for who in (self.worker, identity("viewer","reader")):
+            with self.subTest(role=who["role"]):
+                with self.assertRaises(PermissionError):
+                    runtime.export_bundle(self.db,who)
+        self.assertEqual(len(runtime.export_bundle(self.db,self.executive)["tasks"]),1)
     def test_review_evidence_endpoint_scopes_and_integrity(self):
         task_id=self.new_task()
         runtime.move(self.db,self.executive,task_id,"approve")
