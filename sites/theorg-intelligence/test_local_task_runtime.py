@@ -45,6 +45,9 @@ class LocalTaskRuntimeTests(unittest.TestCase):
         self.assertEqual(runtime.dashboard(self.db,self.owner)["accepted"],0)
         runtime.move(self.db,self.reviewer,task_id,"accept")
         self.assertEqual(runtime.dashboard(self.db,self.owner)["accepted"],1)
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["locally_accepted"],1)
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["business_verified"],0)
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["not_verified"],1)
         events = self.db.execute("SELECT action FROM events WHERE task_id=? ORDER BY at,id",(task_id,)).fetchall()
         self.assertEqual(len(events),4)
     def test_owner_cannot_review_own_job_even_if_role_claimed(self):
@@ -133,6 +136,22 @@ class LocalTaskRuntimeTests(unittest.TestCase):
         self.assertFalse(summary["source_provenance_verified"])
         self.assertNotIn("rows",str(summary))
         self.assertFalse(bundle["source_provenance_verified"])
+    def test_corrupt_metric_digest_excluded_from_local_export(self):
+        task_id=self.new_task()
+        runtime.move(self.db,self.executive,task_id,"approve")
+        runtime.move(self.db,self.worker,task_id,"run")
+        before=runtime.export_bundle(self.db,self.owner)
+        self.assertEqual(before["tasks"][0]["metric_summary"]["mean_variance"],-7)
+        self.assertTrue(before["tasks"][0]["metric_summary"]["integrity_matches"])
+        with self.db:
+            self.db.execute("UPDATE tasks SET digest=? WHERE id=?",("sha256:"+"f"*64,task_id))
+        after=runtime.export_bundle(self.db,self.owner)
+        self.assertIsNone(after["tasks"][0]["metric_summary"])
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["business_verified"],0)
+    def test_unaccepted_tasks_never_count_as_business_verified(self):
+        task_id=self.new_task()
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["not_verified"],1)
+        self.assertEqual(runtime.dashboard(self.db,self.owner)["business_verified"],0)
     def test_model_advice_disabled_by_default(self):
         original=os.environ.pop("THEORG_ENABLE_OLLAMA",None)
         try:
