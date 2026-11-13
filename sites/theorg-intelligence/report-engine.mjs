@@ -21,7 +21,7 @@ export function buildReport({type,title,company,period,metrics={},findings=[],re
  const cleanTitle=str(title||recipe.name,160),cleanCompany=str(company||'Example Company',120);
  if(!cleanTitle.trim()||!cleanCompany.trim())fail('Report title and company required');
  if(!['synthetic','caller-supplied','verified'].includes(data_status))fail('Unknown data status');
- if(data_status==='verified'&&!(approval?.authorized===true&&approval?.reviewer&&list(evidence).length))fail('Verified report requires an approval receipt and evidence');
+ if(data_status==='verified')fail('Verified publication requires a separate authenticated server-side QA receipt; caller flags are not authority');
  return {schema_version:'1.0',report_type:type,title:cleanTitle,company:cleanCompany,period:str(period||'Unspecified period',80),
  status:data_status,generated_at:new Date().toISOString(),classification:'internal-demo',sections:recipe.sections,
  metrics:Object.fromEntries(Object.entries(metrics).slice(0,60).map(([k,v])=>[str(k,80),v])),
