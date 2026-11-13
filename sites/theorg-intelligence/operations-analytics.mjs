@@ -34,7 +34,7 @@ const avg=v=>v.length?round(v.reduce((a,b)=>a+b,0)/v.length):null;
 const key=(v)=>text(v,80);
 const counts=(a,f)=>Object.fromEntries(a.map(k=>[k,f(k)]));
 const validDate=d=>{
- assert(typeof d==='string'&&/^\\d{4}-\\d{2}-\\d{2}$/.test(d),'Expected ISO YYYY-MM-DD');
+ assert(typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d),'Expected ISO YYYY-MM-DD');
  const dt=Date.parse(d+'T00:00:00.000Z');
  assert(Number.isFinite(dt)&&new Date(dt).toISOString().slice(0,10)===d,'Invalid calendar date');
  return dt;
