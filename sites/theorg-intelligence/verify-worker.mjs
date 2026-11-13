@@ -1,0 +1,12 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const source=readFileSync(new URL('./dist/worker.mjs',import.meta.url),'utf8');
+assert.match(source,/connected_agent_runtime: false/);
+assert.match(source,/epmo_connected: false/);
+assert.match(source,/connect-src 'none'/);
+assert.match(source,/frame-ancestors 'none'/);
+assert.match(source,/x-content-type-options/);
+assert.match(source,/pathname !== '\/'/);
+assert.match(source,/pathname === '\/api\/health'/);
+assert.doesNotMatch(source,/https?:\/\/[^\s\"']+theepmo\.com/i);
+console.log('Standalone Worker build contract: PASS');
