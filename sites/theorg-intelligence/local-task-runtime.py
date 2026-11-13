@@ -82,7 +82,7 @@ def validate_rows(obj):
         if not isinstance(row,dict) or not isinstance(row.get("name"),str) or not 1<=len(row["name"])<=80:
             raise ValueError("Invalid metric name")
         a=row.get("actual"); t=row.get("target")
-        if type(a) not in (int,float) or type(t) not in (int,float) or not (0<=a<=100 and 0<=t<=100):
+        if type(a) not in (int,float) or type(t) not in (int,float) or not (math.isfinite(a) and math.isfinite(t) and 0<=a<=100 and 0<=t<=100):
             raise ValueError("Invalid metric values")
         result.append({"name":row["name"],"actual":a,"target":t,"variance":round(a-t,2)})
     return result
