@@ -69,7 +69,11 @@ class LocalHttpContractTests(unittest.TestCase):
     def test_cross_company_and_wrong_role_cannot_inspect(self):
         status,_=self.request(self.owner,"GET",f"/v1/tasks/{self.id}/evidence")
         self.assertEqual(status,403)
-        status,_=self.request(actor("reviewer","other"),"GET",f"/v1/tasks/{self.id}/evidence?company=another")
+        other=actor("reviewer","other")
+        other["company"]="differentCompany"
+        status,_=self.request(other,"GET",f"/v1/tasks/{self.id}/evidence")
+        self.assertEqual(status,404)
+        status,_=self.request(self.reviewer,"GET",f"/v1/tasks/{self.id}/evidence?company=another")
         self.assertEqual(status,400)
     def test_untrusted_malformed_body_is_rejected(self):
         status,_=self.request(self.reviewer,"POST",f"/v1/tasks/{self.id}/accept",[])
