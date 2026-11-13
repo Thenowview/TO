@@ -26,7 +26,7 @@ export function validateLocalBundle(raw){
 }
 export function buildLocalTaskReport(bundle,reportType='ai-workforce-report'){
  const local=validateLocalBundle(bundle);
- const tally={total:local.tasks.length,integrity_reviewed:local.tasks.filter(t=>t.status==='accepted'&&t.reviewer&&t.digest).length,
+ const tally={total:local.tasks.length,claimed_local_acceptances:local.tasks.filter(t=>t.status==='accepted'&&t.reviewer&&t.digest).length,
   pending_qa:local.tasks.filter(t=>t.status==='awaiting-qa').length,
   failures:local.tasks.filter(t=>t.status==='failed'||t.status==='rejected').length,
   tracked_events:local.events.length,verified_business_sources:0};
