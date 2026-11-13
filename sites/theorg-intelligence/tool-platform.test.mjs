@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TOOL_TEMPLATES,validateTool,validateTask,taskSummary,simulatePlan} from './tool-platform.mjs';
-test('five operational tool templates are ready',()=>assert.equal(TOOL_TEMPLATES.length,5));
+test('five operational and one bounded arithmetic tool are ready',()=>assert.equal(TOOL_TEMPLATES.length,6));
 test('custom tool has bounded steps, action and metric',()=>{
 const t=validateTool({id:'my-analyst',name:'Weekly delivery reviewer',description:'Review the weekly delivery status',kind:'analysis',trigger:'manual',metric:'delivery_health',steps:['Collect status','Validate evidence']});
 assert.equal(t.execution_mode,'design-only');assert.equal(t.requires_approval,true);
