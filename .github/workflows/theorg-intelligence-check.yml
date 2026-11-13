@@ -43,6 +43,7 @@ jobs:
       - name: Commercial tools execution and storefront safety
         run: |
           node --test sites/theorg-intelligence/commercial-tools.test.mjs
+          node --test sites/theorg-intelligence/commercial-ai-cli.test.mjs
           node sites/theorg-intelligence/marketplace-ui.verify.mjs
       - name: Generate reproducible Cloudflare Worker
         run: |
