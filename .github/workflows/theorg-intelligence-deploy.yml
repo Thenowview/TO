@@ -1,5 +1,10 @@
-name: Deploy TheOrg Intelligence (manual, isolated)
+name: Deploy TheOrg Intelligence (guarded auto)
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'sites/theorg-intelligence/**'
+      - '.github/workflows/theorg-intelligence-deploy.yml'
   workflow_dispatch:
     inputs:
       confirmation:
@@ -13,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    if: ${{ inputs.confirmation == 'DEPLOY_THEORG_INTELLIGENCE' }}
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.confirmation == 'DEPLOY_THEORG_INTELLIGENCE') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
