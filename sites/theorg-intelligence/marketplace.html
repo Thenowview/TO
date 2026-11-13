@@ -92,6 +92,8 @@ function resultView(r){
  const metricHTML=Object.entries(r.calculated_metrics).filter(([k,v])=>typeof v!=='object').slice(0,8).map(([k,v])=>'<div class="metric"><b>'+escapeText(v)+'</b><span>'+escapeText(k.replaceAll('_',' '))+'</span></div>').join('');
  const findings=r.findings.slice(0,8).map(x=>'<li>'+escapeText(x)+'</li>').join('');
  const actions=r.proposed_actions.slice(0,6).map(x=>'<li>'+escapeText(x)+'</li>').join('');
+ const selectedTool=COMMERCIAL_TOOLS.find(t=>t.id===r.tool_id);
+ const nextStep=selectedTool?.epmo_fit?'<div style="margin-top:14px;padding:12px;border:1px solid #315567;border-radius:10px"><b>Need to manage this continuously?</b><p>For recurring project and portfolio governance, explore the independent THEEPMO service. Your data and account are not transferred.</p><a class="btn secondary" target="_blank" rel="noopener noreferrer" href="https://theepmo.com/?utm_source=theorg&utm_medium=tool_result&utm_campaign=project-followup&utm_content='+escapeText(r.tool_id)+'">Explore THEEPMO</a></div>':'';
  el('resultArea').innerHTML='<h4>'+escapeText(r.tool_name)+' — draft</h4><div class="metric-grid">'+metricHTML+'</div><h4>Observations</h4><ul>'+findings+'</ul><h4>Suggested next actions</h4><ul>'+actions+'</ul><p class="micro">User-supplied input, no independent verification or model execution.</p>';
 }
 function download(content,name,mime){const blob=new Blob([content],{type:mime+';charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
