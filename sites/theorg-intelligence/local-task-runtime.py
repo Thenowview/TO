@@ -13,7 +13,7 @@ import sqlite3
 import time
 import uuid
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -85,7 +85,7 @@ def validate_rows(obj):
         result.append({"name":row["name"],"actual":a,"target":t,"variance":round(a-t,2)})
     return result
 def connect(db_path):
-    db=sqlite3.connect(str(db_path),timeout=5,isolation_level=None,check_same_thread=False)
+    db=sqlite3.connect(str(db_path),timeout=5,isolation_level='IMMEDIATE')
     db.row_factory=sqlite3.Row
     db.execute("PRAGMA journal_mode=WAL")
     db.executescript(SCHEMA)
@@ -225,10 +225,10 @@ def main():
         raise SystemExit("Disabled. Set THEORG_ENABLE_LOCAL_HTTP=YES explicitly.")
     identities=token_identities()
     location=Path(os.environ.get("THEORG_TASK_DB","theorg-tasks.sqlite3")).resolve()
-    if location.exists() and location.is_symlink():raise SystemExit("Refuse symlink database")
+    if location.is_symlink():raise SystemExit("Refuse symlink database")
     location.parent.mkdir(parents=True,exist_ok=True)
     db=connect(location)
-    srv=ThreadingHTTPServer((HOST,PORT),Service)
+    srv=HTTPServer((HOST,PORT),Service)
     srv.identities=identities;srv.db=db
     print("TheOrg local task runtime: loopback only, opt-in, no public Cloudflare connection",flush=True)
     srv.serve_forever()
