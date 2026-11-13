@@ -14,7 +14,7 @@ permissions:
 jobs:
   site-acceptance:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -45,6 +45,11 @@ jobs:
           node --test sites/theorg-intelligence/commercial-tools.test.mjs
           node --test sites/theorg-intelligence/commercial-ai-cli.test.mjs
           node sites/theorg-intelligence/marketplace-ui.verify.mjs
+      - name: Server-only commercial order, payment protocol and policy tests
+        run: |
+          node --test sites/theorg-intelligence/commerce-fulfillment.test.mjs
+          node --test sites/theorg-intelligence/commerce-pages.test.mjs
+          python3 -m unittest discover -s sites/theorg-intelligence -p 'test_commerce_schema.py' -v
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
