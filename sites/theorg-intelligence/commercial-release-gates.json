@@ -1,0 +1,68 @@
+{
+  "schema_version": "theorg-commercial-release-gates-1",
+  "release_channel": "preview-only",
+  "last_reviewed": "2026-11-13",
+  "checks": {
+    "five-free-tools-implemented": {
+      "passed": true,
+      "evidence": "commercial-tools.test.mjs isolated JS checks; live browser acceptance pending"
+    },
+    "commercial-preview-uploaded": {
+      "passed": true,
+      "evidence": "Cloudflare theorg-commerce-lab initial deployment 004c7a5c-bfa5-439d-8578-b95c367035d0; latest changes need redeployment"
+    },
+    "github-ci-green": {
+      "passed": false,
+      "evidence": null
+    },
+    "desktop-mobile-browser-qa": {
+      "passed": false,
+      "evidence": null
+    },
+    "legal-seller-verified": {
+      "passed": false,
+      "evidence": null
+    },
+    "final-privacy-terms-refunds-approved": {
+      "passed": false,
+      "evidence": null
+    },
+    "merchant-eligibility-and-processor-connected": {
+      "passed": false,
+      "evidence": null
+    },
+    "signed-provider-webhook-live-tested": {
+      "passed": false,
+      "evidence": null
+    },
+    "customer-authentication-production": {
+      "passed": false,
+      "evidence": null
+    },
+    "tenant-isolated-private-storage-production": {
+      "passed": false,
+      "evidence": null
+    },
+    "complete-payment-to-private-delivery-qa": {
+      "passed": false,
+      "evidence": null
+    },
+    "refund-chargeback-and-support-process": {
+      "passed": false,
+      "evidence": null
+    },
+    "real-ai-report-provenance-validation": {
+      "passed": false,
+      "evidence": null
+    },
+    "privacy-retention-and-deletion-confirmed": {
+      "passed": false,
+      "evidence": null
+    },
+    "monitoring-and-rate-limits-confirmed": {
+      "passed": false,
+      "evidence": null
+    }
+  },
+  "notes": "Release requires independent evidence for every gate. Static demo code and mocked payments cannot satisfy live commerce checks."
+}
