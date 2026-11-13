@@ -41,3 +41,12 @@ The e2e test creates a **temporary local SQLite database** and synthetic sample 
 - Enterprise auth/Cloudflare Access and independent D1 storage are unprovisioned. Do not put privileged APIs on public Workers.
 - Native DOCX/PPTX/XLSX/PDF export, proof-of-source verification, live EPMO data integrations, and device/user acceptance remain unverified.
 - Do not merge PR #25 to `main`, enable automatic Cloudflare production deploy, or bypass checks until GitHub CI and approved browser/hardware QA pass.
+
+## Review receipt workflow and task-level KPI reporting (updated)
+- An authenticated executive or reviewer can request `GET /v1/tasks/{id}/evidence` for a company-scoped task **after** its bounded calculation reaches `awaiting-qa`. The reply includes the result summary, stored and recomputed SHA-256 digest, and `integrity_matches`.
+- To accept by HTTP, the **reviewer** must submit `POST /v1/tasks/{id}/accept` with JSON body `{"review_confirmed":true,"evidence_digest":"sha256:<64 lowercase hex characters>"}`, matching the inspected digest. Other role tokens and cross-company requests are denied.
+- Independently verify the actual source business records; hashes prove output integrity, **not** external source authenticity. Export and browser imports still label source provenance unverified.
+- `GET /v1/export` now includes a bounded per-task `metric_summary` for the supported KPI variance tool, containing mean variance, number of supplied metrics, and explicit `source_provenance_verified:false`. Raw input rows are not included in the bundle.
+- The local report CLI and offline browser import can show KPI mean variance and task status without claiming a source-verified executive KPI.
+
+**Current release gate:** The static multi-route Worker check now handles whitespace variations in serialized health fields and includes actual offline route assertions and HEAD behavior. GitHub Actions remains unavailable; Cloudflare preview upload attempts received API HTTP 500 / code 10013 twice, so these latest UI changes remain source-only on PR #25. The existing preview and primary Worker were not replaced by the failed uploads.
