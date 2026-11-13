@@ -1,7 +1,7 @@
-import { analyzeMetric, nextStatus, validateObjective, validateScope } from './intelligence-rules.mjs';
+import { analyzeMetric, validateObjective, validateScope } from './intelligence-rules.mjs';
 // Separate optional enterprise API. Never route a public Worker to a localhost/native host.
 // If ACCESS_TEAM_DOMAIN, ACCESS_AUD or DB are missing, every business endpoint fails closed.
-const json=(data,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store','x-content-type-options':'nosniff','access-control-allow-origin':'null'}});
+const json=(data,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store','x-content-type-options':'nosniff'}});
 const bad=(message,status)=>json({error:message},status);
 function b64url(part){const t=part.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(t+'='.repeat((4-t.length%4)%4)),x=>x.charCodeAt(0))}
 function parsePart(s){return JSON.parse(new TextDecoder().decode(b64url(s)))}
@@ -53,7 +53,7 @@ export default {
   if(url.pathname==='/api/v1/proposals'&&request.method==='POST'){
     if(!['analyst','executive'].includes(role))return bad('Insufficient role',403);
     if(Number(request.headers.get('content-length')||0)>8192)return bad('Payload too large',413);
-    let body;try{body=await request.json()}catch(e){return bad('Invalid JSON',400)}
+    let body;try{const raw=await request.text();if(raw.length>8192)return bad('Payload too large',413);body=JSON.parse(raw)}catch(e){return bad('Invalid JSON',400)}
     let objective;try{objective=validateObjective(body?.objective)}catch(e){return bad('Invalid objective',400)}
     if(typeof body?.metric_id!=='string'||!/^[a-zA-Z0-9_-]{1,64}$/.test(body.metric_id))return bad('Invalid metric reference',400);
     const exists=await env.DB.prepare('SELECT 1 FROM kpis WHERE tenant_id=? AND company_id=? AND metric_id=?').bind(scope.tenant_id,scope.company_id,body.metric_id).first();
