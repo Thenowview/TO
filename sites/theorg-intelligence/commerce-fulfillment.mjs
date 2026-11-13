@@ -127,15 +127,17 @@ export function approveDraftForDelivery(order,{reviewer,reportDigest,now=new Dat
 }
 export function markPrivateDelivery(order,{privateRef,now=new Date().toISOString()}={}){
  must(order?.state==='approved_for_delivery','Quality review required');
- must(typeof privateRef==='string'&&/^[a-z0-9-]+\/[a-zA-Z0-9/_-]{4,200}$/.test(privateRef)
-   &&!privateRef.includes('..'),'Private object reference required');
+ must(typeof privateRef==='string'&&/^[A-Za-z0-9_-]+\/[A-Za-z0-9/_-]{8,200}$/.test(privateRef)
+   &&!privateRef.includes('..')
+   &&privateRef.startsWith(order.tenant_id+'/orders/'+order.id+'/reports/'),
+   'Private object reference must be bound to the exact tenant and order');
  return Object.freeze({...order,state:'delivered',delivery_ref:privateRef,updated_at:now});
 }
 export function entitlement(order,identity){
  assertOwner(order,identity);
  if(order.state!=='delivered'||!order.delivery_ref)return {accessible:false,reason:'Not delivered'};
- return {accessible:true,private_ref:order.delivery_ref,status:order.report_status,
-   warning:'Source evidence not independently verified. Access must be issued by authenticated delivery gateway.'};
+ return {accessible:true,requires_authenticated_delivery:true,status:order.report_status,
+   warning:'Source evidence not independently verified. Downloads require an authenticated private-storage gateway.'};
 }
 export function publicOrderStatus(order,identity){
  assertOwner(order,identity);
