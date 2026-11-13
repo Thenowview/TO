@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TheOrg | Tool Intelligence & Reports</title><meta name="theme-color" content="#071322">
+<style>
+:root{color-scheme:dark;--bg:#081525;--card:#112339;--line:#2b4a61;--accent:#50dbc4;--text:#ebf7f9;--mute:#a4bdcb;--amber:#ffd39a}
+*{box-sizing:border-box}body{font:14px/1.55 system-ui,Arial,sans-serif;background:radial-gradient(circle at 90% 0%,#173d55,transparent 45%),var(--bg);color:var(--text);margin:0}
+.wrap{max-width:1600px;margin:0 auto;padding:24px}a{color:var(--accent)}header,.row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+header{padding-bottom:20px;border-bottom:1px solid var(--line)}header b{font-size:23px;letter-spacing:-.5px}header small{color:var(--mute)}h1{font-size:clamp(25px,3vw,38px);margin:20px 0 8px}
+h2{font-size:18px;margin:0 0 12px}p{color:var(--mute)}.hero{padding:12px 0 16px}.cols{display:grid;grid-template-columns:minmax(260px,.95fr) minmax(360px,1.7fr);gap:15px}
+.card{background:linear-gradient(150deg,#13283d,#0e1f33);border:1px solid var(--line);border-radius:15px;padding:20px;min-width:0}.section{margin-top:17px}
+label{display:block;font-size:12px;font-weight:650;color:var(--mute);margin-bottom:12px}input,select,textarea{display:block;width:100%;margin-top:5px;padding:10px 12px;border-radius:9px;border:1px solid #40667b;background:#0c2034;color:#fff;font:inherit}
+textarea{min-height:175px;resize:vertical;font-family:ui-monospace,monospace;font-size:12px}button{background:#174956;border:1px solid #4c808a;padding:10px 13px;border-radius:9px;color:#eafff8;font:inherit;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#062e35;font-weight:800}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric{border:1px solid var(--line);background:#152b41;padding:15px;border-radius:10px}.metric strong{font-size:26px;display:block}.metric small{color:var(--mute)}
+.pill{color:#ffe1ad;border:1px solid #886e43;background:#41372e;padding:5px 10px;border-radius:25px;font-size:11px}.good{color:var(--accent)}.plot{display:grid;gap:10px;margin-top:18px}.plot-row{display:grid;grid-template-columns:150px minmax(0,1fr) 60px;align-items:center;gap:12px;font-size:12px}.track{height:9px;background:#273d51;border-radius:20px;overflow:hidden}.track i{height:100%;display:block;background:var(--accent)}.tool-list{display:grid;gap:7px;max-height:300px;overflow:auto}.tool-list button{text-align:left}.tool-list button[aria-pressed=true]{background:#28566a;border-color:var(--accent)}
+.notice{padding:12px;background:#2e292c;border-left:3px solid #e6ae64;border-radius:7px;color:#ffdfb3}.report-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.report-list button{text-align:left}.report-list button[aria-pressed=true]{border-color:var(--accent);background:#24536a}
+.tablewrap{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid var(--line);font-size:12px}th{color:var(--mute)}.foot{color:var(--mute);font-size:12px;padding:25px 0}
+@media(max-width:970px){.cols{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){.wrap{padding:12px}.grid,.report-list{grid-template-columns:1fr}.plot-row{grid-template-columns:85px minmax(0,1fr) 45px}}
+@media print{body{background:#fff;color:#000}.card{background:#fff;color:#000}.toolbar,.no-print{display:none}}
+</style></head><body><div class="wrap">
+<header><div><b>THEORG <span style="color:var(--accent)">OPERATIONS</span></b><small style="display:block">Task-first intelligence · deterministic analysis · report studio</small></div><div class="row"><a href="/">Executive Home</a><span class="pill">Demo / supplied data only</span></div></header>
+<div class="hero"><h1>One tool. One task. One verified result.</h1><p>Run bounded calculations on sample or provided rows, inspect the metrics, and prepare an evidence-aware management report. This sandbox does not invoke AI agents or external business systems.</p></div>
+<div class="cols">
+<section class="card"><h2>Individual AI tool catalog</h2><p>13 workflow recipes, with independent inputs and analytic outputs. The live AI execution layer is not connected.</p><div id="toolList" class="tool-list"></div>
+<div class="section"><label>Paste tool input rows (JSON array)<textarea id="rows" spellcheck="false" aria-label="Tool input JSON"></textarea></label>
+<label>Forecast horizon (only for forecasting)<input id="horizon" type="number" min="1" max="12" value="3"></label>
+<div class="row toolbar"><button id="sample" type="button">Load synthetic example</button><button class="primary" id="analyze" type="button">Analyze supplied rows</button></div><p id="status" role="status" aria-live="polite">Select a tool to begin.</p></div></section>
+<section class="card"><div class="row"><div><h2>Task-specific dashboard</h2><p id="analysisTitle">Awaiting a bounded analysis</p></div><span class="pill" id="evidenceLabel">Not QA verified</span></div>
+<div class="grid" id="metrics"><div class="metric"><strong>0</strong><small>Verified executions</small></div></div>
+<div class="plot" id="plot"></div>
+<div class="section"><h2>Findings & recommended actions</h2><div id="findings" class="notice">All data is synthetic or explicitly provided by the user. Calculations are not independently verified.</div></div>
+<div class="section"><h2>Latest local analyses</h2><div class="tablewrap"><table><thead><tr><th>Tool</th><th>Rows</th><th>Time</th><th>Evidence</th></tr></thead><tbody id="history"></tbody></table></div></div>
+</section></div>
+<div class="cols section">
+<section class="card"><h2>Eight executive report formats</h2><p>Generate an evidence-labeled report from the selected analysis; no fabricated approval or source validation.</p><div class="report-list" id="reportList"></div>
+<div class="section"><label>Organization name<input id="company" maxlength="120" value="Example Company (synthetic)"></label><label>Report period<input id="period" maxlength="80" value="Illustrative period"></label></div></section>
+<section class="card"><h2>Report Studio</h2><p id="reportTitle">Choose a report type</p><div id="reportSections" class="notice">Select an executive report template.</div>
+<div class="row section toolbar"><button id="jsonExport">JSON</button><button id="csvExport">CSV / Excel</button><button id="markdownExport">Markdown</button><button class="primary" id="htmlExport">HTML / Print to PDF</button></div>
+<p id="reportStatus" role="status" aria-live="polite"></p>
+<div class="notice">PDF is obtained through the browser's Print → Save as PDF. Native XLSX, PowerPoint and Word export require separately validated document adapters; this preview does not claim those formats are available.</div>
+</section></div>
+<footer class="foot">THEORG only · No THEEPMO backend integration · No external AI inference · No live customer data · Reports are drafts until separately reviewed and signed</footer>
+</div>
+<script type="module">
+import {OPERATIONS_TOOLS,analyzeOperations} from '/assets/operations-analytics.mjs';
+import {REPORT_CATALOG,buildReport,exportArtifact} from '/assets/report-engine.mjs';
+const el=x=>document.getElementById(x),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toolId='kpi-intelligence',reportType='daily-brief',current=null;
+const examples={
+'executive-report':[{title:'Weekly project delivery',reviewed:true,source_ref:'synthetic:task-1',summary:'Example only'}],
+'kpi-intelligence':[{name:'Strategy execution',actual:83,target:90,direction:'higher',source_ref:'synthetic:01'},{name:'Risk exposure',actual:21,target:15,direction:'lower',source_ref:'synthetic:02'}],
+'project-performance':[{project:'Program A',milestone:'Design',planned:'2026-10-01',actual:'2026-10-05'},{project:'Program B',milestone:'Delivery',planned:'2026-10-20',actual:'2026-10-19'}],
+'risk-compliance':[{risk:'Delivery slippage',likelihood:4,impact:4,owner:'Risk Office',mitigation:'Weekly review'},{risk:'Vendor capacity',likelihood:3,impact:3,owner:'Operations'}],
+'strategy-alignment':[{initiative:'Digital enablement',objective:'Operational efficiency',progress:76,weight:2},{initiative:'Governance',objective:'Trust',progress:92,weight:1}],
+'maturity-assessment':[{dimension:'Governance',score:3.2,target:4},{dimension:'Delivery',score:2.5,target:4}],
+'portfolio-optimization':[{initiative:'Initiative A',value:80,readiness:70,risk:30},{initiative:'Initiative B',value:65,readiness:92,risk:20}],
+'resource-capacity':[{role:'Analysts',capacity:80,assigned:96},{role:'Managers',capacity:90,assigned:65}],
+'board-decisions':[{decision:'Approve next planning stage',status:'open',owner:'Executive Office'},{decision:'Accept mitigation',status:'approved',owner:'Risk Office'}],
+'document-builder':[{title:'Project status sheet',reviewed:false,summary:'Example template'}],
+'benchmarking':[{peer:'Team A',metric:'Delivery score',value:78,unit:'%'},{peer:'Team B',metric:'Delivery score',value:88,unit:'%'}],
+'knowledge-lessons':[{title:'Escalate delays early',reviewed:true,source_ref:'synthetic:lesson-1',summary:'Example lessons only'}],
+'forecasting':[{period:'Q1',value:70},{period:'Q2',value:76},{period:'Q3',value:80}]
+};
+const toolList=el('toolList'),reportList=el('reportList');
+function displayTools(){toolList.innerHTML=OPERATIONS_TOOLS.map(t=>'<button data-id="'+esc(t.id)+'" aria-pressed="'+(t.id===toolId)+'"><strong>'+esc(t.name)+'</strong><br><small>'+esc(t.description)+'</small></button>').join('')}
+function displayReports(){reportList.innerHTML=REPORT_CATALOG.map(t=>'<button data-id="'+esc(t.id)+'" aria-pressed="'+(t.id===reportType)+'">'+esc(t.name)+'</button>').join('');el('reportTitle').textContent=REPORT_CATALOG.find(x=>x.id===reportType).name;el('reportSections').textContent='Sections: '+REPORT_CATALOG.find(x=>x.id===reportType).sections.join(' · ')}
+function sample(){el('rows').value=JSON.stringify(examples[toolId]||[],null,2);el('status').textContent='Loaded illustrative input. No external data connection.'}
+toolList.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(!b)return;toolId=b.dataset.id;displayTools();sample()});
+reportList.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(!b)return;reportType=b.dataset.id;displayReports()});
+el('sample').addEventListener('click',sample);
+const HKEY='theorg.operations.sample-history.v1';let history=[];try{history=JSON.parse(localStorage.getItem(HKEY)||'[]');if(!Array.isArray(history))history=[];history=history.filter(x=>x&&typeof x.tool==='string').slice(-30)}catch(e){history=[]}
+function showHistory(){el('history').innerHTML=history.slice().reverse().map(h=>'<tr><td>'+esc(h.tool)+'</td><td>'+esc(h.rows)+'</td><td>'+esc(h.time)+'</td><td>Not verified</td></tr>').join('')||'<tr><td colspan="4">No analyses yet</td></tr>'}
+function showMetrics(){const vals=Object.entries(current?.metrics||{}).slice(0,8);el('metrics').innerHTML=vals.map(([k,v])=>'<div class="metric"><strong>'+esc(typeof v==='object'?JSON.stringify(v):v??'—')+'</strong><small>'+esc(k.replaceAll('_',' '))+'</small></div>').join('')||'<div class="metric"><strong>—</strong><small>No metric values</small></div>';
+ const chart=current?.details||[];const nums=chart.map(x=>({label:x.name||x.risk||x.initiative||x.role||x.dimension||x.peer||x.project||x.period||x.title||'Record',value:[x.priority,x.progress,x.score,x.value,x.actual,x.likelihood,x.utilization_pct,x.late_days].find(v=>typeof v==='number'&&Number.isFinite(v))})).filter(x=>Number.isFinite(x.value)).slice(0,12);
+ const max=Math.max(1,...nums.map(x=>Math.abs(x.value)));
+ el('plot').innerHTML=nums.map(x=>'<div class="plot-row"><span>'+esc(x.label)+'</span><div class="track"><i style="width:'+Math.max(0,Math.min(100,Math.abs(x.value)/max*100))+'%"></i></div><b>'+esc(x.value)+'</b></div>').join('');
+ el('findings').textContent=(current?.recommendations?.length?current.recommendations.join(' • '):'No deterministic escalation found in supplied rows.')+' Source data and business outcomes are not independently verified.';
+}
+el('analyze').addEventListener('click',()=>{try{const rows=JSON.parse(el('rows').value);const result=analyzeOperations(toolId,{rows,horizon:Number(el('horizon').value)});current=result;showMetrics();el('analysisTitle').textContent=OPERATIONS_TOOLS.find(x=>x.id===toolId).name+' · '+result.input_count+' supplied rows';history.push({tool:toolId,rows:result.input_count,time:new Date().toISOString()});history=history.slice(-30);try{localStorage.setItem(HKEY,JSON.stringify(history))}catch(e){}showHistory();el('status').textContent='Analysis produced locally. No real AI invocation, approved execution or QA.'}catch(e){el('status').textContent='Cannot analyze: '+e.message}});
+function download(artifact){const blob=new Blob([artifact.content],{type:artifact.mime+';charset=utf-8'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=artifact.filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+function report(){if(!current)throw new Error('Analyze a tool dataset first');return buildReport({type:reportType,company:el('company').value,period:el('period').value,metrics:current.metrics,findings:current.details.map(x=>JSON.stringify(x)).slice(0,30),recommendations:current.recommendations,data_status:'caller-supplied'})}
+[['jsonExport','json'],['csvExport','csv'],['markdownExport','md'],['htmlExport','html']].forEach(([id,format])=>el(id).addEventListener('click',()=>{try{download(exportArtifact(report(),format));el('reportStatus').textContent='Exported draft '+format.toUpperCase()+'. Source and approval remain unverified.'}catch(e){el('reportStatus').textContent=e.message}}));
+displayTools();displayReports();sample();showHistory();
+</script></body></html>
