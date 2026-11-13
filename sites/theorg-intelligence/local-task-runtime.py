@@ -167,11 +167,16 @@ def dashboard(db,identity):
 def export_bundle(db, identity):
     """Owner-authorized local export; never a public synchronization endpoint."""
     tasks=list_tasks(db,identity)
-    events_rows=db.execute(
-        "SELECT id,task_id,actor,action,previous,current,at,evidence_digest "
-        "FROM events WHERE tenant=? AND company=? ORDER BY at,id LIMIT 500",
-        (identity["tenant"],identity["company"])
-    ).fetchall()
+    ids=[t["id"] for t in tasks]
+    if ids:
+        placeholders=",".join("?" for _ in ids)
+        events_rows=db.execute(
+            "SELECT id,task_id,actor,action,previous,current,at,evidence_digest "
+            "FROM events WHERE tenant=? AND company=? AND task_id IN ("+placeholders+") ORDER BY at,id LIMIT 500",
+            (identity["tenant"],identity["company"],*ids)
+        ).fetchall()
+    else:
+        events_rows=[]
     return {
         "schema_version":"theorg-local-bundle-1",
         "exported_at":now(),
