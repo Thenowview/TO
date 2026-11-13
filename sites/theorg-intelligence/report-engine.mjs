@@ -26,7 +26,7 @@ export function buildReport({type,title,company,period,metrics={},findings=[],re
  status:data_status,generated_at:new Date().toISOString(),classification:'internal-demo',sections:recipe.sections,
  metrics:Object.fromEntries(Object.entries(metrics).slice(0,60).map(([k,v])=>[str(k,80),v])),
  findings:list(findings).map(x=>str(x,600)),recommendations:list(recommendations).map(x=>str(x,600)),
- tasks:list(tasks).map(x=>({id:str(x.id||'',80),title:str(x.title||'',200),status:str(x.status||'unverified',40),verified:x.status==='accepted'&&x.qa?.verified===true})),
+ tasks:list(tasks).map(x=>({id:str(x.id||'',80),title:str(x.title||'',200),status:str(x.status||'unverified',40),verified:false})),
  evidence:list(evidence).map(x=>({ref:str(x.ref||'',180),digest:str(x.digest||'',100)})),
  approval:approval?{reviewer:str(approval.reviewer||'',100),authorized:approval.authorized===true}:null,
  warning:data_status==='verified'?null:'Draft report: supplied/sample inputs are not independently verified'};
