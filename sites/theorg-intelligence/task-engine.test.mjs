@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTask,transition,analyzeTask,runBoundedAnalysis,runApprovedOfflineTask,verifyTaskEvidence,acceptVerifiedTask} from './task-engine.mjs';
 import {TOOL_TEMPLATES} from './tool-platform.mjs';
-const tool={...TOOL_TEMPLATES[0],kind:'analysis',trigger:'manual'};
+const tool=TOOL_TEMPLATES.find(t=>t.id==='kpi-variance');
+const unsupported=TOOL_TEMPLATES.find(t=>t.id==='epmo-status');
 const scope={tenant_id:'tenantA',company_id:'companyA'};
 const mk=()=>createTask({...scope,title:'Analyze milestone execution',owner_id:'ownerA'},tool);
 const digest='sha256:'+'a'.repeat(64);
@@ -64,4 +65,10 @@ test('verified acceptance refuses modified outputs even with reviewer role',asyn
  const result=await runApprovedOfflineTask(approved,tool,{rows:[{name:'Progress',actual:83,target:90}]});
  result.results[0].output='fraudulent evidence';
  await assert.rejects(()=>acceptVerifiedTask(result,ctx('reviewer','reviewerB')));
+});
+
+test('non-implemented EPMO workflow is not falsely executed',async()=>{
+ const task=createTask({...scope,title:'Review milestone execution',owner_id:'ownerA'},unsupported);
+ const approved=transition(task,'approve',ctx('executive','ceo'));
+ await assert.rejects(()=>runApprovedOfflineTask(approved,unsupported,{rows:[{actual:80,target:90}]}),/unimplemented steps/);
 });
