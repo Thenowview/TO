@@ -7,7 +7,7 @@ import {validateLocalBundle,buildLocalTaskReport,createLocalReportFiles} from '.
 const valid=()=>({
  schema_version:'theorg-local-bundle-1',tenant:'tenantA',company:'companyA',source_provenance_verified:false,
  tasks:[{id:'id-1',title:'Review weekly project scorecard',status:'accepted',tool:'kpi-variance',
-          digest:'sha256:'+'a'.repeat(64),reviewer:'reviewerB'},
+          digest:'sha256:'+'a'.repeat(64),reviewer:'reviewerB',metric_summary:{mean_variance:-7,metrics_count:1,data_status:'caller-supplied'}},
         {id:'id-2',title:'Investigate late milestone',status:'awaiting-qa',tool:'kpi-variance',reviewer:null}],
  events:[{id:'ev-1',task_id:'id-1',actor:'reviewerB',action:'accept',previous:'awaiting-qa',current:'accepted'}]
 });
@@ -40,4 +40,19 @@ test('unsupported format refuses to write files',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'theorg-report-test-'));
  try{await assert.rejects(()=>createLocalReportFiles(valid(),folder,{types:['daily-brief'],formats:['xlsx']}))}
  finally{await rm(folder,{recursive:true,force:true})}
+});
+
+test('task-level KPI metric summaries stay unverified and yield report findings',()=>{
+ const r=buildLocalTaskReport(valid());
+ assert.equal(r.metrics.measured_local_analyses,1);
+ assert.equal(r.metrics.mean_supplied_kpi_variance,-7);
+ assert.match(r.findings.join(' '),/mean variance -7 points/);
+ assert.equal(r.metrics.verified_business_sources,0);
+});
+test('reject fabricated local numeric measurements without counting them',()=>{
+ const b=valid();
+ b.tasks[0].metric_summary={mean_variance:'high',metrics_count:1};
+ const report=buildLocalTaskReport(b);
+ assert.equal(report.metrics.measured_local_analyses,0);
+ assert.equal(report.metrics.mean_supplied_kpi_variance,null);
 });
