@@ -28,6 +28,8 @@ jobs:
         run: node --test sites/theorg-intelligence/tool-platform.test.mjs
       - name: Task engine and evidence integration tests
         run: node --test sites/theorg-intelligence/task-engine.test.mjs
+      - name: Operations suite analytics and reporting regression
+        run: node --test sites/theorg-intelligence/operations-suite.test.mjs
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
