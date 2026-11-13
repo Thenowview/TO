@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {analyzeMetric,nextStatus,validateScope,validateObjective} from './intelligence-rules.mjs';
+import gateway from './enterprise-gateway.mjs';
+const valid={actual:83,target:90,lower_is_better:false};
+test('higher-is-better gap is deterministic',()=>assert.deepEqual(analyzeMetric(valid),{actual:83,target:90,gap:7,meets_target:false,direction:'higher_is_better',recommended_action:'request_owner_evidence'}));
+test('lower-is-better threshold and direction',()=>assert.equal(analyzeMetric({actual:14,target:15,lower_is_better:1}).meets_target,true));
+test('negative, NaN and impossible KPI values rejected',()=>{for(const actual of [NaN,-1,101])assert.throws(()=>analyzeMetric({...valid,actual}))});
+test('scope validation blocks traversal and missing company',()=>{for(const company of ['','../secret','a/b'])assert.throws(()=>validateScope('company',company));assert.deepEqual(validateScope('tenant_1','co_2'),{tenant_id:'tenant_1',company_id:'co_2'})});
+test('objective length bounds',()=>{assert.throws(()=>validateObjective('hello'));assert.equal(validateObjective('  Inspect delays  '),'Inspect delays')});
+test('executive approval required',()=>{assert.equal(nextStatus('proposed','approve','executive','alice','bob'), 'approved');assert.throws(()=>nextStatus('proposed','approve','analyst','alice','bob'))});
+test('reviewer independent and evidence required',()=>{const digest='sha256:'+'a'.repeat(64);assert.throws(()=>nextStatus('approved','review','reviewer','alice','alice',digest));assert.throws(()=>nextStatus('approved','review','reviewer','alice','bob','not-proof'));assert.equal(nextStatus('approved','review','reviewer','alice','bob',digest),'qa-reviewed')});
+test('closing requires evidence and executive',()=>{const digest='sha256:'+'a'.repeat(64);assert.throws(()=>nextStatus('qa-reviewed','close','executive','alice','alice'));assert.equal(nextStatus('qa-reviewed','close','executive','alice','alice',digest),'closed')});
+test('no automatic QA/approval shortcut',()=>{assert.throws(()=>nextStatus('proposed','close','executive','alice','bob','sha256:'+'a'.repeat(64)));assert.throws(()=>nextStatus('closed','approve','executive','alice','bob'))});
+test('gateway fail-closed until configuration provisioned',async()=>{const r=await gateway.fetch(new Request('https://example.org/api/v1/kpis?tenant=t&company=c'),{});assert.equal(r.status,503);const data=await r.json();assert.match(data.error,/not configured/)});
+test('health explicitly states disabled execution',async()=>{const r=await gateway.fetch(new Request('https://example.org/api/health'),{});const data=await r.json();assert.equal(data.execution_enabled,false);assert.equal(data.access_configured,false)});
+test('JWT missing rejected before any DB lookup',async()=>{const db={prepare(){throw new Error('database must not be read before auth')}};const r=await gateway.fetch(new Request('https://example.org/api/v1/kpis?tenant=t&company=c'),{DB:db,ACCESS_AUD:'some-long-enough-audience',ACCESS_TEAM_DOMAIN:'demo.cloudflareaccess.com'});assert.equal(r.status,401)});
