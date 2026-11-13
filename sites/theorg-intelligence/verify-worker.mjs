@@ -1,12 +1,15 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { Script } from 'node:vm';
 const source=readFileSync(new URL('./dist/worker.mjs',import.meta.url),'utf8');
-assert.match(source,/connected_agent_runtime: false/);
-assert.match(source,/epmo_connected: false/);
-assert.match(source,/connect-src 'none'/);
-assert.match(source,/frame-ancestors 'none'/);
-assert.match(source,/x-content-type-options/);
-assert.match(source,/pathname !== '\/'/);
-assert.match(source,/pathname === '\/api\/health'/);
-assert.doesNotMatch(source,/https?:\/\/[^\s\"']+theepmo\.com/i);
-console.log('Standalone Worker build contract: PASS');
+new Script(source.replace('export default {','const worker = {'),{filename:'worker.mjs'});
+for(const literal of [
+ "connected_agent_runtime: false", "epmo_connected: false",
+ "connect-src 'none'", "frame-ancestors 'none'", "x-content-type-options",
+ "/api/health", "/operations", "/assets/operations-analytics.mjs",
+ "/assets/report-engine.mjs", "script-src 'self'"
+])assert.ok(source.includes(literal),'Missing Worker contract '+literal);
+assert.ok(source.includes("url.pathname === '/'"),'Worker homepage route missing');
+assert.ok(source.includes("request.method!=='GET'&&request.method!=='HEAD'"),'Only safe HTTP methods allowed');
+assert.doesNotMatch(source,/https?:\/\/[^\s"']+theepmo\.com/i);
+console.log('Standalone multi-route Worker contract: PASS');
