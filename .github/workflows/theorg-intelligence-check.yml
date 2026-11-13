@@ -22,6 +22,8 @@ jobs:
           node-version: '22'
       - name: Standalone website syntax and boundaries
         run: node sites/theorg-intelligence/verify.mjs
+      - name: Enterprise rules and gateway security tests
+        run: node --test sites/theorg-intelligence/enterprise.test.mjs
       - name: Generate reproducible Cloudflare Worker
         run: |
           node sites/theorg-intelligence/build-worker.mjs
