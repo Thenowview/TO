@@ -7,12 +7,17 @@ const home=read('index.html');
 const operations=read('operations.html');
 const analytics=read('operations-analytics.mjs');
 const reporting=read('report-engine.mjs');
+const marketplace=read('marketplace.html');
+const commercial=read('commercial-tools.mjs');
 if(!home.includes('Synthetic data')||!home.includes('No connection to THEEPMO systems'))throw new Error('Unsafe or unlabeled dashboard payload');
 if(!operations.includes('No THEEPMO backend integration'))throw new Error('Unsafe operations payload');
+if(!marketplace.includes('payments, accounts and live AI are not yet enabled'))throw new Error('Commercial preview must be clearly non-transactional');
 const code=`const home=${JSON.stringify(home)};
 const operations=${JSON.stringify(operations)};
 const analytics=${JSON.stringify(analytics)};
 const reporting=${JSON.stringify(reporting)};
+const marketplace=${JSON.stringify(marketplace)};
+const commercial=${JSON.stringify(commercial)};
 const csp="default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
 const headers=(mime)=>({'content-type':mime,'x-content-type-options':'nosniff','referrer-policy':'no-referrer','content-security-policy':csp,'cache-control':'public, max-age=120'});
 export default {
@@ -23,6 +28,8 @@ export default {
   let body,mime;
   if(url.pathname === '/' || url.pathname === '/index.html'){body=home;mime='text/html; charset=utf-8';}
   else if(url.pathname === '/operations' || url.pathname === '/operations.html'){body=operations;mime='text/html; charset=utf-8';}
+  else if(url.pathname === '/marketplace' || url.pathname === '/marketplace.html' || url.pathname === '/quick-wins' || url.pathname === '/reports'){body=marketplace;mime='text/html; charset=utf-8';}
+  else if(url.pathname === '/assets/commercial-tools.mjs'){body=commercial;mime='text/javascript; charset=utf-8';}
   else if(url.pathname === '/assets/operations-analytics.mjs'){body=analytics;mime='text/javascript; charset=utf-8';}
   else if(url.pathname === '/assets/report-engine.mjs'){body=reporting;mime='text/javascript; charset=utf-8';}
   else return new Response('Not Found',{status:404,headers:{'content-type':'text/plain; charset=utf-8'}});
@@ -33,4 +40,4 @@ export default {
 const target=join(root,'dist','worker.mjs');
 mkdirSync(dirname(target),{recursive:true});
 writeFileSync(target,code,'utf8');
-console.log('Generated isolated TheOrg Worker:',target,'with executive home, operations suite and two first-party modules');
+console.log('Generated isolated TheOrg Worker:',target,'with executive home, commercial marketplace, operations suite and first-party modules');
