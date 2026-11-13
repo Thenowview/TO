@@ -64,3 +64,10 @@ The source test suite is **not** proof of a functioning Windows executable or re
 5. A missing local model, Windows runner, Docker image or passing independent test means **NOT VERIFIED**, not a simulated pass.
 
 The Windows CI pipeline cannot prove coding-model quality when model weights are unavailable. The real-model acceptance report must be retained separately before any parity rating is increased. No source or artifact should be deployed or merged merely because source tests pass.
+
+
+## Website integrations and source acceptance (2026-11-13)
+
+The Settings panel shows an authenticated, **read-only integration catalogue** and current release limits. `GET /api/website/integrations` does not contact GitHub, Google, Cloudflare or The Org API and does not claim any account is connected. The third-party `theorg.com` service is **not this project**. A public static page must never include a local API token or directly proxy private workspace endpoints.
+
+Run `RUN-BULK-SOURCE-CHECKS.cmd` (Windows, with Python/Node available) or `python scripts/run_bulk_source_checks.py --report <local-json-path>` for a no-download source acceptance report. Portable Windows builds now write an EXE-hash-bound smoke receipt only after successful actual checks and call `scripts/check_release.py` for independent validation. A passing source test or Android contract is **not** a Windows/Android release. See `docs/BULK_WEBSITE_INTEGRATION_AND_RELEASE_2026-11-13.md` at the repository root.
