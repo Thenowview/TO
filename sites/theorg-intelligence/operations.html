@@ -44,7 +44,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <label>Select TheOrg local export JSON (maximum 1 MB)<input id="localBundleFile" type="file" accept=".json,application/json"></label>
 <p id="localBundleStatus" role="status" aria-live="polite">No local task export selected. The public preview cannot connect to your PC.</p>
 <div class="grid" id="localBundleMetrics"><div class="metric"><strong>—</strong><small>Imported task records</small></div></div>
-<div class="tablewrap section"><table><thead><tr><th>Task</th><th>Tool</th><th>State</th><th>Reviewer claim</th></tr></thead><tbody id="localBundleRows"><tr><td colspan="4">Nothing imported</td></tr></tbody></table></div>
+<div class="tablewrap section"><table><thead><tr><th>Task</th><th>Tool</th><th>State</th><th>KPI mean gap</th><th>Reviewer claim</th></tr></thead><tbody id="localBundleRows"><tr><td colspan="5">Nothing imported</td></tr></tbody></table></div>
 <p class="notice">Imported status, reviewer, and digest values are not cryptographically authenticated in this browser. Acceptance here is a local claim, not independently verified source evidence or permission to publish.</p></section>
 <footer class="foot">THEORG only · No THEEPMO backend integration · No external AI inference · No live customer data · Reports are drafts until separately reviewed and signed</footer>
 </div>
@@ -76,7 +76,7 @@ toolList.addEventListener('click',e=>{const b=e.target.closest('button[data-id]'
 reportList.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(!b)return;reportType=b.dataset.id;displayReports()});
 el('sample').addEventListener('click',sample);
 const HKEY='theorg.operations.sample-history.v1';let history=[];try{history=JSON.parse(localStorage.getItem(HKEY)||'[]');if(!Array.isArray(history))history=[];history=history.filter(x=>x&&typeof x.tool==='string').slice(-30)}catch(e){history=[]}
-function showHistory(){el('history').innerHTML=history.slice().reverse().map(h=>'<tr><td>'+esc(h.tool)+'</td><td>'+esc(h.rows)+'</td><td>'+esc(h.time)+'</td><td>Not verified</td></tr>').join('')||'<tr><td colspan="4">No analyses yet</td></tr>'}
+function showHistory(){el('history').innerHTML=history.slice().reverse().map(h=>'<tr><td>'+esc(h.tool)+'</td><td>'+esc(h.rows)+'</td><td>'+esc(h.time)+'</td><td>Not verified</td></tr>').join('')||'<tr><td colspan="5">No analyses yet</td></tr>'}
 function showMetrics(){const vals=Object.entries(current?.metrics||{}).slice(0,8);el('metrics').innerHTML=vals.map(([k,v])=>'<div class="metric"><strong>'+esc(typeof v==='object'?JSON.stringify(v):v??'—')+'</strong><small>'+esc(k.replaceAll('_',' '))+'</small></div>').join('')||'<div class="metric"><strong>—</strong><small>No metric values</small></div>';
  const chart=current?.details||[];const nums=chart.map(x=>({label:x.name||x.risk||x.initiative||x.role||x.dimension||x.peer||x.project||x.period||x.title||'Record',value:[x.priority,x.progress,x.score,x.value,x.actual,x.likelihood,x.utilization_pct,x.late_days].find(v=>typeof v==='number'&&Number.isFinite(v))})).filter(x=>Number.isFinite(x.value)).slice(0,12);
  const max=Math.max(1,...nums.map(x=>Math.abs(x.value)));
@@ -102,9 +102,9 @@ function validateImportedBundle(bundle){
 }
 function renderImportedBundle(bundle){
  const tasks=bundle.tasks,claims=tasks.filter(t=>t.status==='accepted'&&typeof t.reviewer==='string'&&t.reviewer.length>0&&typeof t.digest==='string').length;
- const counters=[['Task records',tasks.length],['Claimed local acceptances',claims],['Awaiting QA',tasks.filter(t=>t.status==='awaiting-qa').length],['Verified business sources',0]];
+ const variances=tasks.map(t=>t.metric_summary?.mean_variance).filter(v=>typeof v==='number'&&Number.isFinite(v)&&v>=-100&&v<=100);const mean=variances.length?Math.round(variances.reduce((a,b)=>a+b,0)/variances.length*100)/100:null;const counters=[['Task records',tasks.length],['Claimed local acceptances',claims],['Awaiting QA',tasks.filter(t=>t.status==='awaiting-qa').length],['Verified business sources',0],['Measured tasks',variances.length],['Mean supplied variance',mean===null?'—':mean+' pts']];
  el('localBundleMetrics').innerHTML=counters.map(([label,n])=>'<div class="metric"><strong>'+esc(n)+'</strong><small>'+esc(label)+'</small></div>').join('');
- el('localBundleRows').innerHTML=tasks.slice(0,100).map(t=>'<tr><td>'+esc(t.title)+'</td><td>'+esc(t.tool)+'</td><td>'+esc(t.status)+'</td><td>'+esc(t.reviewer||'None')+'</td></tr>').join('')||'<tr><td colspan="4">No tasks in export</td></tr>';
+ el('localBundleRows').innerHTML=tasks.slice(0,100).map(t=>'<tr><td>'+esc(t.title)+'</td><td>'+esc(t.tool)+'</td><td>'+esc(t.status)+'</td><td>'+esc(typeof t.metric_summary?.mean_variance==='number'&&Number.isFinite(t.metric_summary.mean_variance)?t.metric_summary.mean_variance+' pts':'Unknown')+'</td><td>'+esc(t.reviewer||'None')+'</td></tr>').join('')||'<tr><td colspan="5">No tasks in export</td></tr>';
  el('localBundleStatus').textContent='Imported '+tasks.length+' task records for '+bundle.company+' / '+bundle.tenant+'. Data remains in this browser session. No underlying business evidence has been verified.';
 }
 el('localBundleFile').addEventListener('change',async()=>{
