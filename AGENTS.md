@@ -17,3 +17,7 @@ Read [Orgaiz brand and repository architecture](docs/BRAND_ARCHITECTURE.md) befo
 - Managed access requires platform-issued tokens, strict quotas, cost hard stops, and separate provider credentials; never share upstream provider keys.
 - Treat `.gaiz` encryption as a proposed feature pending security review and test evidence.
 - Documentation-only work cannot change CI, DNS, Cloudflare routing, database/RLS, production user data, paid services, repo names or deployments. Use reviewable PRs and synthetic data; release requires separate authorization.
+
+## Modern Web Guidance — Orgaiz browser and extension surfaces
+
+Before modifying the Chrome MV3 Supervisor HTML/CSS/side panel/extension UI or browser-facing JavaScript, consult [the repo-local Modern Web Guidance skill](.agents/skills/modern-web-guidance/SKILL.md). Respect Chrome Manifest V3, strict extension Content Security Policy, least privilege and existing Native Messaging consent. Never fetch or execute remote JavaScript in the extension, and never assume that optional browser built-in AI APIs are installed or permitted. Keep existing local Windows bridge/SQLite functionality and distinguish current legacy names from future Orgaiz branding. Do not apply the guide to native .NET backend, installer, repo automation or SQL-only changes. The upstream CLI is not installed or run automatically.
