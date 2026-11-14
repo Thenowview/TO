@@ -1,4 +1,15 @@
-# TheOrg — Chrome-native AI operating workspace
+# Orgaiz — AI operating workspace (legacy TO codebase)
+
+> **Approved brand direction (14 Nov 2026):** Orgaiz is the public/master brand and will replace "TheOrg" in customer-facing naming. THEEPMO remains Orgaiz's authenticated enterprise governance product. The architecture has **two customer-facing web experiences only**: Orgaiz public/tools and the THEEPMO app. Do not create a separate TheOrg website. The official planned encrypted-file extension is **`.gaiz`**.
+>
+> **Repository status:** This repository is still named `TO` and contains legacy TheOrg Chrome/Windows local-first code. Old product/build/file names below are historical technical references until migrated; they are **not** approval to deploy or rename automatically.
+>
+> **Authoritative implementation rules:** [AGENTS.md](AGENTS.md) · [Brand architecture and safe migration plan](docs/BRAND_ARCHITECTURE.md). The existing marketing source is [TEFE](https://github.com/2029TEFE/TEFE), while the authenticated THEEPMO application/backend is [TEBE](https://github.com/2029TEBE/TEBE).
+
+---
+
+## Existing technical and deployment notes (legacy names preserved)
+
 
 **Status:** Developer-preview source merged to `main`; Windows installer and bridge have passed automated CI checks. This is **not** a production release or a verified owner-PC installation. Legacy source migration and live provider automation remain incomplete.
 
