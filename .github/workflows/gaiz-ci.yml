@@ -1,0 +1,29 @@
+name: GAIZ interoperability candidate tests
+on:
+  pull_request:
+    paths:
+      - 'gaiz/**'
+      - 'engine/bridge/ArtifactInspection.cs'
+      - 'engine/bridge/ArtifactStore.cs'
+      - '.github/workflows/gaiz-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  node-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate reference JS
+        run: |
+          node --check gaiz/core.mjs
+          node --check gaiz/v2.mjs
+          node --check gaiz/cli.mjs
+          node --test gaiz/test.mjs gaiz/v2.test.mjs
+      - name: No committed private key material in GAIZ tree
+        run: |
+          if grep -r -l -E --include='*.mjs' --include='*.md' -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----' gaiz/; then exit 1; fi
