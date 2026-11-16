@@ -1,0 +1,21 @@
+{
+  "profile": "GAIZ2-development",
+  "issuerTrust": "synthetic-fixture-only",
+  "sha256": "14e8a1f6ccc4dd0cf021dfd78a6d03f43f4124ea7854767b1052bcc6c01b5aef",
+  "size": 1123,
+  "manifest": {
+    "version": 2,
+    "schemaVersion": 1,
+    "artifactId": "synthetic-fixed-01",
+    "issuerId": "fixture-issuer",
+    "tenantScope": "synthetic-tenant",
+    "contentType": "application/vnd.orgaiz.report+json",
+    "createdAt": "2026-11-16T00:00:00.000Z"
+  },
+  "expected": {
+    "signatureVerified": true,
+    "authorizationGranted": false,
+    "importAllowed": false
+  },
+  "reportDescription": "Synthetic JSON report; recipient private key not distributed"
+}
