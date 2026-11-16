@@ -20,17 +20,30 @@ function assertId(s) {
   if(typeof s !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(s)) throw Error('Invalid identifier');
   return s;
 }
+function validUnicode(s) {
+  // Reject unpaired UTF-16 surrogates rather than silently replacing them on UTF-8 output.
+  for (let i=0;i<s.length;i++) {
+    const u=s.charCodeAt(i);
+    if(u>=0xD800 && u<=0xDBFF) {
+      const next=s.charCodeAt(++i);
+      if(!(next>=0xDC00 && next<=0xDFFF)) throw Error('Unpaired Unicode surrogate');
+    } else if(u>=0xDC00 && u<=0xDFFF) throw Error('Unpaired Unicode surrogate');
+  }
+  return s;
+}
 function canonical(v, depth = 0) {
   if(depth > MAX_DEPTH) throw Error('JSON depth limit');
-  if(v === null || typeof v === 'boolean' || typeof v === 'string') return JSON.stringify(v);
-  if(typeof v === 'number' && Number.isSafeInteger(v)) return JSON.stringify(v);
+  if(v === null || typeof v === 'boolean') return JSON.stringify(v);
+  if(typeof v === 'string') return JSON.stringify(validUnicode(v));
+  if(typeof v === 'number' && Number.isSafeInteger(v) && !Object.is(v,-0)) return JSON.stringify(v);
   if(Array.isArray(v)) {
     if(v.length > MAX_KEYS) throw Error('JSON array limit');
     return '[' + v.map(x => canonical(x,depth+1)).join(',') + ']';
   }
   if(v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
     const ks = Object.keys(v);
-    if(ks.length > MAX_KEYS || ks.includes('__proto__') || ks.includes('constructor') || ks.includes('prototype')) throw Error('JSON object keys rejected');
+    if(ks.length > MAX_KEYS || ks.some(k => ['__proto__','constructor','prototype'].includes(k))) throw Error('JSON object keys rejected');
+    ks.forEach(validUnicode);
     return '{' + ks.sort().map(k => JSON.stringify(k)+':'+canonical(v[k],depth+1)).join(',') + '}';
   }
   throw Error('Unsupported JSON value');
@@ -42,7 +55,8 @@ function validateManifest(m) {
   exact(m,['artifactId','contentType','createdAt','issuerId','schemaVersion','tenantScope','version']);
   if(m.version !== 2 || m.schemaVersion !== 1 || m.contentType !== 'application/vnd.orgaiz.report+json') throw Error('Unsupported GAIZ version/schema');
   for(const k of ['artifactId','issuerId','tenantScope']) assertId(m[k]);
-  if(typeof m.createdAt !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(m.createdAt) || !Number.isFinite(Date.parse(m.createdAt))) throw Error('Invalid creation time');
+  if(typeof m.createdAt !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(m.createdAt) ||
+    !Number.isFinite(Date.parse(m.createdAt)) || new Date(m.createdAt).toISOString() !== m.createdAt) throw Error('Invalid creation time');
 }
 const wrapping = {padding:constants.RSA_PKCS1_OAEP_PADDING,oaepHash:'sha256'};
 function unsigned(doc) { return {ciphertext:doc.ciphertext,manifest:doc.manifest,nonce:doc.nonce,recipients:doc.recipients,tag:doc.tag}; }
@@ -51,6 +65,8 @@ function parse(input) {
   const bytes=Buffer.from(input);
   if(bytes.length > MAX || bytes.length < MAGIC.length || !bytes.subarray(0,MAGIC.length).equals(enc(MAGIC))) throw Error('Invalid GAIZ2 header/size');
   const body=new TextDecoder('utf-8',{fatal:true}).decode(bytes.subarray(MAGIC.length));
+  // Parse only within the input-size bound, then demand exact canonical byte equality.
+  // This also rejects duplicate JSON keys, extraneous whitespace, and alternate number forms.
   const doc=JSON.parse(body);
   if(canonical(doc) !== body) throw Error('Noncanonical GAIZ2 envelope');
   exact(doc,['ciphertext','manifest','nonce','recipients','signature','tag']);
@@ -84,7 +100,7 @@ export function createGaiz2({report, manifest, recipients, issuerPrivateKey}) {
       const pub=r.publicKey?.type === 'public' ? r.publicKey : createPublicKey(r.publicKey);
       if(pub.asymmetricKeyType !== 'rsa' || pub.asymmetricKeyDetails?.modulusLength < 3072) throw Error('RSA-3072+ recipient key required');
       return {keyId:r.keyId,wrappedKey:b64(publicEncrypt({...wrapping,key:pub},dek))};
-    }).sort((a,b)=>a.keyId.localeCompare(b.keyId,'en'));
+    }).sort((a,b)=>a.keyId < b.keyId ? -1 : a.keyId > b.keyId ? 1 : 0);
     const cipher=createCipheriv('aes-256-gcm',dek,nonce);
     cipher.setAAD(enc(canonical(manifest)));
     const ciphertext=Buffer.concat([cipher.update(plaintext),cipher.final()]);
