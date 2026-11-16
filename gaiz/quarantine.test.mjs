@@ -23,5 +23,5 @@ test('rejects active markup, links, controls, bidi, unknown fields, over-limit',
   {...good,summary:'A'.repeat(4001)}
  ];
  for(const report of rejected)assert.throws(()=>quarantineGovernanceReport(report));
- assert.throws(()=>quarantineGovernanceReport(good,{maxBytes:256}));
+ assert.throws(()=>quarantineGovernanceReport({...good,summary:'A'.repeat(350)},{maxBytes:256}));
 });
