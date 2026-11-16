@@ -28,7 +28,7 @@ internal static class ArtifactInspection
                         byte[] header = new byte[6];
                         stream.ReadExactly(header);
                         string magic = Encoding.ASCII.GetString(header);
-                        if (magic != "GAIZ1\\n" && magic != "GAIZ2\\n")
+                        if (magic != "GAIZ1\n" && magic != "GAIZ2\n")
                             return new(false, "gaiz_magic_invalid");
                         // A recognized envelope is still untrusted; never auto-approve.
                         return new(true, "gaiz_envelope_unverified_signature");
