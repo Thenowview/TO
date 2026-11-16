@@ -21,7 +21,7 @@ internal sealed class ArtifactStore
     {
         ".txt", ".md", ".json", ".csv", ".py", ".js", ".ts", ".css",
         ".html", ".xml", ".pdf", ".docx", ".xlsx", ".pptx",
-        ".png", ".jpg", ".jpeg", ".webp", ".zip"
+        ".png", ".jpg", ".jpeg", ".webp", ".zip", ".gaiz"
     };
     private readonly string _root;
     private static readonly JsonSerializerOptions JsonOptions = new()
