@@ -30,8 +30,25 @@ internal static class ArtifactInspection
                         string magic = Encoding.ASCII.GetString(header);
                         if (magic != "GAIZ1\n" && magic != "GAIZ2\n")
                             return new(false, "gaiz_magic_invalid");
-                        // A recognized envelope is still untrusted; never auto-approve.
-                        return new(true, "gaiz_envelope_unverified_signature");
+                        // Minimal bounded JSON-shape check only; cryptographic verification
+                        // MUST be performed by a separately trusted GAIZ verifier.
+                        using var envelope = JsonDocument.Parse(stream, new JsonDocumentOptions
+                        {
+                            MaxDepth = 24,
+                            AllowTrailingCommas = false,
+                            CommentHandling = JsonCommentHandling.Disallow
+                        });
+                        var root = envelope.RootElement;
+                        if (root.ValueKind != JsonValueKind.Object ||
+                            !root.TryGetProperty("manifest", out var manifest) ||
+                            manifest.ValueKind != JsonValueKind.Object ||
+                            !root.TryGetProperty("signature", out var signature) ||
+                            signature.ValueKind != JsonValueKind.String ||
+                            !root.TryGetProperty("ciphertext", out var ciphertext) ||
+                            ciphertext.ValueKind != JsonValueKind.String)
+                            return new(false, "gaiz_envelope_shape_invalid");
+                        // Preserve the untrusted status: format checks do not approve content.
+                        return new(true, "gaiz_structure_only_unverified_signature");
                     }
                 case ".png":
                     using (var stream = File.OpenRead(path))
