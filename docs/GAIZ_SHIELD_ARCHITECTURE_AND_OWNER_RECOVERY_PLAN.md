@@ -240,3 +240,42 @@ Cloudflare Free quota exhaustion must never expose plaintext, silently bypass a 
 3. Only implement offline public-key license verification and local report viewer after compatibility review; no connection to central escrow keys from local agents. AI tools cannot approve recovery actions.
 4. All advanced recovery is controlled by a separate online owner console with independent factor/escrow. Local offline app may export an authenticated support request but must never hold a universal recovery private key.
 5. Keep unsigned preview installer, agent gateway and model validation at existing NO-GO until actual Windows Chrome/bridge and device tests pass.
+
+
+## Cross-repository GAIZ v1 engineering handoff — November 16, 2026
+
+Related engineering draft:
+https://github.com/2029TEBE/TEBE/pull/507
+and TEFE presentation contract:
+https://github.com/2029TEFE/TEFE/pull/41
+
+### Protocol owner deliverable before activation
+
+TO must freeze and publish a GAIZ1 interoperability contract, including:
+
+- Exact canonical signed-byte serialization and Unicode/duplicate-key rules.
+- Ed25519 issuer key IDs, authenticity/rotation/revocation semantics, trust
+  anchor and key selection rules (from trusted backend policy).
+- AES-256-GCM nonce/tag/AAD, actual recipient DEK wrapping and key-custody
+  responsibilities. Never embed raw persistent production DEKs in fixtures.
+- Versioned structured governance report schema. The current TO example
+  `{report,value}` differs from TEBE's strict proposal
+  `{schemaVersion,title,summary}`; these are **not interchangeable**.
+- Signed positive/negative conformance vectors with bytes, expected results,
+  tenant scope, malformed/duplicate-key/ciphertext-tamper cases and expiry.
+- Explicit backward-incompatible version rejection and a policy for retired
+  issuers; no silent conversion of untrusted artifacts.
+
+### Current delivery boundary
+
+TEBE contains disconnected signed-assignment validation, a proposed one-time
+database claim, tenant-bound job/receipt schema and draft-import transaction
+candidates. It **does not have** a deployed trusted worker, approved migration,
+production key custody, operational imports, or passing end-to-end acceptance.
+TEFE remains a public-facing documentation/marketing surface only.
+
+Implementation may proceed in draft branches while GitHub Actions startup is
+blocked, but a security-sensitive live release still requires reviewed issuer
+policy, independent worker identity, PostgreSQL isolation/replay evidence,
+normal CI, human approver and independent security signoff. This handoff
+does not authorize merge or deployment.
