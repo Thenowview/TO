@@ -4,7 +4,7 @@
 import {readFileSync} from 'node:fs';
 import {createPrivateKey,createPublicKey} from 'node:crypto';
 import {inspectWithinLocalCustody} from './local-custodian.mjs';
-const deny=()=>{process.send?.({kind:'failed'});process.exitCode=1;};
+const deny=()=>{process.send?.({kind:'failed'},()=>process.exit(1));};
 if(process.env.NODE_ENV!=='development'||process.env.GAIZ_LOCAL_CUSTODY_TEST!=='true'||!process.send)
  throw Error('Isolated local custody worker unavailable');
 let active=false,sequence=0,resolveAudit;
@@ -35,10 +35,8 @@ process.on('message',async message=>{
   const result=await inspectWithinLocalCustody(bytes,{
    customerPrivateKey,trustedIssuerPublicKey,request:message.request,audit
   });
-  process.send({kind:'result',receipt:result});
+  process.send({kind:'result',receipt:result},()=>process.exit(0));
  }catch{
   deny();
- }finally{
-  setImmediate(()=>process.exit());
  }
 });
