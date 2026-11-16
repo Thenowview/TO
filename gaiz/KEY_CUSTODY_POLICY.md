@@ -67,3 +67,9 @@ The operation:
 The wire signature has explicit domain separation `GAIZ2-CUSTODY-RECEIPT\\n` and exact canonicalized field ordering. This draft attestation is **not** a production PKI or issuer registry. Never reuse the GAIZ issuer signing key as the custodian attestation key. The signing helper is intentionally separate from the in-memory local decryption proof of concept; it does not imply that the customer decryption process has a secure attestation key.
 
 TEBE now contains an independent `gaiz-custody-attestation.mjs` verifier with wrong tenant, forged digest, wrong signer and stale receipt tests. No API endpoint consumes these attestation records; a signed receipt does **not** activate import or write permission. Production implementation must reject replay durably, authenticate the custodian machine, ensure a consented purpose, establish trusted key rotation and record a durable audit trail.
+
+## Bulk hardening — quarantine gate
+
+The local custodian now calls the independent `gaiz/quarantine.mjs` gate **after authenticated decryption and before emitting a validation receipt**. It rejects active HTML/XML tags, script-like URL schemes, external links, bidirectional override controls, C0/C1 controls, unsupported schema fields and content over the 64 KiB gate. It computes a deterministic report SHA-256 for the current canonical JSON subset. This does not remove the need for malware inspection or true process isolation.
+
+`gaiz/quarantine.test.mjs` and `gaiz/local-custodian.test.mjs` cover normal Arabic/Unicode reports and a *validly signed but unsafe* report. Invalid reports must not receive the success audit event. The gate does not return plaintext and does not authorize imports.
