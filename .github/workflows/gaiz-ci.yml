@@ -23,7 +23,7 @@ jobs:
           node --check gaiz/core.mjs
           node --check gaiz/v2.mjs
           node --check gaiz/cli.mjs
-          node --test gaiz/test.mjs gaiz/v2.test.mjs
+          node --test gaiz/*.test.mjs gaiz/conformance/*.test.mjs
       - name: Generate synthetic interoperability evidence (no private keys persisted)
         run: |
           node --check gaiz/generate-interop-evidence.mjs

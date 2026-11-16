@@ -1,0 +1,25 @@
+{
+  "format": "GAIZ2",
+  "fixtureId": "fixed-synthetic-interop-01",
+  "sha256": "13dbf4f7fb45639190519b712c750b06197671c45903ebfc05b659054ac63d90",
+  "artifactBase64": "R0FJWjIKeyJjaXBoZXJ0ZXh0IjoiTDZpTDg3YjhXQS1YVUUtWHEtSV9pWTlqd3NhMjlUc2JxUmhHNDIxYmFBeDhmRVl6MlpWWkxlVExrZ1RWOE42NmhMQWtGUlo1QTd0bXpKcnNPdFJvejZ4eE5nZjBOWkxaMlU4OXpWRHFTQXp6alg3cGlCd2UyVThZWWZrbHh6VHJGeUMyUmxNcThwckNsWTQyZGtIeHVYYWUiLCJtYW5pZmVzdCI6eyJhcnRpZmFjdElkIjoiZml4ZWQtc3ludGhldGljLWludGVyb3AtMDEiLCJjb250ZW50VHlwZSI6ImFwcGxpY2F0aW9uL3ZuZC5vcmdhaXoucmVwb3J0K2pzb24iLCJjcmVhdGVkQXQiOiIyMDI2LTExLTE2VDAwOjAwOjAwLjAwMFoiLCJpc3N1ZXJJZCI6ImZpeHR1cmUtaXNzdWVyIiwic2NoZW1hVmVyc2lvbiI6MSwidGVuYW50U2NvcGUiOiJzeW50aGV0aWMtZml4dHVyZS10ZW5hbnQiLCJ2ZXJzaW9uIjoyfSwibm9uY2UiOiJma281REFaNDZNU2hZWi1DIiwicmVjaXBpZW50cyI6W3sia2V5SWQiOiJmaXh0dXJlLXJlY2lwaWVudCIsIndyYXBwZWRLZXkiOiJSUHRfTDU5ZHJRSGZRa19yRjhjM0dINjJGZHpOWjZjNkwxcTl1dmp3aFZCWk00WjlUZUI1R0YtTjdud3RoZDBuRGRMUkhkUGtGX1Fhb2JyUVlpS3p1N1pRSGZpY3FoLW54SjNGa3ZscnltUVVlU3VJTW9vOEZTZlI2a19XTHRaZC1YNHllWFJHYWdOa2t4eVhIQTJ2cTFuZUVtR1FudU16MXVwOGhvVklGa2ZrUnVBSHFUUTV6Mlo3NFZienFicE9WelBnNmZzLXRJRWxMcVJjWkJMelJFdWNQbmI3eWN3LXh5V2loVkNWWDNKNVcxaXgzUVowelAzWHhjUTU0bHVIVVc5eG9wRWtkcG1zdkZkellPUXgxUGhxaXl3aXIzSXdzc2JHbmZ3NGJyUFpyQmlyWGVJTFNhX1l5aEVjVmhMNGZiN0tZcVBMc2JsMFJELTNhYkM0Y2s2N3BlSmRjdHdUWGg0eWR0SEJmQTNrUDhWMThHek5sRWhnckdmenFlamVsTGFGUmVldTBGM3lvNDFpTVVSS2k5YWxRNmVvc1pyVmcwdEJQaGM2TllBdU5GQklmbTJYeGl1ZVpESVhLeEF5VHRQbV9tSGJYN3VQaWdrb3NqcHBZcG96UF9VSWRWTVY1VjF5cGUza3ZkYUQtQjNLWGtFMHdGMjJuaVJtamZXNyJ9XSwic2lnbmF0dXJlIjoidkhqMDlISkR2UEJET1pQUUZFS2tWcE1tbm5xTnNfbWlBZVFGdUVsejdCcnltS28xSllHUHFYdUMzX2FrU3RlQXRIR25VSFdmSm85WFRXb0N5bXY0QXciLCJ0YWciOiJSUGRtVlQ5enZuZ0N3Y2hqSF9ZWmVBIn0",
+  "issuerPublicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEABjwXblIdofC8n9Q0fYlcIJDbLCxwfZMfdrGoWCD5JYo=\n-----END PUBLIC KEY-----\n",
+  "expectedManifest": {
+    "version": 2,
+    "schemaVersion": 1,
+    "artifactId": "fixed-synthetic-interop-01",
+    "issuerId": "fixture-issuer",
+    "tenantScope": "synthetic-fixture-tenant",
+    "contentType": "application/vnd.orgaiz.report+json",
+    "createdAt": "2026-11-16T00:00:00.000Z"
+  },
+  "expectedReport": {
+    "title": "Synthetic governance report",
+    "summary": "مرحبا — demo 😃",
+    "metrics": {
+      "completed": 3,
+      "pending": 1
+    }
+  },
+  "securityNote": "PUBLIC SYNTHETIC FIXTURE ONLY. Never use this issuer identity for production trust."
+}
