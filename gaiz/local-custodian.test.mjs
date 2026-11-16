@@ -62,3 +62,24 @@ test('local custodian is disabled by default',async()=>{
  try{await assert.rejects(()=>inspectWithinLocalCustody(bytes,options()),/disabled/);}
  finally{if(orig!==undefined)process.env.GAIZ_LOCAL_CUSTODY_TEST=orig;}
 });
+
+test('quarantine denies an otherwise signed malicious report without success attestation',async()=>{
+ const orig=process.env.GAIZ_LOCAL_CUSTODY_TEST;
+ process.env.GAIZ_LOCAL_CUSTODY_TEST='true';
+ try{
+  const malicious=createGaiz2({manifest:{...manifest,artifactId:'fixture-malicious-01'},
+   report:{...report,summary:'<script>alert(1)</script>'},
+   issuerPrivateKey:issuer.privateKey,
+   recipients:[{keyId:'customer-rsa',publicKey:recipient.publicKey}]});
+  const proof=verifyGaiz2(malicious,{trustedIssuerPublicKey:issuer.publicKey,
+   expectedIssuerId:manifest.issuerId,expectedTenantScope:manifest.tenantScope}).receipt;
+  const events=[];
+  await assert.rejects(()=>inspectWithinLocalCustody(malicious,{
+   ...options(),request:{...args,artifactId:'fixture-malicious-01',
+    artifactReceipt:proof,review:{...args.review,sha256:proof.sha256}},
+   audit:async event=>events.push(event),
+  }),/Unsafe or unsupported/);
+  assert.equal(events.length,1);
+  assert.equal(events[0].event,'gaiz.local-custody.attempt');
+ }finally{if(orig===undefined)delete process.env.GAIZ_LOCAL_CUSTODY_TEST;else process.env.GAIZ_LOCAL_CUSTODY_TEST=orig;}
+});
