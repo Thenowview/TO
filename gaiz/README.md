@@ -1,4 +1,10 @@
-# GAIZ Core — experimental development candidate
+# .GAZE — experimental protected artifact format
+
+**Official customer-facing name: `.GAZE` (uppercase).** Existing source names, CLI APIs, `.gaiz` filenames and signed magic bytes `GAIZ1\\n` / `GAIZ2\\n` are **legacy experimental identifiers**, not a second product named GAIZ2. Do not rename encrypted bytes or treat a renamed `.GAZE` file as a valid new wire format.
+
+**Migration gate:** TO owns the formal `.GAZE` wire contract. Introduce a new versioned magic/header, stable conformance fixtures, extension handling and parser compatibility only after cross-repository protocol review with TEBE and TEFE. Existing `.gaiz` data must remain readable through explicit legacy detection; no silent conversion and no production decrypt approval.
+
+## Legacy implementation details (compatibility only)
 
 TO is the canonical format owner. This implementation is **not production security infrastructure**. It does not operate a managed vault, signing service, key escrow, license enforcement, payment service, online exchange or enterprise import.
 
