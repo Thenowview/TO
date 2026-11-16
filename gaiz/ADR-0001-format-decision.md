@@ -32,8 +32,8 @@
 - No private keys, platform-owner universal decryptor or client-side root secrets.
 
 ## Unresolved specification defects / release blockers
-1. Canonical object ordering must be defined byte-for-byte across runtimes. The draft text currently says UTF-16 ordering, while the Node implementation sorts with JavaScript default `Array.prototype.sort()`; confirm cross-language behavior using non-ASCII test vectors and document it precisely.
-2. The current canonicalization uses `JSON.parse` + re-serialization. Reject duplicate keys, unsupported Unicode, unsafe number encodings and malformed Unicode at a verified parser boundary; evaluate whether strict JCS/RFC 8785 should replace this custom profile.
+1. **Node-side serialization tightened:** object keys are ordered by UTF-16 code units, recipient key IDs use ordinal ASCII comparison, lone surrogate code units are rejected, finite safe integers only (excluding -0) are permitted, and invalid canonical calendar timestamps are rejected. Cross-language byte-for-byte comparison is still required before ratification.
+2. **Canonical parser guard implemented for the Node candidate:** strict fatal UTF-8 decoding followed by canonical byte-for-byte JSON comparison rejects duplicate keys, whitespace and alternate number spellings; unpaired surrogates and unsafe values are rejected. An independent parser audit, fuzzing and evaluation of standard JCS/RFC 8785 are still required.
 3. Define key ID allocation, issuer key rotation/revocation and authenticated recipient directory.
 4. Define exact manifest timestamp and producer clock policy, artifact digest identifiers, replay/idempotency requirements and tenant approval integration.
 5. Define private key custody, legitimate platform-owned recovery, customer key loss, nonce lifecycle and ability to audit signed operations.
