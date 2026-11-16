@@ -65,3 +65,16 @@ test('canonical decoding rejects duplicate keys and noncanonical numeric forms',
  assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+raw.replace('"version":2','"version":-0')),policy));
  assert.throws(()=>verifyGaiz2(Buffer.concat([Buffer.from('GAIZ2\\n'),Buffer.from([0xff])]),policy));
 });
+
+test('GAIZ2 rejects noncanonical recipient ordering before signature verification',()=>{
+ const file=createGaiz2({
+  report:{synthetic:true},manifest,
+  recipients:[{keyId:'z-recipient',publicKey:receiver.publicKey},{keyId:'a-recipient',publicKey:other.publicKey}],
+  issuerPrivateKey:issuer.privateKey
+ });
+ const body=JSON.parse(file.subarray(6).toString('utf8'));
+ assert.deepEqual(body.recipients.map(x=>x.keyId),['a-recipient','z-recipient']);
+ body.recipients.reverse();
+ const canonical=x=>Array.isArray(x)?'['+x.map(canonical).join(',')+']':x&&typeof x==='object'?'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+canonical(x[k])).join(',')+'}':JSON.stringify(x);
+ assert.throws(()=>verifyGaiz2(Buffer.concat([file.subarray(0,6),Buffer.from(canonical(body))]),policy),/noncanonical recipient order/i);
+});
