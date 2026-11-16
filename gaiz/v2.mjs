@@ -81,7 +81,7 @@ export function createGaiz2({report, manifest, recipients, issuerPrivateKey}) {
       assertId(r.keyId);
       if(ids.has(r.keyId)) throw Error('Duplicate recipient');
       ids.add(r.keyId);
-      const pub=createPublicKey(r.publicKey);
+      const pub=r.publicKey?.type === 'public' ? r.publicKey : createPublicKey(r.publicKey);
       if(pub.asymmetricKeyType !== 'rsa' || pub.asymmetricKeyDetails?.modulusLength < 3072) throw Error('RSA-3072+ recipient key required');
       return {keyId:r.keyId,wrappedKey:b64(publicEncrypt({...wrapping,key:pub},dek))};
     }).sort((a,b)=>a.keyId.localeCompare(b.keyId,'en'));
@@ -101,7 +101,7 @@ export function verifyGaiz2(input,{trustedIssuerPublicKey,expectedIssuerId,expec
   const {bytes,doc}=parse(input);
   if(doc.manifest.issuerId !== expectedIssuerId) throw Error('Issuer denied');
   if(doc.manifest.tenantScope !== expectedTenantScope) throw Error('Tenant denied');
-  const pub=createPublicKey(trustedIssuerPublicKey);
+  const pub=trustedIssuerPublicKey?.type === 'public' ? trustedIssuerPublicKey : createPublicKey(trustedIssuerPublicKey);
   if(pub.asymmetricKeyType !== 'ed25519' || !verify(null,enc(MAGIC+canonical(unsigned(doc))),pub,decoded(doc.signature,64))) throw Error('Untrusted signature');
   const receipt=Object.freeze({format:'GAIZ2',artifactId:doc.manifest.artifactId,issuerId:doc.manifest.issuerId,tenantScope:doc.manifest.tenantScope,sha256:createHash('sha256').update(bytes).digest('hex'),signatureVerified:true,authorizationGranted:false,importAllowed:false});
   return {manifest:Object.freeze({...doc.manifest}),receipt};
@@ -113,7 +113,7 @@ export function openGaiz2(input,{trustedIssuerPublicKey,expectedIssuerId,expecte
   const {doc}=parse(input);
   const envelope=doc.recipients.find(r=>r.keyId===recipientKeyId);
   if(!envelope) throw Error('Recipient not found');
-  const key=createPrivateKey(recipientPrivateKey);
+  const key=recipientPrivateKey?.type === 'private' ? recipientPrivateKey : createPrivateKey(recipientPrivateKey);
   if(key.asymmetricKeyType !== 'rsa' || key.asymmetricKeyDetails?.modulusLength < 3072) throw Error('Unsupported recipient key');
   const dek=privateDecrypt({...wrapping,key},decoded(envelope.wrappedKey,1024));
   try {
