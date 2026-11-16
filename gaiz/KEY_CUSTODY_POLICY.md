@@ -59,3 +59,11 @@ The operation:
 `node --test gaiz/local-custodian.test.mjs` includes denial cases for wrong recipient key, wrong tenant, invalid digest, unapproved review, missing/failed audit sink and disabled mode.
 
 **Limits:** This is NOT sandbox isolation, a production key vault, an authenticated enterprise custodian, a hardware-backed signing operation, or a forensic guarantee of zero plaintext memory remnants. The calling process temporarily holds decrypted JSON; do not use for live customer artifacts. A real production custodian requires separately reviewed key custody, process isolation, no-swap/limited-memory controls, durable attestation and tenant authorization from a trusted source. TEBE must not import the module into its web-facing API or accept the returned object from an arbitrary browser as proof of authorization.
+
+## Custodian-signed validation receipt — cross-repository draft
+
+`gaiz/custody-attestation.mjs` signs a **metadata-only** validation receipt using a separately managed Ed25519 custodian signing key. It binds GAIZ artifact identity, signed artifact hash, local report digest, tenant, recipient key ID, approved review ID, operation timestamp and the exact capability string `schema-validated-no-import`. Verification requires an independently trusted custodian public key, expected tenant, expected artifact hash, expected review ID and a five-minute maximum age.
+
+The wire signature has explicit domain separation `GAIZ2-CUSTODY-RECEIPT\\n` and exact canonicalized field ordering. This draft attestation is **not** a production PKI or issuer registry. Never reuse the GAIZ issuer signing key as the custodian attestation key. The signing helper is intentionally separate from the in-memory local decryption proof of concept; it does not imply that the customer decryption process has a secure attestation key.
+
+TEBE now contains an independent `gaiz-custody-attestation.mjs` verifier with wrong tenant, forged digest, wrong signer and stale receipt tests. No API endpoint consumes these attestation records; a signed receipt does **not** activate import or write permission. Production implementation must reject replay durably, authenticate the custodian machine, ensure a consented purpose, establish trusted key rotation and record a durable audit trail.
