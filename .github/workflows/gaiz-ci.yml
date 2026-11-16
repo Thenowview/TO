@@ -24,6 +24,13 @@ jobs:
           node --check gaiz/v2.mjs
           node --check gaiz/cli.mjs
           node --test gaiz/test.mjs gaiz/v2.test.mjs
+      - name: Generate synthetic interoperability evidence (no private keys persisted)
+        run: |
+          node --check gaiz/generate-interop-evidence.mjs
+          node gaiz/generate-interop-evidence.mjs --out="$RUNNER_TEMP/gaiz2-evidence"
+          node -e "const r=require(process.env.RUNNER_TEMP+'/gaiz2-evidence/receipt.json'); if(r.results.length!==7 || !r.results.every(x=>x.outcome===x.expected) || r.authorizationGranted!==false || r.importAllowed!==false) process.exit(1)"
+          test -s "$RUNNER_TEMP/gaiz2-evidence/trusted-issuer-public.pem"
+          test ! -e "$RUNNER_TEMP/gaiz2-evidence/issuer-private.pem"
       - name: No committed private key material in GAIZ tree
         run: |
           if grep -r -l -E --include='*.mjs' --include='*.md' -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----' gaiz/; then exit 1; fi
