@@ -49,8 +49,8 @@ test('envelope tampering and duplicate recipients are rejected',()=>{
 
 test('serialization rejects unpaired surrogates, negative zero, invalid calendar dates and unsafe values',()=>{
  const gen=(report,m=manifest)=>createGaiz2({report,manifest:m,recipients:[{keyId:'user-a',publicKey:receiver.publicKey}],issuerPrivateKey:issuer.privateKey});
- assert.throws(()=>gen({value:'\\uD800'}),/Unpaired Unicode/);
- assert.throws(()=>gen({['\\uDC00']:1}),/Unpaired Unicode/);
+ assert.throws(()=>gen({value:String.fromCharCode(0xD800)}),/Unpaired Unicode/);
+ assert.throws(()=>gen({[String.fromCharCode(0xDC00)]:1}),/Unpaired Unicode/);
  assert.throws(()=>gen({value:-0}),/Unsupported JSON value/);
  assert.throws(()=>gen({value:1.5}),/Unsupported JSON value/);
  assert.throws(()=>gen({value:BigInt(1)}),/Unsupported JSON value/);
