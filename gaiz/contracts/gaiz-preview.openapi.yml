@@ -51,4 +51,58 @@ paths:
         '403': { description: Insufficient tenant permission or origin denied }
         '429': { description: Rate limit }
         '503': { description: Preview disabled or issuer trust not configured }
+  /api/v1/gaiz/stage:
+    post:
+      summary: Stage verified artifact metadata for an independent review
+      description: |
+        Local development only. Requires authenticated tenant, analytics360 and
+        pmoa_manage_projects capability. Server independently re-verifies the GAIZ2
+        signature and tenant scope. Records only metadata, never ciphertext.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [artifactBase64url]
+              properties:
+                artifactBase64url: {type: string, pattern: '^[A-Za-z0-9_-]+
+, maxLength: 90000}
+      responses:
+        '201': {description: Metadata staged; importAllowed false}
+        '401': {description: Authentication required}
+        '403': {description: Permission or tenant denied}
+        '409': {description: Duplicate artifact ID with conflicting hash or staging disabled}
+        '503': {description: Feature unavailable}
+  /api/v1/gaiz/requests:
+    get:
+      summary: List at most 50 tenant-scoped metadata review requests
+      description: Development only; no raw artifact content returned.
+      responses:
+        '200': {description: Tenant-only request list}
+        '403': {description: Insufficient capability}
+  /api/v1/gaiz/requests/{id}/review:
+    post:
+      summary: Approve or reject request metadata, NOT the actual enterprise import
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: {type: string, enum: [approved, rejected]}
+                note: {type: string, maxLength: 500}
+      responses:
+        '201': {description: Decision audited, importAllowed false and appliesData false}
+        '403': {description: Reviewer must hold pmoa_admin capability}
+        '409': {description: Missing, expired, already reviewed or self-approval}
 components: {}
