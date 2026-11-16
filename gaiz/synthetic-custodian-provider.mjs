@@ -2,6 +2,8 @@
 // real customer custody or remote decrypt implementation. No artifact bytes,
 // secret decryption material or user-controlled report content is accepted.
 import {signLocalCustodyReceipt} from './custody-attestation.mjs';
+import {verifyGaiz2,openGaiz2} from './v2.mjs';
+import {quarantineGovernanceReport} from './quarantine.mjs';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -57,4 +59,29 @@ export function createSyntheticCustodianHandler({
     attemptId:c.attemptId,tenantId:c.tenantId,artifactSha256:c.artifactSha256}));
   return receipt;
  };
+}
+
+/** Precompute a single synthetic fixture from actual GAIZ2 signature checks
+ * and decrypt/quarantine validation, only in offline development mode.
+ * This does NOT accept arbitrary trusted=true flags or customer artifacts. */
+export function buildVerifiedSyntheticFixture({
+ artifact,tenantId,reviewId,issuerId,recipientKeyId,
+ recipientPrivateKey,trustedIssuerPublicKey,
+}={}){
+ if(process.env.NODE_ENV!=='development'||process.env.GAIZ_SYNTHETIC_PROVIDER_TEST!=='true')deny();
+ if(!Buffer.isBuffer(artifact)||artifact.length>1048576||!UUID.test(tenantId)||
+    !UUID.test(reviewId)||!ID.test(issuerId)||!ID.test(recipientKeyId)||
+    !recipientPrivateKey||!trustedIssuerPublicKey)deny();
+ const {receipt}=verifyGaiz2(artifact,{
+   trustedIssuerPublicKey,expectedIssuerId:issuerId,expectedTenantScope:tenantId,
+ });
+ if(receipt.signatureVerified!==true||receipt.importAllowed!==false)deny();
+ const opened=openGaiz2(artifact,{
+  trustedIssuerPublicKey,expectedIssuerId:issuerId,expectedTenantScope:tenantId,
+  recipientKeyId,recipientPrivateKey,
+ });
+ const quarantine=quarantineGovernanceReport(opened.report);
+ return Object.freeze({synthetic:true,verified:true,quarantinePassed:true,
+  tenantId,reviewId,recipientKeyId,artifactId:receipt.artifactId,
+  artifactSha256:receipt.sha256,reportSha256:quarantine.reportSha256});
 }
