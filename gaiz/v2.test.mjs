@@ -46,3 +46,22 @@ test('envelope tampering and duplicate recipients are rejected',()=>{
  const d=JSON.parse(make().toString().slice(6));d.recipients.push(d.recipients[0]);
  assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\n'+JSON.stringify(d)),policy));
 });
+
+test('serialization rejects unpaired surrogates, negative zero, invalid calendar dates and unsafe values',()=>{
+ const gen=(report,m=manifest)=>createGaiz2({report,manifest:m,recipients:[{keyId:'user-a',publicKey:receiver.publicKey}],issuerPrivateKey:issuer.privateKey});
+ assert.throws(()=>gen({value:'\\uD800'}),/Unpaired Unicode/);
+ assert.throws(()=>gen({['\\uDC00']:1}),/Unpaired Unicode/);
+ assert.throws(()=>gen({value:-0}),/Unsupported JSON value/);
+ assert.throws(()=>gen({value:1.5}),/Unsupported JSON value/);
+ assert.throws(()=>gen({value:BigInt(1)}),/Unsupported JSON value/);
+ assert.throws(()=>gen({ok:true},{...manifest,createdAt:'2026-02-30T00:00:00.000Z'}),/Invalid creation time/);
+ assert.equal(openGaiz2(gen({nonAscii:'مرحبا 😃',table:{z:1,ä:2,a:3}}),{...policy,recipientKeyId:'user-a',recipientPrivateKey:receiver.privateKey}).report.nonAscii,'مرحبا 😃');
+});
+test('canonical decoding rejects duplicate keys and noncanonical numeric forms',()=>{
+ const file=make().toString();
+ const raw=file.slice(6);
+ assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+raw.replace('"version":2','"version":2,"version":2')),policy));
+ assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+raw.replace('"version":2','"version":2.0')),policy));
+ assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+raw.replace('"version":2','"version":-0')),policy));
+ assert.throws(()=>verifyGaiz2(Buffer.concat([Buffer.from('GAIZ2\\n'),Buffer.from([0xff])]),policy));
+});
