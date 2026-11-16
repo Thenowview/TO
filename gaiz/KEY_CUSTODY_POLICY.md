@@ -81,3 +81,11 @@ The local custodian now calls the independent `gaiz/quarantine.mjs` gate **after
 `gaiz/custodian-process.test.mjs` uses **fresh synthetic test keys only**, held in a disposable file, to check success, wrong-key refusal, audit failure and default-off behavior. This experiment is not attached to a TEBE route, customer workspace, or production deployment. No long-running daemon, private key vault or universal recovery recipient has been introduced.
 
 **This is process separation, NOT a security boundary against a compromised same-user parent, kernel, or host.** The parent may be able to access the file descriptor, key file or child memory; a child process does not provide HSM-grade non-exportability, hardened sandboxing, or guaranteed wiping of plaintext from memory. A production custodian needs a separate privileged identity, OS restrictions, external trusted authorization/attestation and preferably non-exportable customer-managed keys, with a review of the chosen crypto provider. Even successful test results cannot satisfy these release gates.
+
+## Trusted runtime implementation
+
+`runtime/PROTOCOL.md` now defines the implemented, separately signed TEBE grant /
+TO result contract. `createGaiz2WithSigner` and `openGaiz2WithCustodian` integrate
+non-exportable managed keys through the concrete Vault adapter. Production
+activation still requires the operational and independent-review gates listed
+there. The older local-only proof-of-concept helpers remain development-only.
