@@ -89,3 +89,10 @@ TO result contract. `createGaiz2WithSigner` and `openGaiz2WithCustodian` integra
 non-exportable managed keys through the concrete Vault adapter. Production
 activation still requires the operational and independent-review gates listed
 there. The older local-only proof-of-concept helpers remain development-only.
+## Signed hash-only mapping preview handoff (new, draft)
+
+The TO development module gaiz/mapping-attestation.mjs signs a short-lived, domain-separated metadata receipt with a separately supplied Ed25519 custodian key. It binds tenant, staging review, encrypted artifact digest, report digest, target entity and revision, mapping-profile ID, target fingerprint, preview fingerprint, custodian ID and a five-minute maximum issuance window.
+
+TEBE independently checks this format in apps/api/src/gaiz/gaiz-mapping-attestation.mjs and requires an approved tenant mapping profile when requesting a second review. Signatures are **metadata validation only** and do not transfer plaintext or grant import permission.
+
+The signing function is not wired into the disposable decryption worker or a real customer-held KMS/HSM. An issuer/custodian trust directory, production signer identity, mapping plaintext isolation and protected human-readable review remain required before activation. Do not put the signing key or decrypted reports in an HTTP request or AI prompt.
