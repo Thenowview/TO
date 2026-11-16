@@ -63,9 +63,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Preflight cleanup failed' }
           if (Test-Path -LiteralPath $key) { throw 'Preflight registry key not cleaned up' }
 
-      - name: Install NSIS compiler
+      - name: Install NSIS compiler with bounded transient-feed retry
         shell: pwsh
-        run: choco install nsis --yes --no-progress --limit-output
+        run: |
+          $ErrorActionPreference='Stop'
+          $compiler=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'NSIS\makensis.exe'
+          for ($attempt=1; $attempt -le 3; $attempt++) {
+            if (Test-Path -LiteralPath $compiler -PathType Leaf) { break }
+            Write-Host "NSIS install attempt $attempt of 3"
+            choco install nsis --yes --no-progress --limit-output
+            if (Test-Path -LiteralPath $compiler -PathType Leaf) { break }
+            if ($attempt -lt 3) { Start-Sleep -Seconds (10 * $attempt) }
+          }
+          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
+            throw 'NSIS compiler missing after 3 package-feed attempts'
+          }
 
       - name: Build one unsigned Windows EXE (no Chrome bundle)
         shell: pwsh
