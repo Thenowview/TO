@@ -52,3 +52,43 @@ node --check gaiz/cli.mjs
 - Keys supplied as PEM are handled only in process memory by CLI; secure system key stores/HSM integration is not implemented.
 - Cross-language conformance, browser and TEBE GAIZ2 consumers remain pending.
 - Fuzzing, external cryptographic assessment, algorithm upgrade/downgrade policy and production key lifecycle are hard release gates.
+
+
+## GAIZ2 cross-repository acceptance contract — November 2026
+
+The signing/encryption **protocol owner is TO**, not TEBE or public TEFE.
+TEBE consumes GAIZ2 with a deliberately independent verifier:
+[TEBE PR #507](https://github.com/2029TEBE/TEBE/pull/507).
+The separate [TO PR #33](https://github.com/faisalwrokksa-hub/TO/pull/33)
+is a review-only, independent fixed-vector branch currently stacked
+on this experimental GAIZ2 producer branch. Its 1,123-byte synthetic
+artifact has SHA-256
+`14e8a1f6ccc4dd0cf021dfd78a6d03f43f4124ea7854767b1052bcc6c01b5aef`
+and only a synthetic issuer **public** verification key.
+
+TEBE's versioned verifier checks that exact SHA and issuer signature.
+**Import, decryption, tenant entitlement, KMS key release and customer
+authorization remain DENIED.** The fixed fixture does not carry a
+recipient private key and is not proof of independently operated custody.
+
+Before freezing GAIZ2 for customers, TO and TEBE must jointly review
+and version the canonical signed bytes, recipient sorting/duplication,
+AEAD AAD, algorithm IDs, issuer trust/revocation, recipient-key
+ownership and rotation, tenant-scope encoding, payload mapping and
+cross-runtime negative vectors. A **signed report mapping policy** must
+be distinct from the envelope signature; the latter grants no import right.
+
+TEBE currently has unregistered GAIZ worker mTLS identity candidates,
+short-lived signed workload credentials, challenge issuance, PostgreSQL
+replay-claim proposals and draft worker transactions. These are
+**not deployed**. The independent trusted issuer/key directory, real
+least-privilege DB roles and KMS recipient-authorized unwrap must be
+security-reviewed before any local TO producer artifact is delivered
+into an operational TEBE import workflow. TEFE remains a documentation
+and marketing frontend until those service endpoints are approved.
+
+Automation policy: low-risk source checks, test evidence collection
+and merge queuing can run after required CI success. It must not
+auto-approve a high-risk cryptographic protocol change, human import
+decision, KMS release, or production release. Keep this branch in
+draft until a separate reviewer signs off.
