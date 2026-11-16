@@ -120,4 +120,26 @@ $Proc=Start-Process -FilePath $Exe -ArgumentList '--no-browser' -WindowStyle Hid
 $Hash=(Get-FileHash $Exe -Algorithm SHA256).Hash.ToLowerInvariant()
 "$Hash  TheOrg.exe" | Set-Content -Encoding ascii (Join-Path $Root 'dist\SHA256SUMS.txt')
 "llama.cpp $LlamaTag $Expected`nMinGit $GitTag $GitSha" | Set-Content -Encoding utf8 (Join-Path $Root 'dist\UPSTREAM-DIGESTS.txt')
-Write-Output "Built and smoke-tested: $Exe, sha256=$Hash"
+# Only write a pass receipt AFTER every real Windows smoke assertion above.
+# This binds the verified EXE hash to the acceptance result, without claiming
+# real GGUF inference, Windows installer acceptance, or Android readiness.
+$Receipt=@{
+  version='0.10.0'
+  exe_sha256=$Hash
+  checks=@{
+    exe_self_test=$true
+    dashboard_http=$true
+    api_token_auth=$true
+    bundled_git=$true
+    bundled_llama_runtime=$true
+    local_git_project=$true
+    desktop_shortcut=$true
+  }
+  real_gguf_inference='not_tested'
+  android_apk='not_tested'
+  release_scope='portable_win64_source_smoke_only'
+}
+$Receipt | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $Root 'dist\WINDOWS-SMOKE.json')
+python scripts/check_release.py dist --report dist/RELEASE-ACCEPTANCE.json
+if($LASTEXITCODE -ne 0){throw 'Portable EXE release receipts failed independent validation'}
+Write-Output "Built and smoke-tested: $Exe, sha256=$Hash. Real GGUF inference and Android release still unverified."

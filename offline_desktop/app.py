@@ -5,7 +5,8 @@ import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webb
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from engine import browser_bridge, company_memory, epmo
-from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime, operating_desk, reviewed_knowledge, answer_flow, office_agents
+from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities, company_execution, opencode_adapter, operator_tools, google_readonly, chat_sessions, adaptive_runtime, operating_desk, reviewed_knowledge, answer_flow, office_agents, website_integrations
+from scripts import release_readiness
 
 STATIC = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'static'
 TOKEN = None
@@ -71,6 +72,9 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({'solutions':adaptive_runtime.candidates()})
                 elif path=='/api/operating/overview':
                     self._json({'desk':operating_desk.overview()})
+                elif path=='/api/website/integrations':
+                    self._json({'website':website_integrations.catalog(),
+                                'release':release_readiness.inspect()})
                 elif path=='/api/models':
                     files=core.local_models()
                     memory=device_capabilities.detect()

@@ -89,6 +89,17 @@ class ApiTests(unittest.TestCase):
                             for item in providers))
         self.assertNotIn('access_token',raw.decode('utf-8'))
 
+    def test_website_integration_discovery_requires_token_and_never_claims_live_site(self):
+        self.assertEqual(self.get('/api/website/integrations',auth=False)[0],401)
+        code,_,raw=self.get('/api/website/integrations')
+        self.assertEqual(code,200)
+        data=json.loads(raw)
+        self.assertFalse(data['website']['external_calls_made'])
+        self.assertFalse(data['release']['production_go'])
+        self.assertFalse(data['release']['website']['public_website_deployment_verified'])
+        self.assertTrue(all(item['connected'] is None for item in data['website']['providers']))
+        self.assertNotIn('access-token.txt',raw.decode('utf-8'))
+
     def test_models_api_exposes_honest_hardware_and_locked_benchmark(self):
         from unittest.mock import patch
         fake_hardware={'available_ram_bytes':8*1024**3,'total_ram_bytes':16*1024**3,
