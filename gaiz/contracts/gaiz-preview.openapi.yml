@@ -1,0 +1,54 @@
+openapi: 3.1.0
+info:
+  title: Orgaiz GAIZ2 Interoperability — Development Preview
+  version: 0.2.0-preview
+  description: |
+    TO owns the GAIZ envelope. TEBE owns tenant/session authorization.
+    No import/export mutation service is authorized under this draft.
+servers: []
+paths:
+  /api/v1/gaiz/verify:
+    post:
+      summary: Verify a GAIZ2 artifact within the signed-in TEBE tenant
+      description: |
+        Development-only, feature-flagged, disabled in production. Requires
+        existing session, analytics360 entitlement and pmoa_view_financials capability.
+        Trusted issuer key/ID supplied via server configuration, tenant ID from
+        authenticated session; never from submitted artifact.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [artifactBase64url]
+              properties:
+                artifactBase64url:
+                  type: string
+                  pattern: '^[A-Za-z0-9_-]+$'
+                  maxLength: 90000
+      responses:
+        '201':
+          description: Signature verification receipt only (NOT import permission)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verified, format, artifactId, issuerId, tenantScope, sha256, authorizationGranted, importAllowed, status]
+                properties:
+                  verified: { type: boolean, const: true }
+                  format: { type: string, const: GAIZ2 }
+                  artifactId: { type: string }
+                  issuerId: { type: string }
+                  tenantScope: { type: string }
+                  sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+                  authorizationGranted: { type: boolean, const: false }
+                  importAllowed: { type: boolean, const: false }
+                  status: { type: string, const: signature_verified_only }
+        '400': { description: Invalid/malformed/untrusted file }
+        '401': { description: Missing authenticated session }
+        '403': { description: Insufficient tenant permission or origin denied }
+        '429': { description: Rate limit }
+        '503': { description: Preview disabled or issuer trust not configured }
+components: {}
