@@ -44,3 +44,18 @@ Test commands:
 ```sh
 node --test gaiz/custody.test.mjs gaiz/key-policy.test.mjs
 ```
+
+## Step 2: local, customer-held decryption verification (development only)
+
+`gaiz/local-custodian.mjs` implements a **deliberately restricted, in-process proof of concept**. To enable on a disposable test machine, set `GAIZ_LOCAL_CUSTODY_TEST=true` while keeping `NODE_ENV` other than `production`. It accepts an RSA-3072+ customer private `KeyObject` supplied *in memory* by an authorized local operator. It never loads a hard-coded private key, service environment secret or global master key.
+
+The operation:
+1. Re-verifies GAIZ2 bytes using an independently provisioned Ed25519 issuer key and checks the artifact ID, SHA-256 digest and issuer against the approval.
+2. Checks a current, distinct-person, tenant-matched review, active customer recipient identity, and recovery consent policy.
+3. Requires a caller-provided append-only audit adapter to acknowledge a pre-decryption event **before** private-key use.
+4. Decrypts with the customer-held key via the existing GAIZ2 authenticated envelope and validates the report schema entirely in process.
+5. Returns only a report hash, field/metric/finding counts and the immutable `importAllowed:false` / `plaintextReleased:false` flags. Never returns plaintext or a data key. A second audit event records completion.
+
+`node --test gaiz/local-custodian.test.mjs` includes denial cases for wrong recipient key, wrong tenant, invalid digest, unapproved review, missing/failed audit sink and disabled mode.
+
+**Limits:** This is NOT sandbox isolation, a production key vault, an authenticated enterprise custodian, a hardware-backed signing operation, or a forensic guarantee of zero plaintext memory remnants. The calling process temporarily holds decrypted JSON; do not use for live customer artifacts. A real production custodian requires separately reviewed key custody, process isolation, no-swap/limited-memory controls, durable attestation and tenant authorization from a trusted source. TEBE must not import the module into its web-facing API or accept the returned object from an arbitrary browser as proof of authorization.
