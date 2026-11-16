@@ -6,6 +6,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createGaiz2,verifyGaiz2} from './v2.mjs';
 import {inspectViaDisposableCustodian} from './custodian-process.mjs';
+// This suite explicitly exercises disposable development-only mode.
+process.env.NODE_ENV='development';
 
 const issuer=generateKeyPairSync('ed25519');
 const receiver=generateKeyPairSync('rsa',{modulusLength:3072});
