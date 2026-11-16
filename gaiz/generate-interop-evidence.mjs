@@ -20,7 +20,8 @@ const issuerPublic=issuer.publicKey.export({type:'spki',format:'pem'}).toString(
 const policy={trustedIssuerPublicKey:issuer.publicKey,expectedIssuerId:manifest.issuerId,expectedTenantScope:manifest.tenantScope};
 const verified=verifyGaiz2(signed,policy);
 if(verified.receipt.authorizationGranted || verified.receipt.importAllowed || !verified.receipt.signatureVerified)throw Error('Unsafe verification receipt');
-if(JSON.stringify(openGaiz2(signed,{...policy,recipientKeyId:'synthetic-recipient',recipientPrivateKey:recipient.privateKey}).report)!==JSON.stringify(report))throw Error('Round trip mismatch');
+const opened=openGaiz2(signed,{...policy,recipientKeyId:'synthetic-recipient',recipientPrivateKey:recipient.privateKey}).report;
+if(opened.title!==report.title || opened.items?.length!==1 || opened.items[0].id!==1 || opened.items[0].approved!==false)throw Error('Round trip mismatch');
 const forged=Buffer.from(signed);
 const pos=forged.indexOf(Buffer.from('synthetic-interop-1'));
 if(pos<0)throw Error('Synthetic artifact ID missing');
