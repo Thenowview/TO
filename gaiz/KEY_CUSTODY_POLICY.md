@@ -31,3 +31,16 @@ The `gaiz/key-policy.mjs` module validates public-key *policy* only. It does not
 ## Cross-repository consumer handoff
 
 TEBE PR #504 stages artifact **metadata only**, with tenant-scoped replay protection, separate-person approval and RLS draft migrations not yet applied. TEFE PR #43 verifies signature locally only. Production release requires cross-language conformance, independent security review, audited issuer directory, key recovery policy and validation of all mandatory tests.
+
+## Customer custody preflight module (new)
+
+`gaiz/custody.mjs` exposes `evaluateCustodyRequest` and `requestCustodyPreflight`. It validates receipt/tenant/hash consistency, reviewed-by-another-person and unexpired approval, recipient validity, and explicit platform-recovery consent. It can invoke an externally supplied `authorize` and `audit` port but **never calls** its decrypt method or yields a data key, recipient private key, or plaintext.
+
+Even an eligible request returns `custodyAuthorized:false` and `importAllowed:false`. These functions **do not themselves authenticate a user or prove that a provided review originated from a trusted database**. They must only receive records from separately authenticated authoritative services. Their callbacks are not a production HSM adapter, and a malicious callback is outside this module's trust boundary.
+
+TEBE `apps/api/src/gaiz/gaiz-custody-policy.mjs` mirrors eligibility for tenant-scoped reviews as a separate, pure contract gate. No production key custody service, persistent key registry, or business data import has been created. The UI cannot invoke a decrypt operation.
+
+Test commands:
+```sh
+node --test gaiz/custody.test.mjs gaiz/key-policy.test.mjs
+```
