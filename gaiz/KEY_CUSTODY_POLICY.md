@@ -81,3 +81,11 @@ The local custodian now calls the independent `gaiz/quarantine.mjs` gate **after
 `gaiz/custodian-process.test.mjs` uses **fresh synthetic test keys only**, held in a disposable file, to check success, wrong-key refusal, audit failure and default-off behavior. This experiment is not attached to a TEBE route, customer workspace, or production deployment. No long-running daemon, private key vault or universal recovery recipient has been introduced.
 
 **This is process separation, NOT a security boundary against a compromised same-user parent, kernel, or host.** The parent may be able to access the file descriptor, key file or child memory; a child process does not provide HSM-grade non-exportability, hardened sandboxing, or guaranteed wiping of plaintext from memory. A production custodian needs a separate privileged identity, OS restrictions, external trusted authorization/attestation and preferably non-exportable customer-managed keys, with a review of the chosen crypto provider. Even successful test results cannot satisfy these release gates.
+
+## Signed hash-only mapping preview handoff (new, draft)
+
+The TO development module gaiz/mapping-attestation.mjs signs a short-lived, domain-separated metadata receipt with a separately supplied Ed25519 custodian key. It binds tenant, staging review, encrypted artifact digest, report digest, target entity and revision, mapping-profile ID, target fingerprint, preview fingerprint, custodian ID and a five-minute maximum issuance window.
+
+TEBE independently checks this format in apps/api/src/gaiz/gaiz-mapping-attestation.mjs and requires an approved tenant mapping profile when requesting a second review. Signatures are **metadata validation only** and do not transfer plaintext or grant import permission.
+
+The signing function is not wired into the disposable decryption worker or a real customer-held KMS/HSM. An issuer/custodian trust directory, production signer identity, mapping plaintext isolation and protected human-readable review remain required before activation. Do not put the signing key or decrypted reports in an HTTP request or AI prompt.
