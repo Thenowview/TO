@@ -76,5 +76,5 @@ test('GAIZ2 rejects valid-shape noncanonical recipient order before signature ve
  assert.deepEqual(body.recipients.map(x=>x.keyId),['a-recipient','z-recipient']);
  body.recipients.reverse();
  const canonical=x=>Array.isArray(x)?'['+x.map(canonical).join(',')+']':x&&typeof x==='object'?'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+canonical(x[k])).join(',')+'}':JSON.stringify(x);
- assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+canonical(body)),policy),/Noncanonical recipient order/);
+ assert.throws(()=>verifyGaiz2(Buffer.concat([file.subarray(0,6),Buffer.from(canonical(body))]),policy),/Noncanonical recipient order/);
 });
