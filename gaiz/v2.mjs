@@ -74,21 +74,22 @@ function parse(input) {
   if(decoded(doc.nonce,12).length !== 12 || decoded(doc.tag,16).length !== 16 || decoded(doc.signature,64).length !== 64) throw Error('Invalid cryptographic fields');
   decoded(doc.ciphertext,MAX);
   if(!Array.isArray(doc.recipients) || doc.recipients.length < 1 || doc.recipients.length > MAX_RECIPIENTS) throw Error('Invalid recipient count');
-  const names=new Set();
+  const names=new Set();let previous='';
   for(const r of doc.recipients) {
     exact(r,['keyId','wrappedKey']);
     assertId(r.keyId);
-    if(names.has(r.keyId)) throw Error('Duplicate recipient');
+    if(names.has(r.keyId)||r.keyId<=previous) throw Error('Duplicate or noncanonical recipient order');
+    previous=r.keyId;
     names.add(r.keyId);
-    if(decoded(r.wrappedKey,1024).length < 256) throw Error('Invalid recipient envelope');
+    if(decoded(r.wrappedKey,1024).length < 384) throw Error('Invalid recipient envelope');
   }
   return {bytes,doc};
 }
 /** Caller controls issuer, owner-approved recipient public keys and audit identity.
  * Each call creates a fresh random AES DEK and nonce; never supply a platform master secret. */
-export function createGaiz2({report, manifest, recipients, issuerPrivateKey}) {
+function sealGaiz2({report, manifest, recipients}) {
   validateManifest(manifest);
-  if(!issuerPrivateKey || !Array.isArray(recipients) || recipients.length < 1 || recipients.length > MAX_RECIPIENTS) throw Error('Issuer/recipients required');
+  if(!Array.isArray(recipients) || recipients.length < 1 || recipients.length > MAX_RECIPIENTS) throw Error('Issuer/recipients required');
   const plaintext=enc(canonical(report));
   if(plaintext.length > MAX / 2) throw Error('Report too large');
   const ids=new Set(), dek=randomBytes(32), nonce=randomBytes(12);
@@ -105,11 +106,22 @@ export function createGaiz2({report, manifest, recipients, issuerPrivateKey}) {
     cipher.setAAD(enc(canonical(manifest)));
     const ciphertext=Buffer.concat([cipher.update(plaintext),cipher.final()]);
     const doc={manifest,nonce:b64(nonce),tag:b64(cipher.getAuthTag()),ciphertext:b64(ciphertext),recipients:keys};
-    doc.signature=b64(sign(null,enc(MAGIC+canonical(unsigned(doc))),issuerPrivateKey));
-    const output=encode(doc);
-    if(output.length>MAX) throw Error('Artifact exceeds maximum');
-    return output;
-  } finally {dek.fill(0);}
+    return doc;
+  } finally {dek.fill(0);plaintext.fill(0);}
+}
+function finishGaiz2(doc,signature){
+ if(!Buffer.isBuffer(signature)||signature.length!==64)throw Error('Ed25519 signature required');
+ doc.signature=b64(signature);
+ const output=encode(doc);if(output.length>MAX)throw Error('Artifact exceeds maximum');return output;
+}
+export function createGaiz2(args){
+ const doc=sealGaiz2(args);
+ return finishGaiz2(doc,sign(null,enc(MAGIC+canonical(unsigned(doc))),args.issuerPrivateKey));
+}
+export async function createGaiz2WithSigner(args){
+ if(typeof args?.signer!=='function')throw Error('Managed issuer signer required');
+ const doc=sealGaiz2(args);
+ return finishGaiz2(doc,await args.signer(enc(MAGIC+canonical(unsigned(doc)))));
 }
 /** Signature is checked against an independently provisioned issuer key, never an embedded one. */
 export function verifyGaiz2(input,{trustedIssuerPublicKey,expectedIssuerId,expectedTenantScope}) {
@@ -146,3 +158,27 @@ export function openGaiz2(input,{trustedIssuerPublicKey,expectedIssuerId,expecte
   } finally {dek.fill(0);}
 }
 export const GAIZ2_VERSION='2.0-experimental';
+
+/** Managed-custody reader: RSA private material never enters this process.
+ * The provider releases only a per-artifact DEK to the trusted worker. */
+export async function openGaiz2WithCustodian(input,policy) {
+  const verified=verifyGaiz2(input,policy);
+  assertId(policy.recipientKeyId);
+  if(typeof policy.unwrap!=='function')throw Error('Managed unwrap provider required');
+  const {doc}=parse(input);
+  const envelope=doc.recipients.find(r=>r.keyId===policy.recipientKeyId);
+  if(!envelope)throw Error('Recipient not found');
+  let dek,plaintext;
+  try {
+    dek=await policy.unwrap(decoded(envelope.wrappedKey,1024));
+    if(!Buffer.isBuffer(dek)||dek.length!==32)throw Error('Invalid managed data key');
+    const decipher=createDecipheriv('aes-256-gcm',dek,decoded(doc.nonce,12));
+    decipher.setAAD(enc(canonical(doc.manifest)));
+    decipher.setAuthTag(decoded(doc.tag,16));
+    plaintext=Buffer.concat([decipher.update(decoded(doc.ciphertext,MAX)),decipher.final()]);
+    if(plaintext.length>MAX/2)throw Error('Decrypted content too large');
+    const text=new TextDecoder('utf-8',{fatal:true}).decode(plaintext),report=JSON.parse(text);
+    if(canonical(report)!==text)throw Error('Noncanonical report');
+    return {report,verification:verified.receipt};
+  } finally {if(Buffer.isBuffer(dek))dek.fill(0);plaintext?.fill(0);}
+}
