@@ -75,10 +75,15 @@ function parse(input) {
   decoded(doc.ciphertext,MAX);
   if(!Array.isArray(doc.recipients) || doc.recipients.length < 1 || doc.recipients.length > MAX_RECIPIENTS) throw Error('Invalid recipient count');
   const names=new Set();
+  let previousRecipientId=null;
   for(const r of doc.recipients) {
     exact(r,['keyId','wrappedKey']);
     assertId(r.keyId);
     if(names.has(r.keyId)) throw Error('Duplicate recipient');
+    // Recipient arrays are signed bytes and part of the canonical wire profile.
+    // Require ordinal code-unit ascending order, not locale-dependent sorting.
+    if(previousRecipientId!==null && previousRecipientId>=r.keyId) throw Error('Noncanonical recipient order');
+    previousRecipientId=r.keyId;
     names.add(r.keyId);
     if(decoded(r.wrappedKey,1024).length < 256) throw Error('Invalid recipient envelope');
   }
