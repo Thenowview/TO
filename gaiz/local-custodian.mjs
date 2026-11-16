@@ -2,9 +2,8 @@
 // Trusted application must authenticate review, issuer, actor, recipient and
 // consent using authoritative records BEFORE calling this module. This module
 // is neither an HSM nor a production customer-vault implementation.
-import { createHash } from 'node:crypto';
 import { openGaiz2, verifyGaiz2 } from './v2.mjs';
-import { validateGovernanceReport } from './report.mjs';
+import { quarantineGovernanceReport } from './quarantine.mjs';
 import { evaluateCustodyRequest } from './custody.mjs';
 
 function deny(message){throw Error(message);}
@@ -60,15 +59,14 @@ export async function inspectWithinLocalCustody(bytes,{
  });
  // A plaintext-free receipt only. JSON serialization is canonical for this
  // current schema, and hash is intended solely as a local comparison identity.
- validateGovernanceReport(report);
- const metrics=Object.keys(report.metrics??{}).length;
- const findings=report.findings?.length??0;
+ const quarantine=quarantineGovernanceReport(report);
  const result=Object.freeze({
    status:'locally-decrypted-and-validated',format:'GAIZ2',
    artifactSha256:independentlyVerified.sha256,
    tenantScope:decision.tenantScope,artifactId:request.artifactId,
-   reportSha256:createHash('sha256').update(JSON.stringify(report)).digest('hex'),
-   fieldCount:Object.keys(report).length,metricsCount:metrics,findingsCount:findings,
+   reportSha256:quarantine.reportSha256,
+   fieldCount:quarantine.fieldCount,metricsCount:quarantine.metricsCount,
+   findingsCount:quarantine.findingsCount,quarantinePassed:true,
    plaintextReleased:false,importAllowed:false,authorizationGranted:false,
  });
  await audit(Object.freeze({event:'gaiz.local-custody.validated',
