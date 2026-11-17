@@ -6,13 +6,14 @@ from scripts import build_source_candidate as pack
 class SourceArchiveTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.root=Path(self.tmp.name)/'source';self.root.mkdir()
+        self.root=Path(self.tmp.name)/'source';self.root.mkdir();self.root=self.root.resolve()
         for name,data in [('app.py','print(1)'),('engine/core.py','value=1'),
                           ('data/access-token.txt','PRIVATE'),('data/theorg.sqlite3','DB'),
                           ('models/real.gguf','GGUF'),('workspace/private.md','SECRET')]:
             p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(data)
     def test_excludes_live_data_and_model_weights(self):
-        names=[p.relative_to(self.root).as_posix() for p in pack.files(self.root)]
+        canonical_root=self.root.resolve()
+        names=[p.relative_to(canonical_root).as_posix() for p in pack.files(self.root)]
         self.assertIn('engine/core.py',names)
         for name in ('data/access-token.txt','data/theorg.sqlite3','models/real.gguf',
                      'workspace/private.md'):
