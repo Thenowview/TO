@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(p)=>readFileSync(new URL(p,import.meta.url),'utf8');
-test('.GAZE is the official name, GAIZ identifiers are legacy compatibility only',()=>{
+test('GIZE AI is the official brand, GAIZ identifiers are legacy compatibility only',()=>{
  const doc=read('./README.md');
  assert.match(doc,/^# \.GAZE/m);
  assert.match(doc,/Official customer-facing name: `\.GAZE`/);
