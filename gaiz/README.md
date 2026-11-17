@@ -1,8 +1,8 @@
-# .GAZE — experimental protected artifact format
+# GIZE AI — experimental protected artifact format
 
-**Official customer-facing name: `.GAZE` (uppercase).** Existing source names, CLI APIs, `.gaiz` filenames and signed magic bytes `GAIZ1\\n` / `GAIZ2\\n` are **legacy experimental identifiers**, not a second product named GAIZ2. Do not rename encrypted bytes or treat a renamed `.GAZE` file as a valid new wire format.
+**Official customer-facing AI product brand: `GIZE AI`.** Existing source names, CLI APIs, `.gaiz` filenames and signed magic bytes `GAIZ1\\n` / `GAIZ2\\n` are **legacy experimental identifiers**, not a second product named GAIZ2. Do not rename encrypted bytes or treat a renamed file as a valid new wire format.
 
-**Migration gate:** TO owns the formal `.GAZE` wire contract. Introduce a new versioned magic/header, stable conformance fixtures, extension handling and parser compatibility only after cross-repository protocol review with TEBE and TEFE. Existing `.gaiz` data must remain readable through explicit legacy detection; no silent conversion and no production decrypt approval.
+**Migration gate:** TO owns the formal legacy `.gaiz` wire contract. Introduce a new versioned magic/header, stable conformance fixtures, extension handling and parser compatibility only after cross-repository protocol review with TEBE and TEFE. Existing `.gaiz` data must remain readable through explicit legacy detection; no silent conversion and no production decrypt approval.
 
 ## Legacy implementation details (compatibility only)
 
