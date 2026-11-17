@@ -60,3 +60,7 @@
 - Correct `.gaiz` spelling and security claims supported by actual tests.
 - All customer API connections tenant-isolated, revocable, permission-scoped, and charge-safe.
 - Redirects, SEO, localization, rollback, release history and live endpoint verification documented.
+
+## Legacy naming compatibility: GAIZ = GIZE
+
+**GAIZ is the legacy name of GIZE, not a separate product.** The customer-facing AI product brand is **GIZE AI**. All applicable new user-facing names, navigation, descriptions and translations must say GIZE / GIZE AI, not GAIZ. The historical `GAIZ`, `GAIZ1`, `GAIZ2` and `.gaiz` identifiers may still appear only in explicit legacy compatibility instructions, immutable signed data, protocol versions, file extensions, existing API paths, persisted references and migration/audit records. Existing GAIZ artifacts and clients must continue to work under the GIZE brand; never rewrite encrypted wire bytes, silently rename extensions, invalidate signatures, or change endpoints without versioned aliases, migration tests and coordinated release approval.
