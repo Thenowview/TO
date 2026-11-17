@@ -22,7 +22,7 @@ def files(root=ROOT):
         if not p.is_file() or p.is_symlink():continue
         if set(p.relative_to(root).parts)&EXCLUDED or p.suffix.lower() not in SUFFIXES:continue
         if p.stat().st_size>350000:raise ValueError('Unexpected large asset: '+str(p))
-        if not p.resolve().is_relative_to(root):raise ValueError('Path escapes source')
+        if not p.resolve().is_relative_to(root) and not (sys.platform == 'win32' and p.resolve().is_relative_to(root.resolve())):raise ValueError('Path escapes source')
         result.append(p)
     return sorted(set(result),key=lambda p:p.relative_to(root).as_posix())
 
