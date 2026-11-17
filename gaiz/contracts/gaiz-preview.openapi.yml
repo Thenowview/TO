@@ -9,7 +9,7 @@ servers: []
 paths:
   /api/v1/gaiz/verify:
     post:
-      summary: Verify a GAIZ2 artifact within the signed-in TEBE tenant
+      summary: Verify a GIZE AI artifact (legacy GAIZ2 wire format) within the signed-in TEBE tenant
       description: |
         Development-only, feature-flagged, disabled in production. Requires
         existing session, analytics360 entitlement and pmoa_view_financials capability.
