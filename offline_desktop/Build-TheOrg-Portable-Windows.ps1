@@ -96,6 +96,16 @@ try {
   $Target=$Shell.CreateShortcut($Shortcut).TargetPath
   if($Target -ne $Exe){throw 'Desktop shortcut points to a different application'}
   Remove-Item -LiteralPath $Shortcut -Force -ErrorAction SilentlyContinue
+  # Each gate above throws on failure. Only successful execution reaches this receipt.
+  $RuntimeChecks=@{
+    exe_self_test=$true
+    dashboard_http=$Ready
+    api_token_auth=$Rejected
+    bundled_git=[bool]$Status.coding_git_available
+    bundled_llama_runtime=[bool]$Status.llama_binary
+    local_git_project=[bool]$Project.project.git_head
+    desktop_shortcut=($Target -eq $Exe)
+  }
   Write-Output 'PASS Windows onefile launch, authenticated API, bundled Git, llama-server binary and shortcut'
 }finally {
   if(-not $Proc.HasExited){Stop-Process -Id $Proc.Id -Force -ErrorAction SilentlyContinue}
@@ -103,5 +113,8 @@ try {
 }
 $Hash=(Get-FileHash $Exe -Algorithm SHA256).Hash.ToLowerInvariant()
 "$Hash  TheOrg.exe" | Set-Content -Encoding ascii (Join-Path $Root 'dist\SHA256SUMS.txt')
+# Bind the verified Windows runtime checks to this exact executable digest.
+$SmokeReceipt=@{version='0.10.0';exe_sha256=$Hash;checks=$RuntimeChecks}
+$SmokeReceipt | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $Root 'dist\WINDOWS-SMOKE.json')
 "llama.cpp $LlamaTag $Expected`nMinGit $GitTag $GitSha" | Set-Content -Encoding utf8 (Join-Path $Root 'dist\UPSTREAM-DIGESTS.txt')
 Write-Output "Built and smoke-tested: $Exe, sha256=$Hash"
