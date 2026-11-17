@@ -1,6 +1,6 @@
-# .GAZE — experimental protected artifact format
+# GIZE AI — experimental protected artifact compatibility
 
-**Official customer-facing name: `.GAZE` (uppercase).** Existing source names, CLI APIs, `.gaiz` filenames and signed magic bytes `GAIZ1\\n` / `GAIZ2\\n` are **legacy experimental identifiers**, not a second product named GAIZ2. Do not rename encrypted bytes or treat a renamed `.GAZE` file as a valid new wire format.
+**Official AI product brand: `GIZE AI`.** GAIZ2 is a legacy technical format identifier for GIZE, not a separate customer-facing product. The proposed `.GAZE` format name is a separate experimental artifact-format designation, not the AI product brand. Existing source names, CLI APIs, `.gaiz` filenames and signed magic bytes `GAIZ1\\n` / `GAIZ2\\n` are **legacy experimental identifiers**, not a second product named GAIZ2. Do not rename encrypted bytes or treat a renamed `.GAZE` file as a valid new wire format.
 
 **Migration gate:** TO owns the formal `.GAZE` wire contract. Introduce a new versioned magic/header, stable conformance fixtures, extension handling and parser compatibility only after cross-repository protocol review with TEBE and TEFE. Existing `.gaiz` data must remain readable through explicit legacy detection; no silent conversion and no production decrypt approval.
 
@@ -60,7 +60,7 @@ node --check gaiz/cli.mjs
 - Fuzzing, external cryptographic assessment, algorithm upgrade/downgrade policy and production key lifecycle are hard release gates.
 
 
-## GAIZ2 cross-repository acceptance contract — November 2026
+## GIZE AI cross-repository acceptance contract (legacy GAIZ2 protocol) — November 2026
 
 The signing/encryption **protocol owner is TO**, not TEBE or public TEFE.
 TEBE consumes GAIZ2 with a deliberately independent verifier:
