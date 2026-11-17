@@ -1,15 +1,15 @@
 openapi: 3.1.0
 info:
-  title: Orgaiz GAIZ2 Interoperability — Development Preview
+  title: GIZE AI Legacy GAIZ2 Interoperability — Development Preview
   version: 0.2.0-preview
   description: |
-    TO owns the GAIZ envelope. TEBE owns tenant/session authorization.
+    TO owns the legacy GAIZ envelope. TEBE owns tenant/session authorization.
     No import/export mutation service is authorized under this draft.
 servers: []
 paths:
   /api/v1/gaiz/verify:
     post:
-      summary: Verify a GAIZ2 artifact within the signed-in TEBE tenant
+      summary: Verify a GIZE AI artifact (legacy GAIZ2 wire format) within the signed-in TEBE tenant
       description: |
         Development-only, feature-flagged, disabled in production. Requires
         existing session, analytics360 entitlement and pmoa_view_financials capability.
