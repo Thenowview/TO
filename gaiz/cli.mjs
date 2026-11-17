@@ -27,4 +27,4 @@ try {
   writeFileSync(resolve(required('--output')),JSON.stringify(result.report,null,2)+'\n',{flag:'wx',mode:0o600});
   process.stdout.write(JSON.stringify({status:'opened',path:required('--output'),receipt:result.verification})+'\n');
  } else {throw Error('Usage: node gaiz/cli.mjs export|verify|open --... (see gaiz/README.md)');}
-} catch(error) {process.stderr.write('GAIZ operation denied: '+error.message+'\n');process.exitCode=1;}
+} catch(error) {process.stderr.write('GIZE AI legacy artifact operation denied: '+error.message+'\n');process.exitCode=1;}
