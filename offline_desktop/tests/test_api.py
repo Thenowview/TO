@@ -51,7 +51,7 @@ class ApiTests(unittest.TestCase):
 
     def test_browser_shell_available_and_locked_api(self):
         status,h,b=self.get('/')
-        self.assertEqual(status,200);self.assertIn(b'ORGAIZ',b)
+        self.assertEqual(status,200);self.assertIn(b'GIZE AI',b)
         self.assertEqual(h.get('Content-Security-Policy').find("default-src 'self'"),0)
         self.assertEqual(self.get('/app.js')[0],200)
         self.assertEqual(self.get('/api/status',auth=False)[0],401)
