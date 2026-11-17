@@ -18,3 +18,12 @@ test('legacy cryptographic wire bytes are explicitly versioned, not silently ren
  assert.doesNotMatch(v1,/GAZE1/);
  assert.doesNotMatch(v2,/GAZE2/);
 });
+
+test('GIZE AI product identity documents GAIZ = GIZE without changing legacy wire bytes',()=>{
+ const brand=read('../docs/BRAND_ARCHITECTURE.md');
+ const cli=read('./cli.mjs');
+ assert.match(brand,/GAIZ = GIZE/);
+ assert.match(brand,/GAIZ is the legacy name of GIZE/);
+ assert.match(cli,/GIZE AI legacy artifact operation denied/);
+ assert.match(read('./v2.mjs'),/GAIZ2/);
+});
