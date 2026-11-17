@@ -63,14 +63,17 @@ $env:THEORG_PORT='18765'
 $Proc=Start-Process -FilePath $Exe -ArgumentList '--no-browser' -PassThru
 try {
   $Ready=$false
-  for($i=0;$i -lt 45;$i++){
+  $LastProbe='no HTTP response'
+  # Bundled one-file extraction may take longer on Windows CI before localhost binds.
+  for($i=0;$i -lt 120;$i++){
     Start-Sleep -Seconds 1
     try {$Response=Invoke-WebRequest -Uri 'http://127.0.0.1:18765/' -UseBasicParsing -TimeoutSec 2
-      if($Response.StatusCode -eq 200 -and $Response.Content.Contains('ORGAIZ')){$Ready=$true;break}
-    }catch {}
-    if($Proc.HasExited){throw 'Portable EXE terminated during local smoke test'}
+      $LastProbe="HTTP $($Response.StatusCode); brandMatch=$($Response.Content.Contains('GIZE AI'))"
+      if($Response.StatusCode -eq 200 -and $Response.Content.Contains('GIZE AI')){$Ready=$true;break}
+    }catch {$LastProbe=$_.Exception.Message}
+    if($Proc.HasExited){throw "Portable EXE terminated during local smoke test; exit=$($Proc.ExitCode); last probe=$LastProbe"}
   }
-  if(-not $Ready){throw 'Portable EXE localhost dashboard smoke test failed'}
+  if(-not $Ready){throw "Portable EXE localhost dashboard smoke test failed after startup allowance; last probe=$LastProbe"}
   $TokenFile=Join-Path (Split-Path -Parent $Exe) '.theorg\data\access-token.txt'
   if(!(Test-Path $TokenFile)){throw 'Portable EXE did not create local access token'}
   $Token=(Get-Content -LiteralPath $TokenFile -Raw).Trim()
@@ -93,28 +96,24 @@ try {
   $Target=$Shell.CreateShortcut($Shortcut).TargetPath
   if($Target -ne $Exe){throw 'Desktop shortcut points to a different application'}
   Remove-Item -LiteralPath $Shortcut -Force -ErrorAction SilentlyContinue
+  # The verified gates are recorded only after all checks above have succeeded.
+  $RuntimeChecks=@{
+    exe_self_test=$true
+    dashboard_http=$Ready
+    api_token_auth=$Rejected
+    bundled_git=[bool]$Status.coding_git_available
+    bundled_llama_runtime=[bool]$Status.llama_binary
+    local_git_project=[bool]$Project.project.git_head
+    desktop_shortcut=($Target -eq $Exe)
+  }
   Write-Output 'PASS Windows onefile launch, authenticated API, bundled Git, llama-server binary and shortcut'
 }finally {
   if(-not $Proc.HasExited){Stop-Process -Id $Proc.Id -Force -ErrorAction SilentlyContinue}
   Remove-Item Env:\THEORG_PORT -ErrorAction SilentlyContinue
 }
 $Hash=(Get-FileHash $Exe -Algorithm SHA256).Hash.ToLowerInvariant()
-# Emit a same-binary Windows runtime receipt only after every real smoke gate succeeded.
-# Failures above throw before this point and therefore cannot produce an acceptance receipt.
-$SmokeReceipt=[ordered]@{
-  version='0.10.0'
-  exe_sha256=$Hash
-  checks=[ordered]@{
-    exe_self_test=$true
-    dashboard_http=$true
-    api_token_auth=$true
-    bundled_git=$true
-    bundled_llama_runtime=$true
-    local_git_project=$true
-    desktop_shortcut=$true
-  }
-}
-$SmokeReceipt | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $Root 'dist\WINDOWS-SMOKE.json')
 "$Hash  TheOrg.exe" | Set-Content -Encoding ascii (Join-Path $Root 'dist\SHA256SUMS.txt')
+$SmokeReceipt=@{version='0.10.0';exe_sha256=$Hash;checks=$RuntimeChecks}
+$SmokeReceipt | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $Root 'dist\WINDOWS-SMOKE.json')
 "llama.cpp $LlamaTag $Expected`nMinGit $GitTag $GitSha" | Set-Content -Encoding utf8 (Join-Path $Root 'dist\UPSTREAM-DIGESTS.txt')
 Write-Output "Built and smoke-tested: $Exe, sha256=$Hash"
