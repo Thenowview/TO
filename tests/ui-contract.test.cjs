@@ -55,3 +55,11 @@ test("artifact previews cannot render untrusted HTML and are read-only text",()=
  assert.ok(!ui.includes("previewPane.innerHTML="));
  assert.ok(ui.includes("result.renderMode!==\"textContent_only\""));
 });
+
+test("Chrome supervisor exposes GIZE AI as the product label without changing compatibility IDs",()=>{
+ assert.match(html,/<title>GIZE AI — Supervisor<\/title>/);
+ assert.match(html,/<strong>GIZE AI<\/strong>/);
+ assert.match(manifest.name,/GIZE AI/);
+ assert.doesNotMatch(html,/<strong>TheOrg<\/strong>|<title>TheOrg/);
+ assert.match(ui,/theorgTransfer:/); // persisted legacy key retained
+});
