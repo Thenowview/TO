@@ -10,19 +10,19 @@
   <div class="workspace-chip"><span class="chip-dot"></span><div><strong>Personal workspace</strong><small>Local-first • Private</small></div></div>
   <div class="nav-label">WORKSPACE</div>
   <nav id="navigation" aria-label="Main navigation">
-    <button class="nav-button active" data-view="overview"><span>▦</span><b>Overview</b></button>
-    <button class="nav-button" data-view="supervisor"><span>✳</span><b>AI Supervisor</b></button>
-    <button class="nav-button" data-view="tasks"><span>☷</span><b>Task queue</b></button>
-    <button class="nav-button" data-view="coding"><span>⌘</span><b>Code Studio</b></button>
-    <button class="nav-button" data-view="models"><span>◉</span><b>Local models</b></button>
-    <button class="nav-button" data-view="files"><span>▤</span><b>Workspace files</b></button>
-    <button class="nav-button" data-view="memory"><span>▧</span><b>Memory vault</b></button>
-    <button class="nav-button" data-view="settings"><span>⚙</span><b>System & security</b></button>
+    <button class="nav-button active" data-view="overview"><span>▦</span><b data-i18n="Overview">Overview</b></button>
+    <button class="nav-button" data-view="supervisor"><span>✳</span><b data-i18n="AI Supervisor">AI Supervisor</b></button>
+    <button class="nav-button" data-view="tasks"><span>☷</span><b data-i18n="Task queue">Task queue</b></button>
+    <button class="nav-button" data-view="coding"><span>⌘</span><b data-i18n="Code Studio">Code Studio</b></button>
+    <button class="nav-button" data-view="models"><span>◉</span><b data-i18n="Local models">Local models</b></button>
+    <button class="nav-button" data-view="files"><span>▤</span><b data-i18n="Workspace files">Workspace files</b></button>
+    <button class="nav-button" data-view="memory"><span>▧</span><b data-i18n="Memory vault">Memory vault</b></button>
+    <button class="nav-button" data-view="settings"><span>⚙</span><b data-i18n="System &amp; security">System &amp; security</b></button>
   </nav>
   <div class="sidebar-bottom"><div class="privacy-banner"><span>◎</span><div><strong>Offline by design</strong><small>No cloud needed. Optional AI links require your choice.</small></div></div><div class="footer-brand">GIZE AI independent runtime · Local data</div></div>
 </aside>
 <div class="main-shell">
-  <header class="topbar"><div class="topbar-left"><button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button><div><div class="breadcrumb">GIZE AI / <span id="breadcrumb">OVERVIEW</span></div><div class="top-title" id="pageTitle">Workspace overview</div></div></div><div class="topbar-right"><span class="status-pill" id="connectionStatus"><i></i> Connecting</span><button class="icon-btn" id="refreshBtn" title="Refresh">↻</button></div></header>
+  <header class="topbar"><div class="topbar-left"><button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button><div><div class="breadcrumb">GIZE AI / <span id="breadcrumb">OVERVIEW</span></div><div class="top-title" id="pageTitle" data-i18n="Workspace overview" data-i18n-dynamic="Workspace overview">Workspace overview</div></div></div><div class="topbar-right"><label for="uiLanguage" class="sr-only">Interface language</label><select id="uiLanguage" aria-label="Interface language"><option value="en">English</option><option value="ar">العربية</option><option value="ur">اردو</option><option value="fr">Français</option><option value="de">Deutsch</option></select><span class="status-pill" id="connectionStatus"><i></i> Connecting</span><button class="icon-btn" id="refreshBtn" title="Refresh">↻</button></div></header>
   <main id="content">
     <section class="view active" id="view-overview">
       <div class="hero"><div class="hero-shine"></div><div class="hero-text"><div class="eyebrow">LOCAL INTELLIGENCE SYSTEM</div><h1>One workspace.<br><em>Every agent, locally.</em></h1><p>Run compatible AI models, manage work, and keep your files and memories on your own device.</p><div class="hero-actions"><button class="btn primary" data-go="supervisor">✳ &nbsp; Open Supervisor</button><button class="btn secondary" data-go="models">◉ &nbsp; Configure model</button></div></div><div class="hero-orb"><div class="orb-inner">◈</div><div class="orbit orbit1"></div><div class="orbit orbit2"></div></div></div>
@@ -94,4 +94,4 @@
 </div></div>
 <div class="unlock-overlay" id="unlockOverlay"><div class="unlock-panel"><div class="brand-logo large">◈</div><h1>Connect to your engine</h1><p>The Windows desktop app normally connects automatically. If manually starting the server, enter the access token saved under your local application data folder.</p><label for="tokenInput">Local API token</label><input id="tokenInput" type="password" autocomplete="off" placeholder="Paste access token"><label class="checkline"><input type="checkbox" id="rememberToken"> Remember on this device (less private)</label><button class="btn primary wide" id="unlockBtn">Connect to GIZE AI</button><div class="error" id="unlockError"></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="/app.js" defer></script></body></html>
+<script src="/i18n.js" defer></script><script src="/app.js" defer></script></body></html>
