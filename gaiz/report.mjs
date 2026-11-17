@@ -4,7 +4,7 @@ const allowed=new Set(['title','summary','metrics','findings']);
 function plainObject(v){return v!==null&&typeof v==='object'&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype;}
 function string(v,max){return typeof v==='string'&&v.trim().length>0&&v.length<=max&&!/[\u0000-\u001f]/.test(v);}
 export function validateGovernanceReport(value){
- if(!plainObject(value)||Object.keys(value).some(k=>!allowed.has(k)))throw Error('Unsupported GAIZ governance report');
+ if(!plainObject(value)||Object.keys(value).some(k=>!allowed.has(k)))throw Error('Unsupported legacy .gaiz governance report');
  if(!string(value.title,160)||!string(value.summary,4000))throw Error('Report title and summary required');
  if('metrics' in value){
   if(!plainObject(value.metrics)||Object.keys(value.metrics).length>50)throw Error('Invalid report metrics');
