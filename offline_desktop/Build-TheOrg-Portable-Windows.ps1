@@ -66,7 +66,7 @@ try {
   for($i=0;$i -lt 45;$i++){
     Start-Sleep -Seconds 1
     try {$Response=Invoke-WebRequest -Uri 'http://127.0.0.1:18765/' -UseBasicParsing -TimeoutSec 2
-      if($Response.StatusCode -eq 200 -and $Response.Content.Contains('THEORG')){$Ready=$true;break}
+      if($Response.StatusCode -eq 200 -and $Response.Content.Contains('ORGAIZ')){$Ready=$true;break}
     }catch {}
     if($Proc.HasExited){throw 'Portable EXE terminated during local smoke test'}
   }
