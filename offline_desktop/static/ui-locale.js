@@ -54,13 +54,15 @@
     const apply = locale => {
       document.documentElement.lang = locale;
       document.documentElement.dir = locale === 'ar' || locale === 'ur' ? 'rtl' : 'ltr';
+      // Most UI content is still English; mark its language for assistive technology.
+      document.body.lang = 'en';
       select.value = locale;
       for (const node of elements) {
         const source = node.getAttribute('data-i18n-key');
         node.textContent = locale === 'ar' ? (AR[source] || source) : source;
-        if (locale !== 'en-US' && (!AR[source] || locale !== 'ar')) node.setAttribute('lang','en');
-        else node.removeAttribute('lang');
+        node.setAttribute('lang',locale === 'ar' && AR[source] ? 'ar' : 'en');
       }
+      note.lang = locale === 'ar' ? 'ar' : 'en';
       note.textContent = locale === 'en-US' ? '' : (locale === 'ar'
         ? 'ترجمة جزئية — قد تظهر بعض النصوص بالإنجليزية'
         : 'English fallback — full translation pending');
