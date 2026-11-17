@@ -60,7 +60,7 @@ node --check gaiz/cli.mjs
 - Fuzzing, external cryptographic assessment, algorithm upgrade/downgrade policy and production key lifecycle are hard release gates.
 
 
-## GAIZ2 cross-repository acceptance contract — November 2026
+## GIZE AI cross-repository acceptance contract (legacy GAIZ2 protocol) — November 2026
 
 The signing/encryption **protocol owner is TO**, not TEBE or public TEFE.
 TEBE consumes GAIZ2 with a deliberately independent verifier:
