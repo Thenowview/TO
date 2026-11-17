@@ -12,7 +12,8 @@ SUFFIXES={'.py','.js','.css','.html','.svg','.json','.md','.txt','.sh','.cmd','.
 EXCLUDED={'__pycache__','.git','.theorg','data','workspace','dist','build','node_modules','.build-cache'}
 
 def files(root=ROOT):
-    root=Path(root).resolve()
+    # Preserve caller spelling of Windows 8.3 temp paths for relative_to(); validate via samefile below.
+    root=Path(root).absolute()
     paths=[root/name for name in TOP]
     for directory in DIRECTORIES:
         folder=root/directory
