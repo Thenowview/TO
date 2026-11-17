@@ -178,8 +178,9 @@ def workspace_path(relative):
         raise EngineError('Provide a workspace-relative file name.')
     if Path(relative).is_absolute() or relative.startswith(('~','\\')) or re.match(r'^[A-Za-z]:',relative):
         raise EngineError('Absolute paths are not allowed.')
-    resolved=(WORKSPACE/relative).resolve()
-    if not resolved.is_relative_to(WORKSPACE):
+    workspace_root=WORKSPACE.resolve()
+    resolved=(workspace_root/relative).resolve()
+    if not resolved.is_relative_to(workspace_root):
         raise EngineError('File path must remain inside the workspace.')
     return resolved
 
@@ -187,7 +188,7 @@ def list_files():
     result=[]
     for p in WORKSPACE.rglob('*'):
         if len(result)>=250: break
-        if p.is_file() and not p.is_symlink() and p.resolve().is_relative_to(WORKSPACE):
+        if p.is_file() and not p.is_symlink() and p.resolve().is_relative_to(WORKSPACE.resolve()):
             result.append({'name':str(p.relative_to(WORKSPACE)), 'size':p.stat().st_size})
     return sorted(result,key=lambda x:x['name'])
 
