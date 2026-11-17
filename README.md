@@ -1,6 +1,6 @@
-# Orgaiz — AI operating workspace (legacy TO codebase)
+# Orgaiz — AI operating workspace powered by GIZE AI (legacy TO codebase)
 
-> **Approved brand direction (14 Nov 2026):** Orgaiz is the public/master brand and will replace "TheOrg" in customer-facing naming. THEEPMO remains Orgaiz's authenticated enterprise governance product. The architecture has **two customer-facing web experiences only**: Orgaiz public/tools and the THEEPMO app. Do not create a separate TheOrg website. The official planned encrypted-file extension is **`.gaiz`**.
+> **Approved brand direction (14 Nov 2026):** Orgaiz is the public/master brand and will replace "TheOrg" in customer-facing naming. THEEPMO remains Orgaiz's authenticated enterprise governance product. The architecture has **two customer-facing web experiences only**: Orgaiz public/tools and the THEEPMO app. Do not create a separate TheOrg website. **GIZE AI** is the official AI intelligence and decision-support brand. The legacy experimental encrypted-file extension remains **`.gaiz`** for compatibility.
 >
 > **Repository status:** This repository is still named `TO` and contains legacy TheOrg Chrome/Windows local-first code. Old product/build/file names below are historical technical references until migrated; they are **not** approval to deploy or rename automatically.
 >
