@@ -147,7 +147,7 @@
           reason: "Untrusted AI-suggested tasks need owner review before execution"
         };
         await this.saveOrders(all);
-        // The planning chat has been handed off; close its TheOrg-owned tab only.
+        // The planning chat has been handed off; close its Orgaiz-owned tab only.
         const closedSupervisorTabs = await this.closeAgentTabsLocked(taskId, "supervisor");
         return {taskId, plan, status: order.phase, closedSupervisorTabs};
       });
@@ -346,7 +346,7 @@
         token:reply.token,url:url.href,tabId:tab.id
       });
       return {...receipt,tabId:tab.id,note:
-        "TheOrg opened an approved tab. No page content or action outcome has been verified."};
+        "Orgaiz opened an approved tab. No page content or action outcome has been verified."};
     }
 
     async getNativeOrder(taskId) {
@@ -420,7 +420,7 @@
           throw new Error("Previous browser session ownership was lost; use Recover task to open a new owned tab");
         }
 
-        // Create TheOrg-owned tabs only. Never group an existing personal tab.
+        // Create Orgaiz-owned tabs only. Never group an existing personal tab.
         const created = await this.api.tabs.create({
           url: provider.url,
           active: true,
@@ -468,7 +468,7 @@
           }
           state.groupId = groupId;
           await this.api.tabGroups.update(groupId, {
-            title: "TheOrg • " + taskId.slice(0, 8),
+            title: "Orgaiz • " + taskId.slice(0, 8),
             color: "blue",
             collapsed: false
           });
@@ -495,7 +495,7 @@
         throw new Error("No untracked agent session to recover");
       const owned = await this.owned();
       if (((owned[taskId] || {}).tabs || []).some(t => t.agentId === agentId))
-        throw new Error("TheOrg already owns an active tab for this agent");
+        throw new Error("Orgaiz already owns an active tab for this agent");
       const task = (order.plan?.tasks || []).find(t=>t.id===agentId);
       if (!task) throw new Error("Agent is not in the current plan");
       const prompt = await this.agentPrompt(taskId,agentId);
