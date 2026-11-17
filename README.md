@@ -1,4 +1,4 @@
-# Orgaiz — AI operating workspace (legacy TO codebase)
+# Orgaiz — AI operating workspace powered by GIZE AI (legacy TO codebase)
 
 
 > **GIZE AI branding standard (17 Nov 2026):** Visible names use **ORGANIZATION + STRATEGIZE** (Integrated Organization and Strategy Management), **Powered by GIZE AI** (AI-Powered Intelligence and Decision Support). Preserve authorized THEEPMO branding. The existing `.gaiz` technical file extension and compatibility identifiers remain unchanged pending explicit versioned migration approval. See [GIZE AI brand standard](docs/GIZE_AI_BRAND_STANDARD.md). This is a naming decision, not evidence of deployed functionality.
