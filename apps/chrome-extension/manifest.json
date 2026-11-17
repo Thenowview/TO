@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Orgaiz — Supervisor Workspace",
+  "name": "GIZE AI — Supervisor Workspace",
   "version": "0.3.0",
   "description": "Local-first Windows Supervisor with reviewed optional Ollama agents and durable SQLite jobs (developer preview).",
   "permissions": [
@@ -14,7 +14,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open Orgaiz Supervisor"
+    "default_title": "Open GIZE AI Supervisor"
   },
   "side_panel": {
     "default_path": "home.html"
