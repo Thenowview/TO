@@ -8,7 +8,7 @@ function supervisorPrompt(instruction) {
   if (typeof instruction!=="string" || instruction.trim().length<5 || instruction.length>5000)
     throw new Error("Instruction must contain 5–5000 characters");
   return [
-    "You are a planning adviser to TheOrg Supervisor; you cannot execute tools or claim completion.",
+    "You are a planning adviser to Orgaiz Supervisor; you cannot execute tools or claim completion.",
     "Interpret the owner's instruction, break it into at most eight bounded specialist tasks.",
     "Each task requires a concrete deliverable, acceptance criteria, and dependencies.",
     "For each goal specify target/source, output format, exclusions, edge cases and evidence of success.",
@@ -77,7 +77,7 @@ function interpret(response) {
 function agentPrompt(orderTitle,plan,agentId) {
   const t=plan&&plan.tasks.find(x=>x.id===agentId);
   if(!t) throw new Error("Unknown specialist assignment");
-  return ["You are a specialist adviser working for TheOrg Supervisor.",
+  return ["You are a specialist adviser working for Orgaiz Supervisor.",
     "Complete only the bounded assignment below and explain evidence and pending questions.",
     "Do not claim you changed files or websites unless you actually did and can show evidence.",
     "Owner approval is required for consequential actions.",
