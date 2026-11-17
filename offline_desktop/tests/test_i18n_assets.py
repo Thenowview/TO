@@ -68,3 +68,22 @@ def test_screen_sections_and_english_fallback_coverage():
     for key in re.findall(r'data-i18n="([^"]+)"', html):
         assert key in keys, key
     assert "index < 0 || locale === 'en' ? english" in script
+
+def test_workspace_controls_have_complete_four_locale_translation_vectors():
+    import json
+    import re
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "i18n.js").read_text(encoding="utf-8")
+    keys = json.loads(re.search(r"const keys = (\[.*?\]);", script).group(1))
+    columns = json.loads(re.search(r"const columns = (\{.*?\});", script).group(1))
+    assert len(keys) == 82
+    assert len(keys) == len(set(keys))
+    assert set(columns) == {"ar", "ur", "fr", "de"}
+    for locale, translations in columns.items():
+        assert len(translations) == len(keys), locale
+        assert all(isinstance(value, str) and value.strip() for value in translations), locale
+    for key in ("PROJECT WORKSPACE", "Choose a local Git project",
+                "GGUF STORAGE", "Installed model files", "Text editor",
+                "Workspace-relative path", "Reference note", "Restricted files"):
+        assert f'data-i18n="{key}"' in html
+    assert "document.documentElement.dir = ['ar','ur'].includes(locale)" in script
