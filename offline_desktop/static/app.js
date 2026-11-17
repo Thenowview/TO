@@ -1,4 +1,4 @@
-/* TheOrg Offline Engine UI — original, no external scripts or services. */
+/* Orgaiz Offline Engine UI — original, no external scripts or services. */
 'use strict';
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -179,7 +179,7 @@
   async function probeChromeAI(){
     const out=$('chromeAIStatus');
     if(!('LanguageModel' in window) || typeof window.LanguageModel.availability !== 'function'){
-      text(out,'This browser/device does not expose the Chrome on-device Prompt API. TheOrg still works without it.');
+      text(out,'This browser/device does not expose the Chrome on-device Prompt API. Orgaiz still works without it.');
       $('chromeAIRun').disabled=true;return;
     }
     try{
@@ -208,7 +208,7 @@
     if(!file){showToast('Select a local .gguf or .zip file first.',true);return;}
     const isZip=/\.zip$/i.test(file.name);
     if(!(/\.gguf$/i.test(file.name)||isZip)){showToast('Only GGUF and ZIP model files are supported.',true);return;}
-    if(!confirm('Copy '+file.name+' ('+fmtSize(file.size)+') into TheOrg portable model storage? This duplicates the file on disk.'))return;
+    if(!confirm('Copy '+file.name+' ('+fmtSize(file.size)+') into Orgaiz portable model storage? This duplicates the file on disk.'))return;
     const btn=$('importModel');btn.disabled=true;text($('modelImportStatus'),'Importing '+file.name+' — keep this tab open...');
     try{
       const r=await fetch(isZip?'/api/models/import-zip':'/api/models/import',{method:'POST',headers:{
@@ -237,7 +237,7 @@
   async function writeFile(){
     const name=$('fileName').value;
     if(!name){showToast('Enter a workspace-relative file path.',true);return;}
-    if(!confirm('Save '+name+' inside the restricted TheOrg workspace? This may overwrite an existing file.'))return;
+    if(!confirm('Save '+name+' inside the restricted Orgaiz workspace? This may overwrite an existing file.'))return;
     try{await request('files/write',{method:'POST',body:{name,content:$('fileContent').value,confirmed:true}});
       showToast('Saved '+name);await loadFiles();await loadStatus();}
     catch(e){showToast(e.message,true)}
@@ -286,7 +286,7 @@
   $('codeExportBundle').addEventListener('click',exportLocalBundle);
   $('chromeAIRun').addEventListener('click',runChromeAI);
   $('stopModel').addEventListener('click',async()=>{
-    if(!confirm('Stop TheOrg-managed local model and release its memory?'))return;
+    if(!confirm('Stop Orgaiz-managed local model and release its memory?'))return;
     try{const result=await request('models/stop',{method:'POST',body:{confirmed:true}});showToast(result.note||'Model stopped');await loadModels();await loadStatus();}
     catch(e){showToast(e.message,true);}
   });
@@ -360,7 +360,7 @@
     const objective=$('autopilotObjective').value.trim();
     if(objective.length<3)return showToast('Enter a coding objective.',true);
     if(!$('autopilotScope').checked)return showToast('Authorize the isolated local scope for this run.',true);
-    if(!confirm('AUTO-APPROVE one LOCAL coding workflow for this project? TheOrg may apply edits, run sandbox tests, attempt repairs and make a local commit only on success. No GitHub push or deployment.'))return;
+    if(!confirm('AUTO-APPROVE one LOCAL coding workflow for this project? Orgaiz may apply edits, run sandbox tests, attempt repairs and make a local commit only on success. No GitHub push or deployment.'))return;
     const btn=$('autopilotStart');btn.disabled=true;
     try{
       const result=await request('code/autopilot',{method:'POST',body:{project_id:chosenCodeProject,objective,
@@ -484,7 +484,7 @@
     }
     if(plan.status==='verified')actions.append(codeAction('Commit locally',
       'Create a LOCAL Git commit of the exact verified files? No push or deployment will occur.',
-      'commit',{message:'TheOrg: '+plan.objective.slice(0,85)}));
+      'commit',{message:'Orgaiz: '+plan.objective.slice(0,85)}));
     if(['applied','checks_failed','verified','interrupted'].includes(plan.status))actions.append(codeAction('Roll back approved edits',
       'Restore the original file contents? Any independent edits will cause the rollback to be refused.',
       'rollback',{}));
