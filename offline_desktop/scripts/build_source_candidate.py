@@ -12,7 +12,8 @@ SUFFIXES={'.py','.js','.css','.html','.svg','.json','.md','.txt','.sh','.cmd','.
 EXCLUDED={'__pycache__','.git','.theorg','data','workspace','dist','build','node_modules','.build-cache'}
 
 def files(root=ROOT):
-    root=Path(root).resolve()
+    # Preserve caller spelling of Windows 8.3 temp paths for relative_to(); validate via samefile below.
+    root=Path(root).absolute()
     paths=[root/name for name in TOP]
     for directory in DIRECTORIES:
         folder=root/directory
@@ -22,7 +23,10 @@ def files(root=ROOT):
         if not p.is_file() or p.is_symlink():continue
         if set(p.relative_to(root).parts)&EXCLUDED or p.suffix.lower() not in SUFFIXES:continue
         if p.stat().st_size>350000:raise ValueError('Unexpected large asset: '+str(p))
-        if not p.resolve().is_relative_to(root):raise ValueError('Path escapes source')
+        # Preserve source containment when Windows resolves short (8.3) temp paths to long names.
+        rel=p.relative_to(root)
+        ancestor=p.resolve().parents[len(rel.parts)-1]
+        if not ancestor.samefile(root):raise ValueError('Path escapes source')
         result.append(p)
     return sorted(set(result),key=lambda p:p.relative_to(root).as_posix())
 

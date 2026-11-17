@@ -66,7 +66,7 @@ try {
   for($i=0;$i -lt 45;$i++){
     Start-Sleep -Seconds 1
     try {$Response=Invoke-WebRequest -Uri 'http://127.0.0.1:18765/' -UseBasicParsing -TimeoutSec 2
-      if($Response.StatusCode -eq 200 -and $Response.Content.Contains('THEORG')){$Ready=$true;break}
+      if($Response.StatusCode -eq 200 -and $Response.Content.Contains('ORGAIZ')){$Ready=$true;break}
     }catch {}
     if($Proc.HasExited){throw 'Portable EXE terminated during local smoke test'}
   }
@@ -99,6 +99,22 @@ try {
   Remove-Item Env:\THEORG_PORT -ErrorAction SilentlyContinue
 }
 $Hash=(Get-FileHash $Exe -Algorithm SHA256).Hash.ToLowerInvariant()
+# Emit a same-binary Windows runtime receipt only after every real smoke gate succeeded.
+# Failures above throw before this point and therefore cannot produce an acceptance receipt.
+$SmokeReceipt=[ordered]@{
+  version='0.10.0'
+  exe_sha256=$Hash
+  checks=[ordered]@{
+    exe_self_test=$true
+    dashboard_http=$true
+    api_token_auth=$true
+    bundled_git=$true
+    bundled_llama_runtime=$true
+    local_git_project=$true
+    desktop_shortcut=$true
+  }
+}
+$SmokeReceipt | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $Root 'dist\WINDOWS-SMOKE.json')
 "$Hash  TheOrg.exe" | Set-Content -Encoding ascii (Join-Path $Root 'dist\SHA256SUMS.txt')
 "llama.cpp $LlamaTag $Expected`nMinGit $GitTag $GitSha" | Set-Content -Encoding utf8 (Join-Path $Root 'dist\UPSTREAM-DIGESTS.txt')
 Write-Output "Built and smoke-tested: $Exe, sha256=$Hash"
