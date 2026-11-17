@@ -1,4 +1,4 @@
-/* TheOrg Supervisor Home. Local controls only; AI-chat exchanges are manual handoffs.
+/* GIZE AI Supervisor Home. Local controls only; AI-chat exchanges are manual handoffs.
  * External responses are never inserted as HTML or executed.
  */
 "use strict";
@@ -30,7 +30,7 @@ function toast(message, isError = false) {
 async function rpc(command, args = {}) {
   const result = await chrome.runtime.sendMessage({command, ...args});
   if (!result || result.ok !== true)
-    throw new Error(result && result.error ? result.error : "TheOrg controller did not respond");
+    throw new Error(result && result.error ? result.error : "GIZE AI controller did not respond");
   return result;
 }
 async function action(fn) {
@@ -139,7 +139,7 @@ async function renderExecutionQueue(taskId) {
         recover.type="button";
         recover.addEventListener("click",()=>action(async()=>{
           const consent=window.confirm(
-            "Open a NEW TheOrg-owned tab for "+item.agentId+"? "+
+            "Open a NEW GIZE AI-owned tab for "+item.agentId+"? "+
             "Tabs from the earlier Chrome session will not be closed automatically."
           );
           if(!consent)return;
@@ -210,7 +210,7 @@ async function showSelected() {
     for (const b of [open, prompt, report]) {b.type="button"; b.disabled=!approved;}
     open.addEventListener("click",()=>action(async()=>{
       await rpc("open_agent_tab",{taskId:order.taskId,agentId:agent.id,providerId:agent.provider});
-      toast("Agent tab opened in TheOrg's task group. You control the AI conversation.");
+      toast("Agent tab opened in GIZE AI's task group. You control the AI conversation.");
     }));
     prompt.addEventListener("click",()=>action(async()=>{
       const r=await rpc("get_agent_prompt",{taskId:order.taskId,agentId:agent.id});
@@ -476,7 +476,7 @@ function registerEvents() {
     } catch {
       // User can always choose the existing Copy agent instructions control.
     }
-    toast("Opened "+result.agentId+" in a TheOrg-owned provider tab. "+
+    toast("Opened "+result.agentId+" in a GIZE AI-owned provider tab. "+
       (copied?"Instructions copied: paste into the chat manually.":
       "Use Copy agent instructions before chatting."));
     await refreshOrders(o.taskId);
@@ -486,7 +486,7 @@ function registerEvents() {
     const tab=await chrome.tabs.getCurrent();
     if(!tab||!tab.id)throw new Error("Pin the full-tab Supervisor page, not its side panel.");
     await chrome.tabs.update(tab.id,{pinned:true});
-    toast("TheOrg Supervisor home pinned.");
+    toast("GIZE AI Supervisor home pinned.");
   }));
   $("newOrder").addEventListener("submit",event=>{
     event.preventDefault();
@@ -595,7 +595,7 @@ function registerEvents() {
       if(!o||!file)throw new Error("Choose a work order and file");
       if(!o.plan?.reviewed)throw new Error("Approve the agent plan before importing files");
       if(file.size<1||file.size>32*1024*1024)
-        throw new Error("TheOrg currently supports files up to 32 MiB");
+        throw new Error("GIZE AI currently supports files up to 32 MiB");
       if(!allowedFileTypes.has((file.name.split(".").pop()||"").toLowerCase()))
         throw new Error("Unsupported file extension");
       const form=$("artifactUpload");
