@@ -10,14 +10,14 @@
   <div class="workspace-chip"><span class="chip-dot"></span><div><strong>Personal workspace</strong><small>Local-first • Private</small></div></div>
   <div class="nav-label">WORKSPACE</div>
   <nav id="navigation" aria-label="Main navigation">
-    <button class="nav-button active" data-view="overview"><span>▦</span><b>Overview</b></button>
-    <button class="nav-button" data-view="supervisor"><span>✳</span><b>AI Supervisor</b></button>
-    <button class="nav-button" data-view="tasks"><span>☷</span><b>Task queue</b></button>
-    <button class="nav-button" data-view="coding"><span>⌘</span><b>Code Studio</b></button>
-    <button class="nav-button" data-view="models"><span>◉</span><b>Local models</b></button>
-    <button class="nav-button" data-view="files"><span>▤</span><b>Workspace files</b></button>
-    <button class="nav-button" data-view="memory"><span>▧</span><b>Memory vault</b></button>
-    <button class="nav-button" data-view="settings"><span>⚙</span><b>System & security</b></button>
+    <button class="nav-button active" data-view="overview"><span>▦</span><b data-i18n-key="Overview">Overview</b></button>
+    <button class="nav-button" data-view="supervisor"><span>✳</span><b data-i18n-key="AI Supervisor">AI Supervisor</b></button>
+    <button class="nav-button" data-view="tasks"><span>☷</span><b data-i18n-key="Task queue">Task queue</b></button>
+    <button class="nav-button" data-view="coding"><span>⌘</span><b data-i18n-key="Code Studio">Code Studio</b></button>
+    <button class="nav-button" data-view="models"><span>◉</span><b data-i18n-key="Local models">Local models</b></button>
+    <button class="nav-button" data-view="files"><span>▤</span><b data-i18n-key="Workspace files">Workspace files</b></button>
+    <button class="nav-button" data-view="memory"><span>▧</span><b data-i18n-key="Memory vault">Memory vault</b></button>
+    <button class="nav-button" data-view="settings"><span>⚙</span><b data-i18n-key="System & security">System & security</b></button>
   </nav>
   <div class="sidebar-bottom"><div class="privacy-banner"><span>◎</span><div><strong>Offline by design</strong><small>No cloud needed. Optional AI links require your choice.</small></div></div><div class="footer-brand">Orgaiz independent runtime · Local data</div></div>
 </aside>
@@ -94,4 +94,4 @@
 </div></div>
 <div class="unlock-overlay" id="unlockOverlay"><div class="unlock-panel"><div class="brand-logo large">◈</div><h1>Connect to your engine</h1><p>The Windows desktop app normally connects automatically. If manually starting the server, enter the access token saved under your local Orgaiz data folder.</p><label for="tokenInput">Local API token</label><input id="tokenInput" type="password" autocomplete="off" placeholder="Paste access token"><label class="checkline"><input type="checkbox" id="rememberToken"> Remember on this device (less private)</label><button class="btn primary wide" id="unlockBtn">Connect to Orgaiz</button><div class="error" id="unlockError"></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="/app.js" defer></script></body></html>
+<script src="/ui-locale.js" defer></script><script src="/app.js" defer></script></body></html>
