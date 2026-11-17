@@ -11,9 +11,19 @@ DIRECTORIES=('engine','static','scripts','tests','models','docs','.github','bin'
 SUFFIXES={'.py','.js','.css','.html','.svg','.json','.md','.txt','.sh','.cmd','.ps1','.nsi','.yml','.yaml','.webmanifest'}
 EXCLUDED={'__pycache__','.git','.theorg','data','workspace','dist','build','node_modules','.build-cache'}
 
+def _safe_relative(path, root):
+    # Use the same lexical root for paths built from it. Windows runners may
+    # report an 8.3 alias for the root but a long name for resolved children.
+    relative = path.relative_to(root)
+    current = root
+    for segment in relative.parts:
+        current = current / segment
+        if current.is_symlink():
+            raise ValueError('Path escapes source via symlink')
+    return relative
+
 def files(root=ROOT):
-    # Preserve caller spelling of Windows 8.3 temp paths for relative_to(); validate via samefile below.
-    root=Path(root).absolute()
+    root=Path(root).resolve()
     paths=[root/name for name in TOP]
     for directory in DIRECTORIES:
         folder=root/directory
@@ -21,14 +31,11 @@ def files(root=ROOT):
     result=[]
     for p in paths:
         if not p.is_file() or p.is_symlink():continue
-        if set(p.relative_to(root).parts)&EXCLUDED or p.suffix.lower() not in SUFFIXES:continue
+        if set(_safe_relative(p, root).parts)&EXCLUDED or p.suffix.lower() not in SUFFIXES:continue
         if p.stat().st_size>350000:raise ValueError('Unexpected large asset: '+str(p))
-        # Preserve source containment when Windows resolves short (8.3) temp paths to long names.
-        rel=p.relative_to(root)
-        ancestor=p.resolve().parents[len(rel.parts)-1]
-        if not ancestor.samefile(root):raise ValueError('Path escapes source')
+        _safe_relative(p, root)
         result.append(p)
-    return sorted(set(result),key=lambda p:p.relative_to(root).as_posix())
+    return sorted(set(result),key=lambda p:_safe_relative(p, root).as_posix())
 
 def validate_source(root=ROOT):
     p=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-q'],
@@ -47,11 +54,11 @@ def build(output,root=ROOT,run_tests=True):
     manifest={'schema':'theorg-source-candidate-v1','kind':'source_only',
               'python_tests':count,'windows_exe':'not_tested',
               'real_gguf':'not_tested','autonomous_coding':'not_tested',
-              'files':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}}
+              'files':{_safe_relative(p, root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}}
     output.parent.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(output,'w',allowZip64=True) as z:
         for file in paths:
-            info=zipfile.ZipInfo('TheOrg/'+file.relative_to(root).as_posix(),(2026,1,1,0,0,0))
+            info=zipfile.ZipInfo('TheOrg/'+_safe_relative(file, root).as_posix(),(2026,1,1,0,0,0))
             info.compress_type=zipfile.ZIP_DEFLATED
             z.writestr(info,file.read_bytes(),compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
         info=zipfile.ZipInfo('TheOrg/RELEASE-MANIFEST.json',(2026,1,1,0,0,0))
