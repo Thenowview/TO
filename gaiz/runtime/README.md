@@ -1,4 +1,4 @@
-# Trusted GAIZ runtime
+# GIZE AI — trusted legacy GAIZ runtime
 
 See [PROTOCOL.md](PROTOCOL.md) for the complete TO/TEBE contract and launch gates.
 
