@@ -87,3 +87,25 @@ def test_workspace_controls_have_complete_four_locale_translation_vectors():
                 "Workspace-relative path", "Reference note", "Restricted files"):
         assert f'data-i18n="{key}"' in html
     assert "document.documentElement.dir = ['ar','ur'].includes(locale)" in script
+
+
+def test_runtime_messages_are_localized_without_changing_api_contract():
+    import json
+    import re
+    js = (STATIC / "i18n.js").read_text(encoding="utf-8")
+    app = (STATIC / "app.js").read_text(encoding="utf-8")
+    keys = json.loads(re.search(r"const keys = (\[.*?\]);", js).group(1))
+    columns = json.loads(re.search(r"const columns = (\{.*?\});", js).group(1))
+    assert len(keys) == 100
+    assert len(keys) == len(set(keys))
+    assert set(columns) == {"ar", "ur", "fr", "de"}
+    for locale, values in columns.items():
+        assert len(values) == len(keys), locale
+        assert all(isinstance(value, str) and value.strip() for value in values), locale
+    for source in ("Local engine connected", "NOT LOADED", "File loaded locally",
+                   "Delete memory", "Permanently delete this local memory?",
+                   "Invalid or expired access token."):
+        assert source in keys
+        assert f"tr('{source}')" in app
+    assert "const tokenKey = 'theorg.offline.token'" in app
+    assert "request('memories/delete'" in app

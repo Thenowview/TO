@@ -27,6 +27,7 @@
     if(value !== undefined)text(e,value);
     return e;
   }
+  const tr = (english) => window.OrgaizOfflineLocale?.translate(english) ?? english;
   function showToast(message,isError=false) {
     const toast=$('toast');toast.textContent=String(message);toast.className='toast show'+(isError?' error':'');
     clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('show'),4600);
@@ -39,18 +40,18 @@
     });
     let result;
     try{result=await r.json();}catch{throw new Error('Engine returned an invalid response ('+r.status+').');}
-    if(r.status===401){lock();throw new Error('Invalid or expired access token.');}
+    if(r.status===401){lock();throw new Error(tr('Invalid or expired access token.'));}
     if(!r.ok)throw new Error(result.error||('Engine request failed ('+r.status+').'));
     return result;
   }
   function lock(){
     $('unlockOverlay').classList.remove('hidden');
     $('connectionStatus').classList.add('error');
-    $('connectionStatus').lastChild.textContent=' Locked';
+    $('connectionStatus').lastChild.textContent=' '+tr('Locked');
   }
   function unlock(){
     const entered=$('tokenInput').value.trim();
-    if(!entered){$('unlockError').textContent='Please enter the local access token.';return;}
+    if(!entered){$('unlockError').textContent=tr('Please enter the local access token.');return;}
     token=entered;
     if($('rememberToken').checked)localStorage.setItem(tokenKey,token);
     else localStorage.removeItem(tokenKey);
@@ -107,15 +108,15 @@
     const data=await request('status');engineStatus=data;
     const online=Boolean(data.active_backend);
     const state=$('connectionStatus');state.classList.remove('error');
-    state.replaceChildren(element('i'),document.createTextNode(' Local engine connected'));
-    text($('metricModel'),online?'READY':'NOT LOADED');
-    text($('metricModelDetail'),online?(data.active_model||data.active_backend):'Add local inference runtime');
+    state.replaceChildren(element('i'),document.createTextNode(' '+tr('Local engine connected')));
+    text($('metricModel'),online?tr('READY'):tr('NOT LOADED'));
+    text($('metricModelDetail'),online?(data.active_model||data.active_backend):tr('Add local inference runtime'));
     text($('metricTasks'),data.tasks?.completed||0);
     text($('metricFiles'),data.workspace_files||0);
     text($('metricMemory'),data.memory_count||0);
     const list=$('systemReadiness');list.replaceChildren();
-    list.append(readyRow('Local service',true,'RUNNING'));
-    list.append(readyRow('SQLite persistence',true,'CONNECTED'));
+    list.append(readyRow(tr('Local service'),true,tr('RUNNING')));
+    list.append(readyRow(tr('SQLite persistence'),true,'CONNECTED'));
     list.append(readyRow('Offline language model',online,online?'READY':'NOT INSTALLED'));
     list.append(readyRow('GGUF model files',data.model_files>0,(data.model_files||0)+' available'));
     list.append(readyRow('llama-server binary',data.llama_binary, data.llama_binary?'FOUND':'OPTIONAL'));
@@ -125,12 +126,12 @@
   async function loadModels(){
     const data=await request('models');modelData=data;
     const runtimes=$('runtimeList');runtimes.replaceChildren(
-      runtimeCard('llama.cpp local server','127.0.0.1:8081 · '+(data.backends?.llamacpp?'Ready':'Not responding'),Boolean(data.backends?.llamacpp)),
+      runtimeCard('llama.cpp local server','127.0.0.1:8081 · '+(data.backends?.llamacpp?tr('Ready'):tr('Not responding')),Boolean(data.backends?.llamacpp)),
       runtimeCard('Browser-only Chrome AI','Optional Prompt API · not an agent backend',Boolean(window.LanguageModel))
     );
     $('backendSelect').value=data.selected||'auto';$('ollamaModel').value=data.ollama_model||'';
     const models=$('modelList');models.replaceChildren();
-    if(!(data.files||[]).length){appendEmpty(models,'No GGUF models found. Copy an official compatible .gguf into models/.');return;}
+    if(!(data.files||[]).length){appendEmpty(models,tr('No GGUF models found. Copy an official compatible .gguf into models/.'));return;}
     for(const file of data.files){
       const card=element('div','model-card');
       card.append(element('strong','',file.name));card.append(element('small','',fmtSize(file.bytes)));
@@ -223,7 +224,7 @@
   }
   async function loadFiles(){
     const data=await request('files'),files=$('fileList');files.replaceChildren();
-    if(!(data.files||[]).length){appendEmpty(files,'No files yet. Use the editor to save a first local note.');return;}
+    if(!(data.files||[]).length){appendEmpty(files,tr('No files yet. Use the editor to save a first local note.'));return;}
     for(const file of data.files){
       const btn=element('button');btn.append(element('span','',file.name),element('small','',fmtSize(file.size)));
       btn.addEventListener('click',()=>{$('fileName').value=file.name;readFile();});files.append(btn);
@@ -231,7 +232,7 @@
   }
   async function readFile(){
     try{const x=await request('files/read',{method:'POST',body:{name:$('fileName').value}});
-      $('fileContent').value=x.content;showToast('File loaded locally');}
+      $('fileContent').value=x.content;showToast(tr('File loaded locally'));}
     catch(e){showToast(e.message,true)}
   }
   async function writeFile(){
@@ -244,12 +245,12 @@
   }
   async function loadMemories(){
     const data=await request('memories'),list=$('memoryList');list.replaceChildren();
-    if(!(data.memories||[]).length){appendEmpty(list,'No saved notes. Add a reference to keep it in local SQLite.');return;}
+    if(!(data.memories||[]).length){appendEmpty(list,tr('No saved notes. Add a reference to keep it in local SQLite.'));return;}
     for(const m of data.memories){
       const c=element('div','memory-item');c.append(element('strong','',m.title),element('p','',m.content));
-      const btn=element('button','','Delete memory');
+      const btn=element('button','',tr('Delete memory'));
       btn.addEventListener('click',()=>{
-        if(!confirm('Permanently delete this local memory?'))return;
+        if(!confirm(tr('Permanently delete this local memory?')))return;
         request('memories/delete',{method:'POST',body:{id:m.id}}).then(()=>{loadMemories();loadStatus()}).catch(e=>showToast(e.message,true));
       });c.append(btn);list.append(c);
     }
