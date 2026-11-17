@@ -63,14 +63,17 @@ $env:THEORG_PORT='18765'
 $Proc=Start-Process -FilePath $Exe -ArgumentList '--no-browser' -PassThru
 try {
   $Ready=$false
-  for($i=0;$i -lt 45;$i++){
+  $LastProbe='no HTTP response'
+  # Bundled one-file extraction may take longer on Windows CI before localhost binds.
+  for($i=0;$i -lt 120;$i++){
     Start-Sleep -Seconds 1
     try {$Response=Invoke-WebRequest -Uri 'http://127.0.0.1:18765/' -UseBasicParsing -TimeoutSec 2
+      $LastProbe="HTTP $($Response.StatusCode); brandMatch=$($Response.Content.Contains('GIZE AI'))"
       if($Response.StatusCode -eq 200 -and $Response.Content.Contains('GIZE AI')){$Ready=$true;break}
-    }catch {}
-    if($Proc.HasExited){throw 'Portable EXE terminated during local smoke test'}
+    }catch {$LastProbe=$_.Exception.Message}
+    if($Proc.HasExited){throw "Portable EXE terminated during local smoke test; exit=$($Proc.ExitCode); last probe=$LastProbe"}
   }
-  if(-not $Ready){throw 'Portable EXE localhost dashboard smoke test failed'}
+  if(-not $Ready){throw "Portable EXE localhost dashboard smoke test failed after startup allowance; last probe=$LastProbe"}
   $TokenFile=Join-Path (Split-Path -Parent $Exe) '.theorg\data\access-token.txt'
   if(!(Test-Path $TokenFile)){throw 'Portable EXE did not create local access token'}
   $Token=(Get-Content -LiteralPath $TokenFile -Raw).Trim()
