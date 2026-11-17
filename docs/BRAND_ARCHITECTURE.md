@@ -3,6 +3,12 @@
 **Status:** Approved product direction; documentation only. No domain migration, rename, deployment or release is implied by this decision.
 **Scope:** `faisalwrokksa-hub/TO`, `2029TEFE/TEFE`, `2029TEBE/TEBE`.
 
+## Approved AI brand addendum — 17 November 2026
+- **GIZE AI** is the official AI product identity. Use **Powered by GIZE AI** for customer-facing intelligence and decision-support experiences.
+- Use **ORGANIZATION** and **STRATEGIZE** as the approved capability names; their integrated architecture is **ORGANIZATION + STRATEGIZE** — Integrated Organization and Strategy Management.
+- The previous `GAIZ` term remains only where required to identify experimental protocol bytes, filenames, paths, endpoints or documented technical history. Do not silently rename the `.gaiz` extension or `GAIZ1`/`GAIZ2` cryptographic markers.
+- This addendum does not authorize new websites, domain changes, identity migrations, production deployments or substitution of THEEPMO's authorized commercial identity.
+
 ## Non-negotiable product decision
 - **ORGAIZ / Orgaiz.com is the one public-facing master brand.** Orgaiz is the new commercial name for the former "TheOrg" concept, including its AI tools, report offerings, local/browser agents, secure API connections and proposed encrypted-file functionality.
 - **THEEPMO is an Orgaiz product, not another independent company or marketing brand.** Preserve THEEPMO's substantive enterprise governance, strategy, portfolio/project, approval and reporting capabilities.
