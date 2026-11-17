@@ -6,7 +6,7 @@ from scripts import build_source_candidate as pack
 class SourceArchiveTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.root=Path(self.tmp.name)/'source';self.root.mkdir()
+        self.root=Path(self.tmp.name)/'source';self.root.mkdir();self.root=self.root.resolve()
         for name,data in [('app.py','print(1)'),('engine/core.py','value=1'),
                           ('data/access-token.txt','PRIVATE'),('data/theorg.sqlite3','DB'),
                           ('models/real.gguf','GGUF'),('workspace/private.md','SECRET')]:
