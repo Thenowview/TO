@@ -65,7 +65,7 @@
     activeView=view;
     document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+view));
     document.querySelectorAll('.nav-button').forEach(x=>x.classList.toggle('active',x.dataset.view===view));
-    text($('breadcrumb'),view.toUpperCase());text($('pageTitle'),labels[view]);
+    text($('breadcrumb'),view.toUpperCase());$('pageTitle').dataset.i18nDynamic=labels[view];text($('pageTitle'),window.OrgaizOfflineLocale?.translate(labels[view]) ?? labels[view]);
     document.querySelector('.sidebar').classList.remove('open');
     if(view==='coding')loadCodeStudio().catch(e=>showToast(e.message,true));
     if(view==='models')loadModels();if(view==='tasks'||view==='supervisor')loadTasks();
