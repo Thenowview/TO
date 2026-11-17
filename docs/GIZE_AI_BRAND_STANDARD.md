@@ -16,6 +16,10 @@
 
 **Brand hierarchy:** Orgaiz (master brand) → THEEPMO (authorized enterprise product) → ORGANIZATION + STRATEGIZE (integrated operating model) → **Powered by GIZE AI** (AI product). “AI Intelligence” is descriptive only, never the brand replacement.
 
+## Mandatory legacy name equivalence
+
+**GAIZ = GIZE.** GAIZ and GIZE refer to the **same product and intelligence capability**, not separate systems, services, products, customers, or entitlements. **GAIZ AI = GIZE AI** likewise refers to the same official AI product. The canonical **display names** are GIZE and GIZE AI. Legacy persisted `gaiz` identifiers, `GAIZ1`/`GAIZ2` wire markers, `.gaiz` files, routes, data, integrations and events remain readable and routable through explicitly tested backward-compatible handling; do not silently change their bytes, formats, keys, or access controls. Documentation and migration screens may mention GAIZ only to explain its legacy equivalence. New user-facing branding must say GIZE AI. No implication of separately approved `.gize` file format.
+
 ## Repo-specific implementation checklist
 
 - **TEFE:** all public pages, site/header/footer, product copy, SEO titles and descriptions, hreflang and translations, icons/logos and alt text, email/onboarding links.
