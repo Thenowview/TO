@@ -413,7 +413,7 @@
         if (state.tabs.length >= 16) throw new Error("Limit of 16 task tabs reached");
         if (agentId !== "supervisor" &&
             state.tabs.some(tab => tab.agentId === agentId)) {
-          throw new Error("Agent already has an open TheOrg task tab");
+          throw new Error("Agent already has an open Orgaiz task tab");
         }
         if (agentId !== "supervisor" && !allowRecovery &&
             order.agentSessions?.[agentId]?.status === "open") {
