@@ -4,8 +4,8 @@ import {readFileSync} from 'node:fs';
 const read=(p)=>readFileSync(new URL(p,import.meta.url),'utf8');
 test('GIZE AI is the official brand, GAIZ identifiers are legacy compatibility only',()=>{
  const doc=read('./README.md');
- assert.match(doc,/^# \.GAZE/m);
- assert.match(doc,/Official customer-facing name: `\.GAZE`/);
+ assert.match(doc,/^# GIZE AI/m);
+ assert.match(doc,/Official customer-facing AI product brand: `GIZE AI`/);
  assert.match(doc,/legacy experimental identifiers/);
  assert.match(doc,/Do not rename encrypted bytes/);
  assert.match(doc,/no silent conversion/i);
