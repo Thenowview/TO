@@ -12,7 +12,8 @@ class SourceArchiveTests(unittest.TestCase):
                           ('models/real.gguf','GGUF'),('workspace/private.md','SECRET')]:
             p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(data)
     def test_excludes_live_data_and_model_weights(self):
-        names=[p.relative_to(self.root).as_posix() for p in pack.files(self.root)]
+        canonical_root=self.root.resolve()
+        names=[p.relative_to(canonical_root).as_posix() for p in pack.files(self.root)]
         self.assertIn('engine/core.py',names)
         for name in ('data/access-token.txt','data/theorg.sqlite3','models/real.gguf',
                      'workspace/private.md'):
