@@ -78,7 +78,7 @@
       "Sourced research brief", "No invented links, articles or live access."),
     browser: profile("browser", "Browser Operator", "browser",
       [/\b(website|browser|webpage|web site|url|online|form|navigate|site audit)\b/i],
-      ["Check approved domain and permitted account access.", "Use TheOrg-owned task tabs only.",
+      ["Check approved domain and permitted account access.", "Use Orgaiz-owned task tabs only.",
        "Observe page state before and after each interaction.", "Stop at authentication, CAPTCHA and unclear authorization.",
        "Capture the precise URL, timestamp and read-back evidence."],
       ["Actions stay within approved websites and task-owned tabs.",
@@ -210,9 +210,9 @@
       Object.values(PROFILES).find(p=>p.role===task.role) || PROFILES.planner;
     const criteria=task.acceptanceCriteria || profile.criteria;
     return [
-      "THEORG SPECIALIST WORK ORDER — "+VERSION,
+      "ORGAIZ SPECIALIST WORK ORDER — "+VERSION,
       "ROLE: "+profile.name+" | Playbook: "+profile.id,
-      "You are providing advice in an independently operated AI chat; you are not connected to TheOrg's local files or browser tools.",
+      "You are providing advice in an independently operated AI chat; you are not connected to Orgaiz's local files or browser tools.",
       "Maintain company boundaries and the following non-negotiable policies:",
       ...SHARED_RULES.map((s,i)=>(i+1)+". "+s),
       "OWNER'S ORIGINAL ORDER:",String(ownerInstruction||""),
@@ -266,7 +266,7 @@
     if(!auditPacket || !Array.isArray(auditPacket.tasks))
       throw new Error("Invalid QA packet");
     return [
-      "THEORG INDEPENDENT QUALITY REVIEWER — "+VERSION,
+      "ORGAIZ INDEPENDENT QUALITY REVIEWER — "+VERSION,
       "You are advising a human quality auditor. Do not claim to have opened any source or file not actually provided.",
       "Review the owner's original instruction and each acceptance criterion separately.",
       "Compare pre-action observations and post-action readbacks. Separate evidence of a tool call from evidence of the intended outcome.",
