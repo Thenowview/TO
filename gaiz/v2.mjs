@@ -144,18 +144,22 @@ export function openGaiz2(input,{trustedIssuerPublicKey,expectedIssuerId,expecte
   const key=recipientPrivateKey?.type === 'private' ? recipientPrivateKey : createPrivateKey(recipientPrivateKey);
   if(key.asymmetricKeyType !== 'rsa' || key.asymmetricKeyDetails?.modulusLength < 3072) throw Error('Unsupported recipient key');
   const dek=privateDecrypt({...wrapping,key},decoded(envelope.wrappedKey,1024));
+  let plaintext;
   try {
     if(dek.length !== 32) throw Error('Invalid data key');
     const decipher=createDecipheriv('aes-256-gcm',dek,decoded(doc.nonce,12));
     decipher.setAAD(enc(canonical(doc.manifest)));
     decipher.setAuthTag(decoded(doc.tag,16));
-    const plaintext=Buffer.concat([decipher.update(decoded(doc.ciphertext,MAX)),decipher.final()]);
+    plaintext=Buffer.concat([decipher.update(decoded(doc.ciphertext,MAX)),decipher.final()]);
     if(plaintext.length > MAX / 2) throw Error('Decrypted content too large');
     const reportText=new TextDecoder('utf-8',{fatal:true}).decode(plaintext);
     const report=JSON.parse(reportText);
     if(canonical(report) !== reportText) throw Error('Noncanonical report');
     return {report,verification:verified.receipt};
-  } finally {dek.fill(0);}
+  } finally {
+    plaintext?.fill(0);
+    dek.fill(0);
+  }
 }
 export const GAIZ2_VERSION='2.0-experimental';
 
