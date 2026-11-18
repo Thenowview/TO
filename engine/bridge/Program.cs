@@ -130,7 +130,7 @@ internal sealed class Controller
                 "capabilities" => new
                 {
                     ok = true,
-                    commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
+                    commands = new[] { "ping", "capabilities", "ao_capabilities", "submit_order", "get_order", "list_orders",
                         "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact",
                         "begin_artifact_upload", "append_artifact_chunk", "upload_status",
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk",
