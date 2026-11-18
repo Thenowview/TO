@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 jobs:
@@ -70,6 +74,7 @@ jobs:
           Before public redistribution, produce and audit full notices for this exact Chromium revision.
           '@ | Set-Content -LiteralPath 'out/browser/LICENSES.chromium.html' -Encoding UTF8
       - name: Generate branded desktop icon and compile NSIS
+        timeout-minutes: 15
         shell: pwsh
         run: |
           Add-Type -AssemblyName System.Drawing
@@ -82,10 +87,23 @@ jobs:
           $ico=[Drawing.Icon]::FromHandle($bmp.GetHicon())
           $file=[IO.File]::Create('out/branding/TheOrg.ico')
           $ico.Save($file);$file.Close();$g.Dispose();$font.Dispose();$bmp.Dispose()
-          choco install nsis --yes --no-progress --limit-output
-          $makensis=Join-Path ([Environment]::GetEnvironmentVariable('ProgramFiles(x86)')) 'NSIS\makensis.exe'
+          $ErrorActionPreference='Stop'
+          $makensis=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'NSIS\makensis.exe'
+          for ($attempt=1; $attempt -le 3; $attempt++) {
+            if (Test-Path -LiteralPath $makensis -PathType Leaf) { break }
+            Write-Host "NSIS install attempt $attempt of 3"
+            choco install nsis --yes --no-progress --limit-output --execution-timeout=180
+            if (Test-Path -LiteralPath $makensis -PathType Leaf) { break }
+            if ($attempt -lt 3) { Start-Sleep -Seconds (10 * $attempt) }
+          }
+          if (-not (Test-Path -LiteralPath $makensis -PathType Leaf)) {
+            throw 'NSIS compiler missing after 3 package-feed attempts'
+          }
           & $makensis /V2 tools/TheOrgChromium.nsi
           if ($LASTEXITCODE -ne 0) { throw 'NSIS build failed' }
+          if (-not (Test-Path -LiteralPath 'out/installer/TheOrg-Browser-Chromium-Win-x64-unsigned.exe' -PathType Leaf)) {
+            throw 'NSIS reported success but output installer is missing'
+          }
       - name: Silent install, native messaging registration and uninstall smoke test
         shell: pwsh
         run: |

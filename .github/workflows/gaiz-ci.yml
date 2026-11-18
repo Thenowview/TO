@@ -7,6 +7,10 @@ on:
       - 'engine/bridge/ArtifactStore.cs'
       - '.github/workflows/gaiz-ci.yml'
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 jobs:
@@ -25,7 +29,7 @@ jobs:
           node --check gaiz/cli.mjs
           node --check gaiz/custodian-process.mjs
           node --check gaiz/custodian-worker.mjs
-          node --test gaiz/test.mjs gaiz/v2.test.mjs gaiz/report.test.mjs gaiz/key-policy.test.mjs gaiz/custody.test.mjs gaiz/local-custodian.test.mjs gaiz/custodian-process.test.mjs gaiz/synthetic-custodian-provider.test.mjs gaiz/synthetic-custodian-server.test.mjs gaiz/custody-attestation.test.mjs gaiz/quarantine.test.mjs gaiz/conformance/pinned.test.mjs gaiz/gaze-naming.test.mjs gaiz/fixtures/fixed-fixture.test.mjs
+          node --test gaiz/test.mjs gaiz/v2.test.mjs gaiz/cli-extension.test.mjs gaiz/report.test.mjs gaiz/key-policy.test.mjs gaiz/custody.test.mjs gaiz/local-custodian.test.mjs gaiz/custodian-process.test.mjs gaiz/synthetic-custodian-provider.test.mjs gaiz/synthetic-custodian-server.test.mjs gaiz/custody-attestation.test.mjs gaiz/quarantine.test.mjs gaiz/conformance/pinned.test.mjs gaiz/gaze-naming.test.mjs gaiz/fixtures/fixed-fixture.test.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

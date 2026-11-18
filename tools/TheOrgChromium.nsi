@@ -7,7 +7,10 @@ OutFile "..\out\installer\TheOrg-Browser-Chromium-Win-x64-unsigned.exe"
 InstallDir "$LOCALAPPDATA\Programs\TheOrg Browser"
 RequestExecutionLevel user
 Unicode true
-SetCompressor /SOLID lzma
+; Developer-preview Chromium is large and mostly already compressed.
+; Avoid expensive whole-installer solid-LZMA rebuilds in Windows CI.
+; Fast non-solid zlib preserves exact installed files; binary size may increase.
+SetCompressor zlib
 ShowInstDetails show
 ShowUninstDetails show
 

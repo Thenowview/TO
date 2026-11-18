@@ -60,10 +60,10 @@ test('serialization rejects unpaired surrogates, negative zero, invalid calendar
 test('canonical decoding rejects duplicate keys and noncanonical numeric forms',()=>{
  const file=make().toString();
  const raw=file.slice(6);
- assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+raw.replace('"version":2','"version":2,"version":2')),policy));
- assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+raw.replace('"version":2','"version":2.0')),policy));
- assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\\n'+raw.replace('"version":2','"version":-0')),policy));
- assert.throws(()=>verifyGaiz2(Buffer.concat([Buffer.from('GAIZ2\\n'),Buffer.from([0xff])]),policy));
+ assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\n'+raw.replace('"version":2','"version":2,"version":2')),policy));
+ assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\n'+raw.replace('"version":2','"version":2.0')),policy));
+ assert.throws(()=>verifyGaiz2(Buffer.from('GAIZ2\n'+raw.replace('"version":2','"version":-0')),policy));
+ assert.throws(()=>verifyGaiz2(Buffer.concat([Buffer.from('GAIZ2\n'),Buffer.from([0xff])]),policy));
 });
 
 test('GAIZ2 rejects noncanonical recipient ordering before signature verification',()=>{
