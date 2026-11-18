@@ -25,3 +25,13 @@ export function assertNewExportFilename(filename, { allowLegacy = false } = {}) 
   if (result.canonicalExtension || (allowLegacy && result.legacyExtension)) return result;
   throw new Error('New GIZE exports require a lowercase .gize filename');
 }
+
+/** Deterministic portable default; never use an untrusted ID as a path. */
+export function defaultGizeExportFilename(artifactId) {
+  if (typeof artifactId !== 'string' || !artifactId.length || artifactId.length > 160)
+    throw new TypeError('Invalid artifact ID for export filename');
+  const safe = artifactId.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '_');
+  const filename = 'gize-' + safe + '.gize';
+  assertNewExportFilename(filename);
+  return filename;
+}
