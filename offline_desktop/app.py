@@ -259,7 +259,10 @@ def _create_desktop_shortcut_if_needed():
         return
     # PowerShell is present on supported Windows versions; abort harmlessly on failure.
     script = r'''
+$ErrorActionPreference='Stop'
 $desktop=[Environment]::GetFolderPath('Desktop')
+if ([string]::IsNullOrWhiteSpace($desktop)) { throw 'Desktop path unavailable' }
+New-Item -ItemType Directory -Path $desktop -Force | Out-Null
 $shortcut=Join-Path $desktop 'TheOrg.lnk'
 if (-not (Test-Path -LiteralPath $shortcut)) {
   $ws=New-Object -ComObject WScript.Shell
