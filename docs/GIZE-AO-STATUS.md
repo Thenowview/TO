@@ -10,8 +10,8 @@ This is a **separate AO pattern register**, not extra completed requirements or 
 | AO item | Related source IDs | Evidence and actual boundary | Status | Remaining acceptance |
 |---|---|---|---|---|
 | AO-OT-01 Pinned upstream reference and license | GOV/REL evidence, PC-04 | Main merged pinned AO/AgentOne source references in PR #78. Copied AGPL-3.0 license preserved; separate written commercial grant unverified. Never run supplied installer for source extraction. | REFERENCE_ONLY | Independent legal/distribution rights, exact pin, threat model |
-| AO-OT-02 Existing Chrome/native inventory | PC-03, PC-04, PC-05, PC-07 | Inspected MV3 background, task-manager, native-message host, SQLite agent engine and Windows installer workflow. Current Chrome worker does not get arbitrary shell or file tools. | SPECIFIED | Browser origin/extension identity tests, manual Windows GUI tests |
-| AO-OT-03 Versioned closed native capability catalog | PC-05, PC-07, PC-09 | PR #82 adds `ao.local.tools.v1` descriptors for exactly 6 existing tools. Each requires owner approval; consequential actions excluded from safe batch; MCP and remote execution flags false. C# self-test added. | IMPLEMENTED_UNVERIFIED | Exact-head Windows CI, contract review, tool-scope and risk-class negative tests |
+| AO-OT-02 Existing Chrome/native inventory | PC-03, PC-04, PC-05, PC-07 | Inspected MV3 background, task-manager, native-message host, SQLite agent engine and Windows installer workflow. Chrome Supervisor now displays native tool risk/scope via inert `textContent`, including unavailable/unknown-tool warnings; worker receives no shell or file privilege. UI contract regression added. | IMPLEMENTED_UNVERIFIED | Exact-head UI CI, browser origin/extension identity tests, manual Windows GUI acceptance |
+| AO-OT-03 Versioned closed native capability catalog | PC-05, PC-07, PC-09 | PR #82 adds `ao.local.tools.v1` descriptors for exactly 6 existing tools. Each requires owner approval; consequential actions excluded from safe batch; MCP and remote execution flags false. C# self-test added. | IMPLEMENTED_UNVERIFIED | Exact-head Windows CI (first attempt exposed C# self-test variable shadowing, corrected), contract review, tool-scope and risk-class negative tests |
 | AO-OT-04 Persistent local agent approval and recovery | PC-05, TASK-01, TASK-02, TASK-04, TASK-09 | Existing SQLite jobs, explicit approval, no automatic replay and independent QA checks. PR #73 adds real multi-process Native Messaging synthetic approval/batch/tenant tests. | IMPLEMENTED_UNVERIFIED | Final PR #73 exact-head CI; cancel/race/crash tests, real browser evidence |
 | AO-OT-05 Curated MCP transport / OAuth / key custody | PC-04, PC-07, PC-08, SYNC-01 | **No MCP connection is enabled in AO PR #82.** No arbitrary MCP server/tool, command execution, token storage, outbound OAuth or broad browser permissions are introduced. | REFERENCE_ONLY | Versioned OT/TEBE connector contract, allowlisted server and audience, credential/OS custody, SSRF/replay tests, security review |
 | AO-OT-06 Computer-use on Windows | PC-04, PC-06, PC-07, PC-10 | Current native tools are restricted to existing notes/read-only diagnostics, reviewed HTTPS navigation and explicit Notepad launch. Upstream broad Tauri permission definitions are **not** adopted. | REFERENCE_ONLY | Least-privilege per-action Windows APIs, session approval, denial tests, GUI accessibility |
@@ -21,6 +21,13 @@ This is a **separate AO pattern register**, not extra completed requirements or 
 ## Safe auto-merge policy
 
 Routine reversible implementation and testing may proceed under owner approval. **Do not enable auto-merge or mark a draft ready** until the PR head is stable, required checks pass, an independent required reviewer approves and release-scoped authorization is recorded. Auto-merge does not mean deploy; no production deployment is configured here. Preserve open branches until explicitly approved cleanup.
+
+## Active implementation evidence — current batch
+
+- Native tool catalog and safety assertions: `engine/bridge/LocalAgentEngine.cs`, `engine/bridge/Program.cs`.
+- Chrome review disclosure: `apps/chrome-extension/home.js` and `tests/ui-contract.test.cjs`; no additional extension permissions or active MCP.
+- Earlier Windows CI [run #44389653618](https://github.com/faisalwrokksa-hub/TO/actions/runs/44389653618) failed compiling a **new self-test** because of C# local-variable shadowing; corrected in [commit 1e6d355](https://github.com/faisalwrokksa-hub/TO/commit/1e6d355e308a6df3948883af7790ceb9133c177b). Do not claim the corrected build passed until an exact-head run completes.
+- Four AO-branch workflows adopt existing PR-only superseded-run cancellation, preserving main-push builds. Status of the newest exact-head run and required independent review determine PR merge eligibility; not the existence of a successful run on an older commit.
 
 ## Open severity / evidence gaps
 
