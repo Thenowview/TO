@@ -54,9 +54,9 @@
 - [ ] **PC-02** — Show connection state and On this PC / Online via THE EPMO before task submission. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **PC-03** — Preview a structured plan showing actions, workspace, inputs, destinations and permission requirements. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **PC-04** — Implement reviewed adapters for supported file reading, report creation, local inference, approved app opening and configured project checks; identify unsupported actions honestly. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
-- [ ] **PC-05** — Enforce approved scope at dispatch; require fresh approval when action/scope changes. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-05** — Enforce approved scope at dispatch; require fresh approval when action/scope changes. · **IN_PROGRESS** · Source: [Theepmo-ref2.md#PC-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **PC-06** — Constrain paths, handle Windows normalization/junctions/symlinks, revalidate before operations and test escape attempts. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
-- [ ] **PC-07** — Protect loopback/native bridge callers; enforce resource limits/timeouts and isolate project checks where supported. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-07** — Protect loopback/native bridge callers; enforce resource limits/timeouts and isolate project checks where supported. · **IN_PROGRESS** · Source: [Theepmo-ref2.md#PC-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **PC-08** — Keep credentials out of UI storage/logs/reports; use OS-managed protection where appropriate. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-08](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **PC-09** — Make deterministic jobs independent of AI; enable local AI only after model compatibility/readiness checks. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-09](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **PC-10** — Bound logs/progress, preserve workspace/task context and keep shell/navigation responsive during inference and large-file work. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-10](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
@@ -110,9 +110,14 @@
 - [ ] **REL-13** — Retire duplicate sites/launchers/routes only after backup, dependency checks and appropriate release authorization. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-13](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **REL-14** — Deliver final demonstration and honest declaration: paying-customer-ready, release-candidate-ready or blocked, supported by evidence. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-14](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 
+## AO Chrome/Windows integration — separate evidence register
+
+Track [AO-OT-01–08](./GIZE-AO-STATUS.md) separately from the source-ID checkbox denominator. On [AO PR #82](https://github.com/faisalwrokksa-hub/TO/pull/82), `PC-05` and `PC-07` are IN_PROGRESS (versioned closed tool catalog and native self-test), **not VERIFIED**. The AO reference remains license-bound and the remote MCP connector is intentionally disabled. Full acceptance requires manual Windows, identity, tenant, approval and security evidence plus required reviewer approval. Existing [OT PR #73](https://github.com/faisalwrokksa-hub/TO/pull/73) remains separate; do not count duplicate tests as two verified requirements.
+
 ## Expert update log
 | UTC time | Checked IDs | Verified IDs | Blocked IDs | PR/commit and tests | Next action |
 |---|---|---|---|---|---|
+| 2026-11-18 | PC-05/PC-07 AO native approval and tool-risk catalog | None verified (CI pending), synthetic bridge self-test extended | Full AO MCP server, Windows GUI, security review, licensed adoption, TEBE contract | [AO PR #82](https://github.com/faisalwrokksa-hub/TO/pull/82) `LocalAgentEngine.cs` and `Program.cs`; [AO status register](./GIZE-AO-STATUS.md) | Run exact-head CI, review threat model and pinned license, retain draft/no release |
 | 2026-11-18 | Initial source ID inventory | None verified | Source storage and original OT handoff | Instruction-only initial commit | Check actual repo implementation and link durable source artifacts |
 
 
