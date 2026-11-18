@@ -15,6 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
   checks: read
@@ -66,5 +67,12 @@ jobs:
             if jq -e '[.labels[].name] | any(. == "hold" or . == "do-not-merge")' <<<"$data" >/dev/null; then continue; fi
             checks=$(gh pr checks "$pr" --repo "$GH_REPO" --json state 2>/dev/null) || continue
             if ! jq -e 'length > 0 and all(.[]; .state == "SUCCESS" or .state == "SKIPPED" or .state == "NEUTRAL")' <<<"$checks" >/dev/null; then continue; fi
-            gh pr merge "$pr" --repo "$GH_REPO" --match-head-commit "$(jq -er '.headRefOid' <<<"$data")" --squash --delete-branch || echo "PR $pr remains open; merge blocked by GitHub"
+            if gh pr merge "$pr" --repo "$GH_REPO" --match-head-commit "$(jq -er '.headRefOid' <<<"$data")" --squash --delete-branch; then
+              # GITHUB_TOKEN-initiated merges may not trigger downstream push jobs.
+              # Dispatch only the existing evidence-checked branch retirement job.
+              gh workflow run retire-integrated-branches.yml --repo "$GH_REPO" --ref "$BASE" ||
+                echo "Cleanup dispatch unavailable; merged PR stays intact, no forced branch deletion"
+            else
+              echo "PR $pr remains open; GitHub merge rules not satisfied"
+            fi
           done
