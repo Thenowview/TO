@@ -55,6 +55,11 @@ function fakeChrome(options = {}) {
       nativeRequests.push(request);
       switch(request.command){
         case "ping":return {ok:true,engine:"TheOrg.Bridge"};
+        case "ao_capabilities":return options.aoReply || {
+          ok:true,protocolVersion:1,integration:"AO",enabled:false,
+          status:"disabled_pending_authorization_and_contract_tests",
+          executionSupported:false,tools:[]
+        };
         case "ao_capabilities":return options.aoReply || {ok:true,integration:"AO",protocolVersion:1,enabled:false,executionSupported:false,status:"disabled_pending_authorization_and_contract_tests",tools:[]};
         case "submit_order":return {ok:true,order:{
           orderId:"a".repeat(32),companyId:request.companyId,
@@ -595,6 +600,41 @@ test("AO handshake fails closed on missing host, unexpected enablement or tool i
     const manager=new context.TheOrgTaskManager(fake.api);
     await assert.rejects(()=>manager.aoCapabilities());
     assert.equal(fake.tabs.size,0);
+    assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
+  }
+});
+
+test("AO Chrome discovery is disabled and sends only read-only native command",async()=>{
+  const fake=fakeChrome();
+  const man=new context.TheOrgTaskManager(fake.api);
+  const reply=await man.aoCapabilities();
+  assert.equal(reply.integration,"AO");
+  assert.equal(reply.enabled,false);
+  assert.equal(reply.executionSupported,false);
+  assert.equal(reply.tools.length,0);
+  assert.equal(fake.nativeRequests.length,1);
+  assert.equal(fake.nativeRequests[0].command,"ao_capabilities");
+});
+
+test("AO fails closed on malformed or unexpectedly enabled host responses",async()=>{
+  const valid={
+    ok:true,protocolVersion:1,integration:"AO",enabled:false,
+    executionSupported:false,tools:[],status:"disabled"
+  };
+  const invalid=[
+    {...valid,enabled:true},
+    {...valid,executionSupported:true},
+    {...valid,protocolVersion:2},
+    {...valid,integration:"Other"},
+    {...valid,tools:[{id:"shell"}]},
+    {...valid,tools:null},
+    {...valid,ok:false,error:"unavailable"},
+    null
+  ];
+  for(const response of invalid){
+    const fake=fakeChrome({aoReply:response});
+    const man=new context.TheOrgTaskManager(fake.api);
+    await assert.rejects(()=>man.aoCapabilities());
     assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
   }
 });
