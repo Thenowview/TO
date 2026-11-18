@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createGaiz2,verifyGaiz2,openGaiz2} from './v2.mjs';
 import {validateGovernanceReport} from './report.mjs';
-import {assertNewExportFilename} from './file-extension.mjs';
+import {assertNewExportFilename,defaultGizeExportFilename} from './file-extension.mjs';
 function option(n) {const i=process.argv.indexOf(n);return i<0?null:process.argv[i+1];}
 function required(n) {const v=option(n);if(!v || v.startsWith('--'))throw Error(n+' required');return v;}
 function keyfile(n) {return readFileSync(resolve(required(n)),'utf8');}
@@ -13,10 +13,13 @@ try {
  const action=process.argv[2];
  if(action==='export') {
   if(!process.argv.includes('--confirm-local-export'))throw Error('Explicit --confirm-local-export required');
-  const output=required('--output');
+  const artifactId=required('--artifact-id');
+  const supplied=option('--output');
+  if (supplied && supplied.startsWith('--')) throw Error('Invalid --output path');
+  const output=supplied || defaultGizeExportFilename(artifactId);
   assertNewExportFilename(output,{allowLegacy:process.argv.includes('--allow-legacy-extension')});
   const report=validateGovernanceReport(JSON.parse(readFileSync(resolve(required('--report')),'utf8')));
-  const manifest={version:2,schemaVersion:1,artifactId:required('--artifact-id'),issuerId:required('--issuer'),tenantScope:required('--tenant'),contentType:'application/vnd.orgaiz.report+json',createdAt:new Date().toISOString()};
+  const manifest={version:2,schemaVersion:1,artifactId,issuerId:required('--issuer'),tenantScope:required('--tenant'),contentType:'application/vnd.orgaiz.report+json',createdAt:new Date().toISOString()};
   const bytes=createGaiz2({report,manifest,recipients:[{keyId:required('--recipient-id'),publicKey:keyfile('--recipient-public')}],issuerPrivateKey:keyfile('--issuer-private')});
   writeFileSync(resolve(output),bytes,{flag:'wx',mode:0o600});
   process.stdout.write(JSON.stringify({status:'created',path:output,bytes:bytes.length})+'\n');
