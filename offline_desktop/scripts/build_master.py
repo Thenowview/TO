@@ -6,7 +6,6 @@ Build must not modify or delete existing user data or rewrite its own archive.
 """
 from __future__ import annotations
 import argparse,hashlib,json,re,subprocess,sys,zipfile
-from datetime import datetime,timezone
 from pathlib import Path
 
 STAMP=(2026,1,1,0,0,0)

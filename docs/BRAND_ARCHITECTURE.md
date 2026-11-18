@@ -3,6 +3,10 @@
 **Status:** Approved product direction; documentation only. No domain migration, rename, deployment or release is implied by this decision.
 **Scope:** `faisalwrokksa-hub/TO`, `2029TEFE/TEFE`, `2029TEBE/TEBE`.
 
+## Current extension decision — 18 November 2026
+
+The owner now requires `.gize` for new encrypted exports and continued `.gaiz` reads. This supersedes extension-only restrictions below. Preserve GAIZ1/GAIZ2 bytes, signature semantics and existing references; verify runtime and installer changes separately. See [current implementation baseline](CURRENT_IMPLEMENTATION_BASELINE.md). Earlier dated statements below remain historical decision context.
+
 ## Approved AI brand addendum — 17 November 2026
 - **GIZE AI** is the official AI product identity. Use **Powered by GIZE AI** for customer-facing intelligence and decision-support experiences.
 - Use **ORGANIZATION** and **STRATEGIZE** as the approved capability names; their integrated architecture is **ORGANIZATION + STRATEGIZE** — Integrated Organization and Strategy Management.

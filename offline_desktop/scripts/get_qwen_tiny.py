@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Explicit opt-in fetch of a verified upstream tiny model; never run by installer."""
 from __future__ import annotations
-import argparse,hashlib,os,sys,urllib.request
+import argparse,hashlib,os,urllib.request
 from pathlib import Path
 MODEL_NAME='Qwen3.5-0.8B-Q4_0.gguf'
 URL='https://huggingface.co/ggml-org/Qwen3.5-0.8B-GGUF/resolve/main/'+MODEL_NAME

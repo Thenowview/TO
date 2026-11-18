@@ -1,9 +1,9 @@
 # Orgaiz — AI operating workspace powered by GIZE AI (legacy TO codebase)
 
 
-> **GIZE AI branding standard (17 Nov 2026):** Visible names use **ORGANIZATION + STRATEGIZE** (Integrated Organization and Strategy Management), **Powered by GIZE AI** (AI-Powered Intelligence and Decision Support). Preserve authorized THEEPMO branding. The existing `.gaiz` technical file extension and compatibility identifiers remain unchanged pending explicit versioned migration approval. See [GIZE AI brand standard](docs/GIZE_AI_BRAND_STANDARD.md). This is a naming decision, not evidence of deployed functionality.
+> **GIZE AI branding standard (17 Nov 2026):** Visible names use **ORGANIZATION + STRATEGIZE** (Integrated Organization and Strategy Management), **Powered by GIZE AI** (AI-Powered Intelligence and Decision Support). Preserve authorized THEEPMO branding. The current owner decision makes `.gize` canonical for new encrypted exports while preserving `.gaiz` reads and GAIZ1/GAIZ2 protocol identifiers. Runtime migration and interoperability verification remain separate work; see [current implementation baseline](docs/CURRENT_IMPLEMENTATION_BASELINE.md). See [GIZE AI brand standard](docs/GIZE_AI_BRAND_STANDARD.md). This is a naming decision, not evidence of deployed functionality.
 
-> **Approved brand direction (14 Nov 2026):** Orgaiz is the public/master brand and will replace "TheOrg" in customer-facing naming. THEEPMO remains Orgaiz's authenticated enterprise governance product. The architecture has **two customer-facing web experiences only**: Orgaiz public/tools and the THEEPMO app. Do not create a separate TheOrg website. The official planned encrypted-file extension is **`.gaiz`**.
+> **Approved brand direction (14 Nov 2026):** Orgaiz is the public/master brand and will replace "TheOrg" in customer-facing naming. THEEPMO remains Orgaiz's authenticated enterprise governance product. The architecture has **two customer-facing web experiences only**: Orgaiz public/tools and the THEEPMO app. Do not create a separate TheOrg website. New exports target **`.gize`**; legacy **`.gaiz`** remains readable. This does not claim the runtime migration is implemented.
 >
 > **Repository status:** This repository is still named `TO` and contains legacy TheOrg Chrome/Windows local-first code. Old product/build/file names below are historical technical references until migrated; they are **not** approval to deploy or rename automatically.
 >
@@ -23,9 +23,9 @@ TheOrg is a local-first Windows application coordinated from Chrome Stable. The 
 **Architecture:** dedicated Chrome profile → Manifest V3 extension (side panel and full tab) → authenticated Native Messaging bridge → bundled Windows execution engine → SQLite and per-company file workspaces. Online storage/email/calendar integrations remain optional and permission-scoped. Local tasks must remain usable offline.
 
 
-## Development branch: Chrome Supervisor + Windows artifact bridge
+## Chrome Supervisor + Windows artifact bridge
 
-The \`feat/chrome-windows-native-bridge\` branch contains a **development candidate**:
+The repository includes the following **development-candidate capabilities**; consult current source and CI rather than a historical branch name:
 
 - Chrome MV3 Supervisor dashboard and AI provider directory (provider chats are **manual handoffs**, not automated integrations)
 - Structured planning proposals, owner review, tracked specialist tabs and text handoffs

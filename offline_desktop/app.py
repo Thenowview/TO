@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """TheOrg Offline Engine local API and offline-first dashboard (Python stdlib)."""
 from __future__ import annotations
-import hmac, json, mimetypes, os, ipaddress, threading, time, urllib.parse, webbrowser, sys, subprocess, shutil, urllib.request
+import hmac, json, mimetypes, os, ipaddress, threading, urllib.parse, webbrowser, sys, subprocess, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from engine import core, coding, autopilot, device_capabilities, orchestration, coordination, capabilities
