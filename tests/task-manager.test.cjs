@@ -55,7 +55,7 @@ function fakeChrome(options = {}) {
       nativeRequests.push(request);
       switch(request.command){
         case "ping":return {ok:true,engine:"TheOrg.Bridge"};
-        case "ao_capabilities":return options.aoReply || {
+        case "ao_capabilities":return Object.hasOwn(options,"aoReply") ? options.aoReply : {
           ok:true,protocolVersion:1,integration:"AO",enabled:false,
           status:"disabled_pending_authorization_and_contract_tests",
           executionSupported:false,tools:[]
