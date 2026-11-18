@@ -245,3 +245,11 @@
 **Per-ID synchronization:** The 78 candidate rows above remain NOT_ASSESSED for AO impact until each original requirement is individually inspected. The capability handshake cannot change original completion states. Owners: OT guarded Chrome/Windows execution, TEBE tenant and approval contracts, TEFE user-facing disclosures, master independent audit.
 
 **Merge and release gates:** No reviews submitted on open OT PRs at this check. Do not self-approve or bypass required reviewers. Merge only with current-head CI and required review. Keep execution disabled, preserve upstream AGPL notices and .gize/legacy .gaiz, retain production NO_GO pending signed installers, real Windows upgrade/uninstall, all declared locales, two-tenant E2E security, legal approval and deployed-revision readback.
+
+### 2026-11-18 AO bulk CI and security hardening readback
+
+- OT #80 (commit `6b8ea9d`): **4/4 latest-head GitHub workflows SUCCESS**, including Windows Native Messaging and offline Chromium CI. This is *disabled capability discovery*, not AO execution. Mandatory human/security review and actual-device acceptance remain outstanding.
+- OT #79: new CI workflow validates three AO schemas and a deny-first policy; shell quoting defect was fixed. Subsequent hardening binds privileged approvals to request ID, tool ID, tenant ID and principal ID and rejects unknown transports (latest candidate commit `c8038b5`); fresh CI and independent review required.
+- OT #75 (commit `9b77520`): **6/6 latest-head workflows SUCCESS** including Windows portable acceptance; still draft, no independent cryptographic/tenant/release reviewer approval.
+- OT #73: concurrent changes and merge conflict; latest-head complete CI and resolution outstanding. Do not discard unique GAIZ2/installer test changes.
+- OT #81: this evidence addendum preserves all 78 original requirement mappings without marking any source ID complete. All PRs require their own current-head checks and required reviews; no auto-approval of privileged execution.
