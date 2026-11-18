@@ -55,6 +55,7 @@ function fakeChrome(options = {}) {
       nativeRequests.push(request);
       switch(request.command){
         case "ping":return {ok:true,engine:"TheOrg.Bridge"};
+        case "ao_capabilities":return options.aoReply || {ok:true,integration:"AO",protocolVersion:1,enabled:false,executionSupported:false,status:"disabled_pending_authorization_and_contract_tests",tools:[]};
         case "submit_order":return {ok:true,order:{
           orderId:"a".repeat(32),companyId:request.companyId,
           createdUtc:"2026-11-10T00:00:00Z",aiMode:"deterministic_demo_no_external_provider"
@@ -565,4 +566,35 @@ test("untrusted browser plan mismatch does not open a Chrome tab",async()=>{
   await assert.rejects(()=>man.agentCommand(order.taskId,"f".repeat(32),"agent_run_next"),
     /did not match reviewed plan/);
   assert.equal(fake.tabs.size,0);
+});
+
+
+test("AO Chrome/native capabilities use disabled, read-only handshake",async()=>{
+  const fake=fakeChrome();
+  const manager=new context.TheOrgTaskManager(fake.api);
+  const result=await manager.aoCapabilities();
+  assert.equal(result.enabled,false);
+  assert.equal(result.executionSupported,false);
+  assert.equal(result.integration,"AO");
+  assert.equal(result.tools.length,0);
+  assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
+  assert.equal(fake.tabs.size,0);
+});
+
+test("AO handshake fails closed on missing host, unexpected enablement or tool injection",async()=>{
+  const standard={ok:true,integration:"AO",protocolVersion:1,enabled:false,executionSupported:false,status:"disabled",tools:[]};
+  for(const reply of [
+    {ok:false,error:"unsupported_command"},
+    {...standard,enabled:true},
+    {...standard,executionSupported:true},
+    {...standard,tools:[{id:"arbitrary.shell"}]},
+    {...standard,protocolVersion:2},
+    {...standard,integration:"untrusted"}
+  ]){
+    const fake=fakeChrome({aoReply:reply});
+    const manager=new context.TheOrgTaskManager(fake.api);
+    await assert.rejects(()=>manager.aoCapabilities());
+    assert.equal(fake.tabs.size,0);
+    assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
+  }
 });
