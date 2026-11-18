@@ -1,0 +1,39 @@
+name: AO contract and deny-first policy checks
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/ao-*.schema.json'
+      - 'src/ao-policy.mjs'
+      - 'tests/ao-policy.test.mjs'
+      - '.github/workflows/ao-contracts-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/ao-*.schema.json'
+      - 'src/ao-policy.mjs'
+      - 'tests/ao-policy.test.mjs'
+      - '.github/workflows/ao-contracts-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ao-contract-and-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate standalone AO contracts and policy syntax
+        run: |
+          node --check src/ao-policy.mjs
+          node --check tests/ao-policy.test.mjs
+          node -e "const fs=require('node:fs');for(const f of ['contracts/ao-tool.schema.json','contracts/ao-task.schema.json','contracts/ao-approval.schema.json']){const x=JSON.parse(fs.readFileSync(f,'utf8'));if(x.additionalProperties!==false||x['$schema']!=='https://json-schema.org/draft/2020-12/schema')throw Error('Invalid closed schema '+f);console.log('VALID '+f)}"
+      - name: Execute deny-first synthetic policy regressions
+        run: node --test tests/ao-policy.test.mjs
+      - name: Confirm source prototype is not wired to privileged production actions
+        run: |
+          node -e "const fs=require('node:fs');const p=fs.readFileSync('src/ao-policy.mjs','utf8');if(!p.includes('not a production authorization service'))throw Error('Missing authorization boundary notice');const m=JSON.parse(fs.readFileSync('apps/chrome-extension/manifest.json','utf8'));if(m.permissions.some(x=>['debugger','downloads','management','webRequest'].includes(x)))throw Error('Unexpected elevated Chrome permission');console.log('AO prototype remains isolated')"
