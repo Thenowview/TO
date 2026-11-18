@@ -277,7 +277,7 @@ if (-not (Test-Path -LiteralPath $shortcut)) {
     try:
         subprocess.run(['powershell.exe','-NoLogo','-NoProfile','-NonInteractive',
                         '-Command',script],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,timeout=8,check=False)
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,timeout=30,check=False)
     except (OSError,subprocess.TimeoutExpired):
         pass
 
