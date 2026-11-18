@@ -15,8 +15,12 @@ try {
   const report=validateGovernanceReport(JSON.parse(readFileSync(resolve(required('--report')),'utf8')));
   const manifest={version:2,schemaVersion:1,artifactId:required('--artifact-id'),issuerId:required('--issuer'),tenantScope:required('--tenant'),contentType:'application/vnd.orgaiz.report+json',createdAt:new Date().toISOString()};
   const bytes=createGaiz2({report,manifest,recipients:[{keyId:required('--recipient-id'),publicKey:keyfile('--recipient-public')}],issuerPrivateKey:keyfile('--issuer-private')});
-  writeFileSync(resolve(required('--output')),bytes,{flag:'wx',mode:0o600});
-  process.stdout.write(JSON.stringify({status:'created',path:required('--output'),bytes:bytes.length})+'\n');
+  // New exports default to .gize. Explicit output paths remain supported for legacy workflows.
+  // The manifest ID is already checked by createGaiz2; sanitize Windows-reserved filename characters.
+  const output=option('--output') || ('gize-' + manifest.artifactId.replace(/[^A-Za-z0-9._-]/g,'_') + '.gize');
+  if (output.startsWith('--')) throw Error('Invalid --output path');
+  writeFileSync(resolve(output),bytes,{flag:'wx',mode:0o600});
+  process.stdout.write(JSON.stringify({status:'created',path:output,bytes:bytes.length})+'\n');
  } else if(action==='verify') {
   const receipt=verifyGaiz2(readFileSync(resolve(required('--input'))),policy()).receipt;
   process.stdout.write(JSON.stringify(receipt)+'\n');
