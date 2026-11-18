@@ -31,7 +31,7 @@ jobs:
         run: |
           node --check src/ao-policy.mjs
           node --check tests/ao-policy.test.mjs
-          node -e "const fs=require('node:fs');for(const f of ['contracts/ao-tool.schema.json','contracts/ao-task.schema.json','contracts/ao-approval.schema.json']){const x=JSON.parse(fs.readFileSync(f,'utf8'));if(x.additionalProperties!==false||x['$schema']!=='https://json-schema.org/draft/2020-12/schema')throw Error('Invalid closed schema '+f);console.log('VALID '+f)}"
+          node -e 'const fs=require("node:fs");for(const f of ["contracts/ao-tool.schema.json","contracts/ao-task.schema.json","contracts/ao-approval.schema.json"]){const x=JSON.parse(fs.readFileSync(f,"utf8"));if(x.additionalProperties!==false||x["$schema"]!=="https://json-schema.org/draft/2020-12/schema")throw Error("Invalid closed schema "+f);console.log("VALID "+f)}'
       - name: Execute deny-first synthetic policy regressions
         run: node --test tests/ao-policy.test.mjs
       - name: Confirm source prototype is not wired to privileged production actions
