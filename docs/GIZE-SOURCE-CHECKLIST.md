@@ -217,3 +217,19 @@
 | [REL-14](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) | AO release/operations candidate — CI, supply chain/legal acceptance, performance, signed build, rollback and live readback | NOT_ASSESSED (AO impact) | Expert to cite code path + tested PR SHA + negative test/review evidence, or record not applicable with reason |
 
 **Synchronization check:** 78/78 source IDs listed once, none re-numbered or marked completed. On each subsequent expert PR, update the specific row and original requirement status and record evidence in [OT issue](https://github.com/faisalwrokksa-hub/TO/issues/71). Source-only catalog and handshake implementation do not constitute customer acceptance. Production remains NO_GO until independently verified.
+
+
+## AO Chrome/Windows batch audit — 2026-11-18 (23:14 Asia/Riyadh execution)
+
+**Evidence basis:** GitHub PR heads and Actions check conclusions examined in this execution cycle; these are development/CI results, not customer deployment evidence. Do not convert the 78 unassessed source requirements into VERIFIED from these observations alone.
+
+| Area | Work and evidence | Assessment / next gate |
+| --- | --- | --- |
+| Read-only AO native capability discovery | [TO #80](https://github.com/faisalwrokksa-hub/TO/pull/80) adds Chrome background/task manager handshake, .NET native host command and Windows native-messaging smoke assertions. Additional mocked Chrome negative tests committed on its feature branch. | IMPLEMENTED_UNVERIFIED for cross-repo/customer acceptance; native AO execution explicitly disabled; fresh CI and independent review required |
+| AO tool policy/contracts | [TO #79](https://github.com/faisalwrokksa-hub/TO/pull/79) stages versioned schemas, a deny-first prototype and synthetic tests. | Prototype only; TEBE authorization, principal/tenant binding, credential custody, endpoint allowlists and live MCP tool dispatch NOT VERIFIED |
+| GIZE artifact naming and compatibility | [TO #75](https://github.com/faisalwrokksa-hub/TO/pull/75) adds canonical new-export .gize filename handling and legacy .gaiz compatibility tests; GAIZ1/2 signed wire bytes remain unchanged. | Development checks green at inspected PR head, but production crypto/key custody, revocation and cross-product release sign-off remain BLOCKED |
+| Source requirement synchronization | [TO #81](https://github.com/faisalwrokksa-hub/TO/pull/81) preserves the 78/78 row crosswalk to AO ownership and acceptance gates. | Source crosswalk implemented on PR only; each row still needs requirement-specific evidence |
+| CI and Windows acceptance | Earlier audited PR heads #75, #79 and #80 reported clean GitHub check suites. #81 had an in-progress Windows build on inspection. | NOT equivalent to signed installer, local-machine upgrade, TEBE two-tenant end-to-end, or production security review |
+| Merge and release | At inspection, #75 and #73 remained drafts; #79, #80 and #81 were open. No independent approval review was recorded on #75/#79/#80/#81. | NO_GO for auto-merge on unreviewed security/integration changes; do not bypass branch rules or approve own work |
+
+**Open blockers:** (1) independent code/security review; (2) finish current-head Actions after concurrent branch updates; (3) real Windows installation/native host/Chrome E2E with synthetic tenant-separated data; (4) tenant-bound TEBE AO API and bounded execution policy, absent from the disabled discovery phase; (5) GIZE key custody and cross-language acceptance; (6) source ZIP/migration evidence that remains unavailable to all reviewers; (7) complete locale and customer-facing workflow acceptance; (8) explicitly authorized signed release and rollback readback. No production merge or deployment claimed.
