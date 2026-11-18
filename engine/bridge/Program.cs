@@ -148,6 +148,17 @@ internal sealed class Controller
                     desktopOperation = "notepad-launch-only",
                     offlineFiles = true
                 },
+                "ao_capabilities" => new
+                {
+                    ok = true,
+                    protocolVersion = 1,
+                    integration = "AO",
+                    enabled = false,
+                    status = "disabled_pending_authorization_and_contract_tests",
+                    tools = Array.Empty<object>(),
+                    executionSupported = false,
+                    note = "Discovery handshake only. No MCP servers, commands or external tools are launched."
+                },
                 "submit_order" => Submit(request),
                 "get_order" => Get(request),
                 "list_orders" => List(request),
