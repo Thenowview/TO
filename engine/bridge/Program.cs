@@ -448,6 +448,29 @@ internal static class SelfTest
 
             var capabilities = Call(c, new { command = "capabilities" });
             Check(!capabilities.GetProperty("liveAiProvider").GetBoolean(), "capability honesty");
+            var aoPolicy = Call(c, new { command = "agent_tools" });
+            Check(aoPolicy.GetProperty("ok").GetBoolean(), "AO local tool catalog available");
+            Check(aoPolicy.GetProperty("catalogVersion").GetString()=="ao.local.tools.v1",
+                "versioned AO local tool capability contract");
+            Check(!aoPolicy.GetProperty("mcpEnabled").GetBoolean() &&
+                  !aoPolicy.GetProperty("remoteToolExecutionEnabled").GetBoolean(),
+                "AO remote MCP and privileged tool execution remain disabled");
+            var aoDescriptors=aoPolicy.GetProperty("toolDescriptors");
+            Check(aoDescriptors.GetArrayLength()==6,"AO tool catalog is closed and bounded");
+            foreach(var descriptor in aoDescriptors.EnumerateArray())
+            {
+                Check(descriptor.GetProperty("requiresOwnerApproval").GetBoolean(),
+                    "AO tool cannot auto approve");
+                Check(descriptor.GetProperty("version").GetInt32()==1,
+                    "AO tool descriptor version must be explicit");
+                string id=descriptor.GetProperty("id").GetString()!;
+                bool safeBatch=descriptor.GetProperty("safeBatch").GetBoolean();
+                if(id=="browser_open"||id=="windows_open_notepad")
+                    Check(!safeBatch,"AO consequential actions excluded from safe batch");
+                else
+                    Check(safeBatch,"AO closed local actions remain eligible only after approval");
+            }
+
 
             var bad = Call(c, new { command = "submit_order", companyId = "../escape", instruction = "Create a sample" });
             Check(!bad.GetProperty("ok").GetBoolean(), "company traversal rejection");
