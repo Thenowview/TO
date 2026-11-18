@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AO Tool v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "owner",
+    "risk",
+    "transport",
+    "enabled"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{2,79}$"
+    },
+    "version": {
+      "const": "1.0.0"
+    },
+    "owner": {
+      "enum": [
+        "OT",
+        "TEBE"
+      ]
+    },
+    "risk": {
+      "enum": [
+        "read",
+        "reversible_write",
+        "external_write",
+        "privileged"
+      ]
+    },
+    "transport": {
+      "enum": [
+        "native",
+        "mcp_stdio",
+        "mcp_http",
+        "tebe_api"
+      ]
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "requiresApproval": {
+      "type": "boolean"
+    },
+    "inputSchema": {
+      "type": "object"
+    },
+    "outputSchema": {
+      "type": "object"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 120000
+    }
+  }
+}
