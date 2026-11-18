@@ -74,6 +74,7 @@ jobs:
           Before public redistribution, produce and audit full notices for this exact Chromium revision.
           '@ | Set-Content -LiteralPath 'out/browser/LICENSES.chromium.html' -Encoding UTF8
       - name: Generate branded desktop icon and compile NSIS
+        timeout-minutes: 15
         shell: pwsh
         run: |
           Add-Type -AssemblyName System.Drawing
@@ -91,7 +92,7 @@ jobs:
           for ($attempt=1; $attempt -le 3; $attempt++) {
             if (Test-Path -LiteralPath $makensis -PathType Leaf) { break }
             Write-Host "NSIS install attempt $attempt of 3"
-            choco install nsis --yes --no-progress --limit-output
+            choco install nsis --yes --no-progress --limit-output --execution-timeout=180
             if (Test-Path -LiteralPath $makensis -PathType Leaf) { break }
             if ($attempt -lt 3) { Start-Sleep -Seconds (10 * $attempt) }
           }
