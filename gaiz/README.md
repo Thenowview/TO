@@ -101,7 +101,7 @@ draft until a separate reviewer signs off.
 
 ## Canonical .gize filenames (OT development branch)
 
-For **new encrypted CLI exports**, use lowercase `.gize`. The export command now rejects other output suffixes before loading report data or key files. A legacy `.gaiz` export remains possible only with an explicit `--allow-legacy-extension` flag for controlled compatibility testing.
+For **new encrypted CLI exports**, use lowercase `.gize`. When `--output` is omitted, the CLI generates `gize-<sanitized-artifact-id>.gize` without overwriting existing files. The export command now rejects other output suffixes before loading report data or key files. A legacy `.gaiz` export remains possible only with an explicit `--allow-legacy-extension` flag for controlled compatibility testing.
 
 ```sh
 node gaiz/cli.mjs export --confirm-local-export --report report.json --issuer-private ./issuer-private.pem --issuer orgaiz-test --tenant synthetic-a --artifact-id demo-1 --recipient-id reviewer-1 --recipient-public ./reviewer-public.pem --output ./report.gize
