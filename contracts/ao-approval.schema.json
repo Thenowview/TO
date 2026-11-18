@@ -8,7 +8,9 @@
     "toolId",
     "verdict",
     "policyVersion",
-    "reason"
+    "reason",
+    "tenantId",
+    "principalId"
   ],
   "properties": {
     "requestId": {
@@ -41,6 +43,14 @@
       "items": {
         "type": "string"
       }
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "principalId": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }
