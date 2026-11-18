@@ -1,4 +1,6 @@
-# AgentOne reference package for GIZE experts
+# AO — GIZE AI integration reference package
+
+**Project-facing name:** AO. **Upstream identity:** AgentOne (retained only in legal attribution, original filename, original paths and provenance).
 
 ## Provenance
 
@@ -7,8 +9,8 @@
 - Source URL pattern: `https://github.com/The-Best-Codes/agent-one/blob/2c3754d527ba605f8490324f261f3c4b4c0e822b/<path>`
 - Original third-party license: [AGPL-3.0](./upstream/LICENSE), copied verbatim. Keep notices, attribution and source paths.
 - Source files preserved without modification in `upstream/`; they are **reference-only**, not automatically compiled, installed, executed, published, or imported into GIZE.
-- User-provided file: `AgentOne Installer.exe` (813,088 bytes; SHA-256 `7267252b31e3e388de9086269dd6be89e179f4fda1978afa6700149d1d367f5a`). Local static inspection reports Windows PE32 .NET bootstrapper with store/package-management strings, not a ZIP/source archive; it was **not executed** or extracted into source. Do not treat it as a signed, independently verified AgentOne distribution. The installer is **not** copied into the repository.
-- The owner reports obtaining permission from the AgentOne owner. Scope, written grant, holder's authority, sublicense/distribution permissions and commercial/private-source terms have **not** been independently checked. Until documented, handle copied source in this isolated AGPL-marked reference area and require a licensing decision before incorporation into distributed proprietary code. Do not assume the owner's permission cancels AGPL conditions.
+- User-provided file: `AgentOne Installer.exe` (813,088 bytes; SHA-256 `7267252b31e3e388de9086269dd6be89e179f4fda1978afa6700149d1d367f5a`). Local static inspection reports Windows PE32 .NET bootstrapper with store/package-management strings, not a ZIP/source archive; it was **not executed** or extracted into source. Do not treat it as a signed, independently verified upstream distribution. The installer is **not** copied into the repository.
+- The GIZE owner reports obtaining direct permission from the original upstream rights holder. Scope, written grant, holder's authority, sublicense/distribution permissions and commercial/private-source terms have **not** been independently checked. Until documented, handle copied source in this isolated AGPL-marked reference area and require a licensing decision before incorporation into distributed proprietary code. Do not assume the owner's permission cancels AGPL conditions.
 
 ## Pre-fetched files (no expert redownload)
 
@@ -41,6 +43,6 @@ Files may rely on other upstream dependencies; this is a curated engineering ref
 
 ## Key safety distinctions
 
-AgentOne's desktop Tauri app is **not** a Chrome extension. GIZE OT already has an MV3 extension and native-message bridge; preserve them. An MCP "extension" is a tool server, not a Chromium extension. Neither a model's approval verdict nor a user-facing "auto" switch replaces TEBE tenant policy, cryptographic authorization, deterministic allowlists or required production-release approval.
+The upstream desktop Tauri application is **not** a Chrome extension. GIZE OT already has an MV3 extension and native-message bridge; preserve them. An MCP "extension" is a tool server, not a Chromium extension. Neither a model's approval verdict nor a user-facing "auto" switch replaces TEBE tenant policy, cryptographic authorization, deterministic allowlists or required production-release approval.
 
 No routine integration step should turn on unlimited shell/filesystem access, mount production customer data, install arbitrary MCP packages, or change the current GAIZ1/GAIZ2 wire format.
