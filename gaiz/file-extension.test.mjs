@@ -32,7 +32,7 @@ test('file extension never reports a cryptographic verification result', () => {
 
 test('missing --output can use a sanitized canonical filename', () => {
   assert.equal(defaultGizeExportFilename('synthetic:001'), 'gize-synthetic_001.gize');
-  assert.equal(defaultGizeExportFilename('../case'), 'gize-__case.gize');
+  assert.equal(defaultGizeExportFilename('../case'), 'gize-_case.gize');
   assert.throws(() => defaultGizeExportFilename(''));
   assert.throws(() => defaultGizeExportFilename('x'.repeat(161)));
 });
