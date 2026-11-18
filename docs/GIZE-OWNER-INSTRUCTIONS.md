@@ -20,6 +20,13 @@ The responding expert must:
 | Change ID | UTC timestamp | Owner instruction | Related requirement IDs | Status | Evidence/issue URL |
 |---|---|---|---|---|---|
 | CHANGE-20261118-1 | 2026-11-18 | Maintain exact source-backed checklist and update after every completed/reclassified task; allow owner amendments via chat/issue | ALL | ACTIVE | https://github.com/faisalwrokksa-hub/TO/issues/71 |
+| CHANGE-20261118-2 | 2026-11-18 | Non-disruptive GIZE × THEEPMO owner amendment; preserve 150 IDs, reviewable expert ownership and release gates | OWN-01; EVD-01–EVD-04; AUD-01–AUD-09; encryption, interoperability, Windows, localization and REL-01–REL-14 source IDs in the 78-ID register | RECORDED; acceptance unverified | https://github.com/faisalwrokksa-hub/TO/issues/71#issuecomment-6988321232 |
+
+## Amendment acceptance detail — CHANGE-20261118-2
+
+Canonical .gize exports and legacy .gaiz reads, signature and authenticated decryption, authorized offline use and revocation, compatible TEBE task/artifact contracts, Windows/native host and signed installer tests, actual source archive hash, independent release security; maintain NO_GO until all gates pass.
+
+This records an owner instruction, **not** software implementation, review approval, deployment or requirement verification. Track evidence per source ID in `docs/GIZE-SOURCE-CHECKLIST.md` and report to the canonical issue. Do not overwrite active branches; any release remains separately gated.
 
 ## Do not confuse instruction with execution
 This Markdown is a persistent protocol. The check is run only when invoked by a GitHub-capable chat/agent or a separately configured and verified automation. A static MD cannot itself autonomously read tests, approve PRs, or deploy.
