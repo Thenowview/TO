@@ -98,3 +98,15 @@ and merge queuing can run after required CI success. It must not
 auto-approve a high-risk cryptographic protocol change, human import
 decision, KMS release, or production release. Keep this branch in
 draft until a separate reviewer signs off.
+
+## Canonical .gize filenames (OT development branch)
+
+For **new encrypted CLI exports**, use lowercase `.gize`. The export command now rejects other output suffixes before loading report data or key files. A legacy `.gaiz` export remains possible only with an explicit `--allow-legacy-extension` flag for controlled compatibility testing.
+
+```sh
+node gaiz/cli.mjs export --confirm-local-export --report report.json --issuer-private ./issuer-private.pem --issuer orgaiz-test --tenant synthetic-a --artifact-id demo-1 --recipient-id reviewer-1 --recipient-public ./reviewer-public.pem --output ./report.gize
+```
+
+The new filename **does not change** the experimental signed wire envelope, which still starts with `GAIZ2\\n`. Verification and decryption inspect the bytes, enforce independently supplied issuer/tenant/recipient policy, and do not trust a file suffix for authorization. Existing `.gaiz` input can still be verified or opened with the existing explicit operator flags. This is naming compatibility work, **not** production cryptographic certification, a new on-disk format, or approval for cloud import.
+
+Test the filename policy separately with `node --test gaiz/file-extension.test.mjs`.
