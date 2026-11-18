@@ -1,0 +1,25 @@
+# GIZE — permanent source asset registry (18 November 2026)
+
+This registry distinguishes **available controlling text** from **reference binaries not yet accessible to GitHub experts**.
+
+| Original item | Content | Availability | SHA-256 / validation |
+|---|---|---|---|
+| `Theepmo ref1.md` | Reading guide | [Committed in TO](./Theepmo-ref1.md) | Confirm exact source checksum from manifest before archival equivalence |
+| `Theepmo ref2.md` | Canonical master prompt + 150 requirement IDs | [Committed in TO](./Theepmo-ref2.md) | `0fc466747c50a9b3740e98da095fa7b89d93f9355eee80e2456aaebabb8f8bc3` from supplied manifest |
+| `Theepmo ref3.md` | Windows/OT details | [Committed in TO](./Theepmo-ref3.md) | `8a146afab8e8ef7818ca3f762a814b067732f5c1fefd4ae7a7f2854bd0206374` from supplied manifest |
+| `Theepmo ref4.txt` | Infrastructure + design context | Extracted in model workspace; GitHub upload pending | `84f48c9674a9a0aae89e86d583a1eb6bac3ab9174544bf3ddef43229b7058a12` |
+| `Theepmo ref5.zip` | Reference website capture, ~237.8 MB, 81 entries | **Not hosted in GitHub** | `fcfe108b258c47e3896b5844a711c66d1cdb5fa43906d250d7bf7cd211596d66` |
+| `Theepmo ref6.zip` | Reference Windows package, ~877.8 MB, 8 entries | **Not hosted in GitHub** | `16d02926ae0a879d9b37e54ace6f983da70310ef6a1597a364b416506f38ffe1` |
+| `Theepmo ref7.json` | Original checksum manifest | Extracted in model workspace; GitHub upload pending | Manifest itself excluded from digest list |
+
+These SHA-256 hashes are transcribed from the supplied source inventory and **do not prove the GitHub-transferred text is byte-for-byte identical**: text transport can normalize formatting. Requirements are available for review, but the source artifact receipt is only complete after checksum-verifiable binary storage.
+
+## Missing durable source upload — precise action
+- GitHub Contents API used by this agent stores text files; it cannot upload binary archives of this size. No GitHub release-asset/LFS push action is currently exposed.
+- **Required:** use Git LFS with a trusted workstation capable of handling the nested files, or a *private release artifact* / access-controlled bucket accessible to all authorized experts. Prior to upload, scan contents for secrets and licenses, do not execute reference installers, and confirm the artifact hashes locally.
+- Record immutable download URLs, access policy, SHA-256, uploaded UTC time, archive version and reference-to-requirement map here, then link to progress issues.
+- Do not substitute a chat sandbox link for durable multi-expert storage.
+- Full code acceptance checks can proceed independently, but reference-specific visual and Windows package comparisons stay BLOCKED until these assets are available.
+
+## Source usage
+Each checklist ID refers to `Theepmo-ref2.md`. The actual product code and release evidence are in the three main repositories, not in the source archive. Do not report sources as implementation.
