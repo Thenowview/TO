@@ -18,7 +18,7 @@ const policy = {
 
 test('canonical .gize extension does not rewrite or reinterpret signed GAIZ2 wire bytes', () => {
   assertNewExportFilename('synthetic-report.gize');
-  assert.equal(bytes.subarray(0,6).toString('ascii'), 'GAIZ2\\n'.replace('\\n','\n'));
+  assert.deepEqual(bytes.subarray(0, 6), Buffer.from([0x47,0x41,0x49,0x5a,0x32,0x0a]));
   assert.equal(createHash('sha256').update(bytes).digest('hex'), expected.sha256);
   const verified = verifyGaiz2(bytes, policy);
   assert.equal(verified.receipt.sha256, expected.sha256);
