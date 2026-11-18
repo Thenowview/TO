@@ -129,7 +129,7 @@
 
 **Scope:** This addendum explicitly crosswalks **all 78 existing OT source IDs** to the AO adoption assessment. It is a **planning/coverage index**, not a claim that each original requirement is implemented, that AO is needed by every item, or that any checkbox should be changed. Original source wording, source IDs, checkboxes, evidence, verified statuses and release requirements above remain controlling and unchanged. Assignments below are **candidate applicability only** until the expert checks actual code and records a specific decision.
 
-**Pinned shared files, no re-download:** [AO reference files and original AGPL attribution](https://github.com/faisalwrokksa-hub/TO/tree/main/docs/vendor/agentone), already merged to OT `main` via [#78](https://github.com/faisalwrokksa-hub/TO/pull/78); [AO schemas and policy prototype #79](https://github.com/faisalwrokksa-hub/TO/pull/79) and [Chrome/Windows capability handshake #80](https://github.com/faisalwrokksa-hub/TO/pull/80) remain distinct implementation changes requiring current-head CI and review before acceptance. The curated conversation ZIP is **not** stored as a binary in GitHub and should not be described as available there. Existing `.gize`/`.gaiz` and GAIZ1/GAIZ2 identifiers remain unchanged.
+**Pinned shared files, no re-download:** [AO reference files and original AGPL attribution](https://github.com/faisalwrokksa-hub/TO/tree/main/docs/vendor/agentone), already merged to OT `main` via [#78](https://github.com/faisalwrokksa-hub/TO/pull/78); [AO schemas and policy prototype #79](https://github.com/faisalwrokksa-hub/TO/pull/79) and [Chrome/Windows capability handshake #80](https://github.com/faisalwrokksa-hub/TO/pull/80) have since merged into `main` after CI. These merges do not establish full AO execution, tenant authorization, customer acceptance or production readiness. The curated conversation ZIP is **not** stored as a binary in GitHub and should not be described as available there. Existing `.gize`/`.gaiz` and GAIZ1/GAIZ2 identifiers remain unchanged.
 
 **Source licensing boundary:** Use the internal name **AO** in GIZE requirements and tasks. Preserve upstream original names and AGPL-3.0 notices in the vendor archive, license/legal citations and immutable provenance. User-reported special permission needs scope and legal validation before distributed proprietary source reuse. Never run/install an uploaded EXE to infer source contents.
 
@@ -253,3 +253,17 @@
 - OT #75 (commit `9b77520`): **6/6 latest-head workflows SUCCESS** including Windows portable acceptance; still draft, no independent cryptographic/tenant/release reviewer approval.
 - OT #73: concurrent changes and merge conflict; latest-head complete CI and resolution outstanding. Do not discard unique GAIZ2/installer test changes.
 - OT #81: this evidence addendum preserves all 78 original requirement mappings without marking any source ID complete. All PRs require their own current-head checks and required reviews; no auto-approval of privileged execution.
+
+## Reconciled merge evidence — 2026-11-18 21:34 UTC
+
+**Current status supersedes the older PR snapshots in this addendum.** The prior sections record what was observed *before* these merges; do not treat their former draft/CI/merge blockers as current. Routine PR merge approval is optional under the owner's updated instruction, while actual GitHub-enforced protections, successful latest-head CI and release safety gates remain mandatory.
+
+| OT PR | Verified integration into `main` | Scope and limits |
+|---|---|---|
+| [#73](https://github.com/faisalwrokksa-hub/TO/pull/73) | MERGED as `8c6d3d147fa4be5aa840f41f2f7afdeebd6cdcef` after 5/5 CI passed | GAIZ2 negative vectors, default .gize, Windows CI and synthetic AO smoke; not external security certification |
+| [#75](https://github.com/faisalwrokksa-hub/TO/pull/75) | MERGED as `28c645ac3fb9a39df6844084fd47d3731259cd46` after 6/6 CI passed | Canonical filename policy, compatibility tests and source-presence readiness tool; not proof of production key custody or signed customer release |
+| [#79](https://github.com/faisalwrokksa-hub/TO/pull/79) | MERGED as `b33ce3d4f0604f2d75304299ed04c5534a4cc792` after 5/5 CI passed | AO contracts and deny-first isolated policy prototype; not server-enforced TEBE tenant authorization |
+| [#80](https://github.com/faisalwrokksa-hub/TO/pull/80) | MERGED as `b592d10491583d8c20e4da0706e1899f7c05587d` after 4/4 CI passed | Read-only, disabled AO Chrome/Windows capability handshake; no privileged AO tool execution enabled |
+| [#81](https://github.com/faisalwrokksa-hub/TO/pull/81) | Candidate until its newest commit passes CI and merges | 78/78 AO impact mappings remain NOT_ASSESSED, no source requirement marked VERIFIED by the mapping |
+
+**Current remaining gates:** verify each of the 78 AO-impact mappings against the authoritative source and implementation, independent cryptographic/legal assessment, safe real-device Windows and Chrome integration, TEBE-authenticated two-tenant enforcement, TEFE consumer compatibility, supported locale acceptance, signed installer and evidence-backed production release/rollback. The presence of merged code does **not** close these gates. AO tool execution remains disabled; production release remains **NO_GO**.
