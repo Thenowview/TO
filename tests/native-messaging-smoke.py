@@ -98,10 +98,69 @@ try:
     assert base64.b64decode(content["result"]["dataBase64"]) == sample
     assert content["result"]["done"]
 
+    # AO/agent integration over the actual native stdio host (new process per call).
+    # Synthetic plans are not real AI inference and must never auto-approve.
+    created = native({
+        "command": "agent_create", "companyId": company, "orderId": order_id,
+        "instruction": "Create a synthetic local note and list generated notes.",
+        "mode": "demo", "model": "qwen3:4b", "approvedHosts": ""
+    })[0]
+    assert created["ok"] and created["status"] == "awaiting_approval", created
+    job_id = created["jobId"]
+    assert not native({
+        "command": "agent_run_safe_batch", "companyId": company, "jobId": job_id
+    })[0]["ok"], "Unapproved local agent ran a batch"
+    assert not native({
+        "command": "agent_approve", "companyId": company, "jobId": job_id,
+        "approved": False
+    })[0]["ok"], "Agent accepted a missing owner approval"
+    assert not native({
+        "command": "agent_get", "companyId": "other", "jobId": job_id
+    })[0]["ok"], "Another company read agent state"
+    approved = native({
+        "command": "agent_approve", "companyId": company, "jobId": job_id,
+        "approved": True
+    })[0]
+    assert approved["ok"] and approved["status"] == "queued", approved
+    running = native({
+        "command": "agent_run_safe_batch", "companyId": company, "jobId": job_id
+    })[0]
+    assert running["ok"] and running["status"] == "completed_pending_review", running
+    assert running["executedSteps"] == 2, running
+    persisted = native({
+        "command": "agent_get", "companyId": company, "jobId": job_id
+    })[0]
+    assert persisted["ok"] and persisted["status"] == "completed_pending_review", persisted
+    assert len(persisted["events"]) >= 3, persisted
+    audit = native({
+        "command": "agent_review", "companyId": company, "jobId": job_id
+    })[0]
+    assert audit["ok"] and audit["qa"]["verdict"] == "human_review_required", audit
+    assert audit["qa"]["semanticQualityApproved"] is False, audit
+    assert not native({
+        "command": "agent_run_safe_batch", "companyId": company, "jobId": job_id
+    })[0]["ok"], "Reviewed agent execution was replayed"
+    browser = native({
+        "command": "agent_create", "companyId": company, "orderId": order_id,
+        "instruction": "Open synthetic approved HTTPS test site without accessing page contents.",
+        "mode": "demo-browser", "model": "qwen3:4b", "approvedHosts": "example.com"
+    })[0]
+    assert browser["ok"] and browser["requiresApproval"], browser
+    assert not native({
+        "command": "agent_run_next", "companyId": company, "jobId": browser["jobId"]
+    })[0]["ok"], "Browser navigation bypassed approval"
+    stopped = native({
+        "command": "agent_cancel", "companyId": company, "jobId": browser["jobId"]
+    })[0]
+    assert stopped["ok"] and stopped["status"] == "cancelled", stopped
+    assert not native({
+        "command": "agent_run_next", "companyId": company, "jobId": browser["jobId"]
+    })[0]["ok"], "Cancelled browser job executed"
+
     bad = native({"command": "ping", "unexpected": "<script>"})[0]
     assert bad["ok"], bad
 
-    print("PASS: real framed Windows native host, persisted work order, import, format check, byte read, tenant isolation")
+    print("PASS: framed Windows native host, persisted order, artifact QA, tenant isolation, AO approval, safe batch, restart, browser and cancellation gates")
 finally:
     # The integration test never touches other companies or user files.
     if root.exists():
