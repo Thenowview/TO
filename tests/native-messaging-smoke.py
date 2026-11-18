@@ -100,7 +100,7 @@ try:
 
     # Canonical and legacy names must both be accepted through real native framing.
     # This is format-only validation, never signature/decryption authorization.
-    envelope = b'GAIZ1\\n{"manifest":{},"signature":"synthetic","ciphertext":"synthetic"}'
+    envelope = b'GAIZ1\n{"manifest":{},"signature":"synthetic","ciphertext":"synthetic"}'
     for extension in ("gize", "gaiz"):
         imported = native({
             "command": "import_artifact", "companyId": company, "orderId": order_id,
