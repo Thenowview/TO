@@ -78,6 +78,7 @@
       const reply = await this.native({ command: "ao_capabilities" });
       if (reply.integration !== "AO" || reply.protocolVersion !== 1 ||
           reply.enabled !== false || reply.executionSupported !== false ||
+          reply.status !== "disabled_pending_authorization_and_contract_tests" ||
           !Array.isArray(reply.tools) || reply.tools.length !== 0) {
         throw new Error("Unrecognized or unexpectedly enabled AO capabilities");
       }
