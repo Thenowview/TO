@@ -60,7 +60,6 @@ function fakeChrome(options = {}) {
           status:"disabled_pending_authorization_and_contract_tests",
           executionSupported:false,tools:[]
         };
-        case "ao_capabilities":return options.aoReply || {ok:true,integration:"AO",protocolVersion:1,enabled:false,executionSupported:false,status:"disabled_pending_authorization_and_contract_tests",tools:[]};
         case "submit_order":return {ok:true,order:{
           orderId:"a".repeat(32),companyId:request.companyId,
           createdUtc:"2026-11-10T00:00:00Z",aiMode:"deterministic_demo_no_external_provider"
