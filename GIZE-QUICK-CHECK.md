@@ -18,3 +18,9 @@ Send **GIZE CHECK** in the ongoing ChatGPT conversation, or copy the text below 
 
 ## Caution
 This Markdown file is **instructions**, not an executable monitoring service. To get fresh progress, send the prompt to a connected GitHub-capable agent or run the corresponding workflow. Original `execute fully.zip` (~430 MB) has not yet been archived/extracted in these repositories and the initial checklist is provisional.
+
+
+## Authoritative update (2026-11-18)
+Five readable source documents and their full master requirement text are now committed in [TO source folder](docs/gize-sources/). The original `execute fully.zip` has been split into 11 parts stored in the [owner's private Drive folder](https://drive.google.com/drive/folders/1ANtZI7siXicrqqAb0-WIwaOFjLcdSccC); [reconstruction and SHA verification](docs/gize-sources/RECONSTRUCT-AND-VERIFY.md) is required. Experts' access is NOT yet confirmed. **Do not repeat the historical instruction that all source files remain unavailable.**
+
+Every `gize tefe`, `gize tebe`, `gize ot` or `gize the epmo` check must read the source-linked full-text registers and each repository's `docs/GIZE-OWNER-INSTRUCTIONS.md`. After each individual task completed or blocked, the expert must update the exact checklist item with evidence AND post an issue progress comment. Owner changes are accepted as `gize tefe: ...`, `gize tebe: ...`, `gize ot: ...`, `gize the epmo: ...`, recorded with explicit requirement IDs and versioned change history. Preserve current release/security approvals.
