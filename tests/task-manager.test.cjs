@@ -638,3 +638,20 @@ test("AO fails closed on malformed or unexpectedly enabled host responses",async
     assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
   }
 });
+
+test("AO native registration restricts each Windows host to one syntactically valid Chrome extension ID",()=>{
+  for(const rel of ["tools/install-native-host.ps1","portable/register-native-host.ps1"]){
+    const script=fs.readFileSync(path.join(__dirname,"..",...rel.split("/")),"utf8");
+    assert.match(script,/ValidatePattern\('\^\[a-p\]\{32\}\$'\)/,
+      rel+" must reject invalid Chrome extension IDs");
+    assert.match(script,/allowed_origins\s*=\s*@\("chrome-extension:\/\/\$ExtensionId\/"\)/,
+      rel+" must bind exactly the installed extension origin");
+    assert.doesNotMatch(script,/allowed_origins\s*=\s*@\(\s*["']\*/,
+      rel+" must not allow a wildcard origin");
+  }
+  const manifest=JSON.parse(src("manifest.json"));
+  assert.ok(manifest.permissions.includes("nativeMessaging"));
+  assert.ok(!manifest.permissions.includes("debugger"));
+  assert.ok(!Object.hasOwn(manifest,"host_permissions"),
+    "AO discovery must not add broad host access");
+});
