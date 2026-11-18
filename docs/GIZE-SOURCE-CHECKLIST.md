@@ -31,86 +31,95 @@
 
 ## Full assigned checklist
 
-- [ ] **OWN-01** — Ownership and scope · **NOT_ASSESSED** · Source: `Theepmo ref2.md#OWN-01` · Evidence: pending
-- [ ] **OWN-03** — Ownership and scope · **NOT_ASSESSED** · Source: `Theepmo ref2.md#OWN-03` · Evidence: pending
-- [ ] **OWN-04** — Ownership and scope · **NOT_ASSESSED** · Source: `Theepmo ref2.md#OWN-04` · Evidence: pending
-- [ ] **OWN-05** — Ownership and scope · **NOT_ASSESSED** · Source: `Theepmo ref2.md#OWN-05` · Evidence: pending
-- [ ] **EVD-01** — Source evidence · **NOT_ASSESSED** · Source: `Theepmo ref2.md#EVD-01` · Evidence: pending
-- [ ] **EVD-02** — Source evidence · **NOT_ASSESSED** · Source: `Theepmo ref2.md#EVD-02` · Evidence: pending
-- [ ] **EVD-03** — Source evidence · **NOT_ASSESSED** · Source: `Theepmo ref2.md#EVD-03` · Evidence: pending
-- [ ] **EVD-04** — Source evidence · **NOT_ASSESSED** · Source: `Theepmo ref2.md#EVD-04` · Evidence: pending
-- [ ] **AUD-01** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-01` · Evidence: pending
-- [ ] **AUD-02** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-02` · Evidence: pending
-- [ ] **AUD-03** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-03` · Evidence: pending
-- [ ] **AUD-04** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-04` · Evidence: pending
-- [ ] **AUD-05** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-05` · Evidence: pending
-- [ ] **AUD-06** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-06` · Evidence: pending
-- [ ] **AUD-07** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-07` · Evidence: pending
-- [ ] **AUD-08** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-08` · Evidence: pending
-- [ ] **AUD-09** — Baseline audit · **NOT_ASSESSED** · Source: `Theepmo ref2.md#AUD-09` · Evidence: pending
-- [ ] **UX-04** — UI/UX · **NOT_ASSESSED** · Source: `Theepmo ref2.md#UX-04` · Evidence: pending
-- [ ] **LOC-04** — Localization · **NOT_ASSESSED** · Source: `Theepmo ref2.md#LOC-04` · Evidence: pending
-- [ ] **PC-01** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-01` · Evidence: pending
-- [ ] **PC-02** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-02` · Evidence: pending
-- [ ] **PC-03** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-03` · Evidence: pending
-- [ ] **PC-04** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-04` · Evidence: pending
-- [ ] **PC-05** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-05` · Evidence: pending
-- [ ] **PC-06** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-06` · Evidence: pending
-- [ ] **PC-07** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-07` · Evidence: pending
-- [ ] **PC-08** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-08` · Evidence: pending
-- [ ] **PC-09** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-09` · Evidence: pending
-- [ ] **PC-10** — Offline PC execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PC-10` · Evidence: pending
-- [ ] **TASK-01** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-01` · Evidence: pending
-- [ ] **TASK-02** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-02` · Evidence: pending
-- [ ] **TASK-03** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-03` · Evidence: pending
-- [ ] **TASK-04** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-04` · Evidence: pending
-- [ ] **TASK-05** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-05` · Evidence: pending
-- [ ] **TASK-06** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-06` · Evidence: pending
-- [ ] **TASK-08** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-08` · Evidence: pending
-- [ ] **TASK-09** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-09` · Evidence: pending
-- [ ] **TASK-10** — Durable task execution · **NOT_ASSESSED** · Source: `Theepmo ref2.md#TASK-10` · Evidence: pending
-- [ ] **SYNC-01** — Offline-online synchronization · **NOT_ASSESSED** · Source: `Theepmo ref2.md#SYNC-01` · Evidence: pending
-- [ ] **SYNC-02** — Offline-online synchronization · **NOT_ASSESSED** · Source: `Theepmo ref2.md#SYNC-02` · Evidence: pending
-- [ ] **SYNC-03** — Offline-online synchronization · **NOT_ASSESSED** · Source: `Theepmo ref2.md#SYNC-03` · Evidence: pending
-- [ ] **ENC-01** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-01` · Evidence: pending
-- [ ] **ENC-02** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-02` · Evidence: pending
-- [ ] **ENC-03** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-03` · Evidence: pending
-- [ ] **ENC-04** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-04` · Evidence: pending
-- [ ] **ENC-05** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-05` · Evidence: pending
-- [ ] **ENC-06** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-06` · Evidence: pending
-- [ ] **ENC-07** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-07` · Evidence: pending
-- [ ] **ENC-08** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-08` · Evidence: pending
-- [ ] **ENC-09** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-09` · Evidence: pending
-- [ ] **ENC-10** — GIZE encryption format · **NOT_ASSESSED** · Source: `Theepmo ref2.md#ENC-10` · Evidence: pending
-- [ ] **OPS-06** — Operations · **NOT_ASSESSED** · Source: `Theepmo ref2.md#OPS-06` · Evidence: pending
-- [ ] **OPS-07** — Operations · **NOT_ASSESSED** · Source: `Theepmo ref2.md#OPS-07` · Evidence: pending
-- [ ] **WIN-01** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-01` · Evidence: pending
-- [ ] **WIN-02** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-02` · Evidence: pending
-- [ ] **WIN-03** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-03` · Evidence: pending
-- [ ] **WIN-04** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-04` · Evidence: pending
-- [ ] **WIN-05** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-05` · Evidence: pending
-- [ ] **WIN-06** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-06` · Evidence: pending
-- [ ] **WIN-07** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-07` · Evidence: pending
-- [ ] **WIN-08** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-08` · Evidence: pending
-- [ ] **WIN-09** — Windows upgrade/install · **NOT_ASSESSED** · Source: `Theepmo ref2.md#WIN-09` · Evidence: pending
-- [ ] **PERF-01** — Windows performance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PERF-01` · Evidence: pending
-- [ ] **PERF-02** — Windows performance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#PERF-02` · Evidence: pending
-- [ ] **REL-01** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-01` · Evidence: pending
-- [ ] **REL-02** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-02` · Evidence: pending
-- [ ] **REL-03** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-03` · Evidence: pending
-- [ ] **REL-04** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-04` · Evidence: pending
-- [ ] **REL-05** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-05` · Evidence: pending
-- [ ] **REL-06** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-06` · Evidence: pending
-- [ ] **REL-07** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-07` · Evidence: pending
-- [ ] **REL-08** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-08` · Evidence: pending
-- [ ] **REL-09** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-09` · Evidence: pending
-- [ ] **REL-10** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-10` · Evidence: pending
-- [ ] **REL-11** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-11` · Evidence: pending
-- [ ] **REL-12** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-12` · Evidence: pending
-- [ ] **REL-13** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-13` · Evidence: pending
-- [ ] **REL-14** — Release acceptance · **NOT_ASSESSED** · Source: `Theepmo ref2.md#REL-14` · Evidence: pending
+- [ ] **OWN-01** — Confirm the three repository identities, guidance and canonical ownership. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **OWN-03** — Record launch scope, supported platforms, features and customer-facing promises without silently narrowing these requirements. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **OWN-04** — Preserve customer data, controls, legacy artifact references and unique branch work. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **OWN-05** — Record cost decisions, release authorization boundary and final main-only cleanup conditions. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **EVD-01** — Read and register all supplied sources and referenced handoff; identify unavailable inputs. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#EVD-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **EVD-02** — Establish a requirement-to-code-to-test evidence ledger using the IDs below. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#EVD-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **EVD-03** — Separate observed facts, proposals, mock results, live results and Windows results. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#EVD-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **EVD-04** — Record repository SHAs, runtime/OS versions, artifact hashes, dates and raw verification results. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#EVD-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-01** — Pin source/deployed revisions and identify build-to-deployment provenance. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-02** — Inventory branches/PRs, unique commits, checks and reusable work in all three repositories. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-03** — Map actual application routes, API contracts, schemas, queues, jobs and storage ownership. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-04** — Inventory Cloudflare zones/accounts, DNS, TLS, Workers/Pages, routes, cache rules and upload constraints. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-05** — Inventory server services, ports, databases, volumes, schedulers and deployment mechanisms. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-06** — Identify secret/key references and owners without exposing their values. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-07** — Run actual baseline tests/builds and representative customer journeys; separate pre-existing failures. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-08** — Produce legacy feature/data parity, locale coverage and desktop compatibility matrices. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-08](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **AUD-09** — Record verified infrastructure limitations and access gaps; estimate work only after this baseline. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#AUD-09](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **UX-04** — Redesign OT Workspaces / Tasks / Files / Settings, composer, approvals, event history and deliverables. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#UX-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **LOC-04** — Fully translate Windows installation, upgrade, offline tasks, key recovery and uninstall guidance. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#LOC-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-01** — Launch the installed app offline and reopen existing authorized local workspaces without online login. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-02** — Show connection state and On this PC / Online via THE EPMO before task submission. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-03** — Preview a structured plan showing actions, workspace, inputs, destinations and permission requirements. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-04** — Implement reviewed adapters for supported file reading, report creation, local inference, approved app opening and configured project checks; identify unsupported actions honestly. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-05** — Enforce approved scope at dispatch; require fresh approval when action/scope changes. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-06** — Constrain paths, handle Windows normalization/junctions/symlinks, revalidate before operations and test escape attempts. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-07** — Protect loopback/native bridge callers; enforce resource limits/timeouts and isolate project checks where supported. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-08** — Keep credentials out of UI storage/logs/reports; use OS-managed protection where appropriate. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-08](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-09** — Make deterministic jobs independent of AI; enable local AI only after model compatibility/readiness checks. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-09](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PC-10** — Bound logs/progress, preserve workspace/task context and keep shell/navigation responsive during inference and large-file work. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PC-10](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-01** — Enforce idempotent submission, atomic claims/transitions and durable receipts under concurrency. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-02** — Reconstruct task state after restart; resume event cursors or obtain authoritative snapshots. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-03** — Check side effects before retry; require review for uncertain outcomes and retain retry evidence. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-04** — Implement tested cancellation, terminal-state protection and audit history. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-05** — Queue online work offline only on explicit selection; show waiting for connection. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-06** — Revalidate identity, tenant, workspace access and approval on reconnect; resolve ambiguous submit outcomes by request ID. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-08** — Upload only authorized files; local workspace content remains local by default. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-08](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-09** — Pass duplicate submit, concurrent dispatch, stale approval, restart during write, worker crash, cancel/finish race and reordered-event tests. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-09](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **TASK-10** — Pass outage/reconnect, expired credential, revoked access, denied cross-tenant access and uncertain-remote-outcome tests; distinguish mocks from live evidence. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#TASK-10](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **SYNC-01** — Define authoritative records, version checks and merge policy for each synchronized object. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#SYNC-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **SYNC-02** — Handle concurrent edits, deletions/tombstones, attachment changes, duplicate delivery and changed/revoked approvals without silent overwrite. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#SYNC-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **SYNC-03** — Present conflicts for review when deterministic safe reconciliation is impossible; preserve provenance and both relevant revisions. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#SYNC-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-01** — Deliver threat model, actual versioned protocol/key specification and security review. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-02** — Default new exports/download filenames to .gize; accept .gize and .gaiz in existing applicable consumers. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-03** — Preserve historical names/references and GAIZ1/GAIZ2 handlers; never bulk rename/re-encrypt user files during setup. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-04** — Verify content-based detection, integrity/signatures and authorization before releasing usable plaintext; prevent partial/unauthenticated output exposure. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-05** — Protect local keys using supported OS mechanisms; document backup, recovery, rotation, lost-key behavior and tenant/user separation. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-06** — Demonstrate offline encryption/decryption without online login using local authorized keys; clearly reject missing/unauthorized keys. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-07** — Implement/document offline permission expiry, online-only policies and revocation limitations without misleading promises. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-08** — Share synthetic fixtures for both extensions and both versions; test renamed identical bytes, malformed/mismatched headers, tampering, missing keys, wrong recipients and round trips. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-08](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-09** — Test applicable TO/TEBE/TEFE import, upload, download and verification consumers; publish version/consumer compatibility limits. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-09](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **ENC-10** — Register both Windows associations where supported, default new files to .gize and preserve uninstall/data behavior. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#ENC-10](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **OPS-06** — Build once and promote identical pinned artifacts where supported; bind deployment to exact source and dependency provenance. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OPS-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **OPS-07** — Test health checks, safe schema rollout, rollback and failed-deployment recovery; verify actual deployed revision. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OPS-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-01** — Enumerate supported Windows versions, installation modes and legacy upgrade baselines. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-02** — Produce verified backup, schema/version manifest and migration journal; preserve secrets through supported OS migration/recovery. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-03** — Pass clean install and each supported upgrade; rerunning setup must be safe. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-04** — Test active writers, locked files, disk exhaustion, interrupted migration and restart recovery. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-05** — Verify record counts, integrity, representative files, access permissions, shortcuts and file associations before default-launcher switch. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-06** — Rehearse rollback with prior installer and verified backup, preserving work created after upgrade through tested compatible export/restore. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-07** — Verify uninstall preserves user data unless deletion is explicitly requested; document updater ownership and behavior. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-08** — Deliver private candidate, checksum, dependency inventory and signing status; production signing and Windows acceptance remain release gates. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-08](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **WIN-09** — Demonstrate legacy upgrade → offline launch/task → verified output → .gize export → offline decryption → legacy .gaiz open → authorized online task → outage/reconnect. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#WIN-09](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PERF-01** — Measure baseline/candidate on the same Windows device: cold/warm startup, navigation, durable receipt, event latency, large-file preview, idle/active memory and recovery. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PERF-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **PERF-02** — Report inputs, sample counts, median, p95 and raw observations; meet predefined budgets and investigate regressions. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#PERF-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-01** — All mandatory requirement IDs implemented and verified; exclusions separately documented without disguising scope reductions. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-02** — Full connected enterprise acceptance scenario passes with synthetic tenants and correct permissions. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-02](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-03** — Every supported language passes every required surface; no accepted English fallback or untranslated required content. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-04** — Website, account, billing configuration, entitlements, support and customer-value journey pass. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-05** — Offline Windows execution, encryption/decryption, migration and recovery pass on supported target environments. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-06** — Both extensions/versions pass documented consumers and negative security cases; keys/recovery limitations are explicit. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-06](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-07** — Launch integrations, AI evaluations, load targets, monitoring and backup restoration pass. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-07](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-08** — Required source checks pass on the exact candidate commits; no unresolved release-blocking defect remains. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-08](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-09** — Deliver exact release hashes, installer/signing status, dependency inventory, rollout/rollback and operating guides. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-09](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-10** — Obtain the required production release authorization for the exact reviewed candidate. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-10](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-11** — Verify live deployment revisions, routes, TLS, private caching, health and approved production commercial configuration without unauthorized charges. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-11](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-12** — Preserve required unique work, finish dependencies and remove approved merged branches so the three repositories end with main only. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-12](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-13** — Retire duplicate sites/launchers/routes only after backup, dependency checks and appropriate release authorization. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-13](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [ ] **REL-14** — Deliver final demonstration and honest declaration: paying-customer-ready, release-candidate-ready or blocked, supported by evidence. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-14](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 
 ## Expert update log
 | UTC time | Checked IDs | Verified IDs | Blocked IDs | PR/commit and tests | Next action |
 |---|---|---|---|---|---|
 | 2026-11-18 | Initial source ID inventory | None verified | Source storage and original OT handoff | Instruction-only initial commit | Check actual repo implementation and link durable source artifacts |
+
+
+## Mandatory expert update after EVERY task — owner instruction 2026-11-18
+1. Before starting: inspect this task's **full acceptance wording** in [canonical source master](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md), current source code, test suites and dependencies. Write plan against stable ID.
+2. Immediately **after each individual completed, reclassified, failed or blocked task**, update the task checkbox/status **in this file** and add a matching comment in the repository's progress issue. Do **not** defer until the end of a batch. Keep the full set of IDs and their source URLs intact.
+3. For each update record UTC time, current status, source link, changed file paths, exact PR and commit SHA, test/scan run URL and result, deployment URL/SHA if required, blocker/fix, and next step. Only check the box when VERIFIED. Do not mark complete solely from a green PR or merged commit.
+4. **Owner change requests:** user may write `gize tefe: <new instruction>`, `gize tebe: <new instruction>`, or `gize ot: <new instruction>` in a GitHub-capable chat, or comment on the appropriate progress issue. Expert must acknowledge, map to existing/new stable IDs, record new acceptance criteria and precedence, and update this file with a linked change log. Never silently remove old requirements.
+5. **On each check command:** re-read ALL tasks and associated evidence, compare to latest code/PRs/checks/deployment, flag failing tests and security issues with severity and suggested safe bulk fixes, then publish the complete current checklist. No unsupported completion percentage.
+6. User authorizes routine reversible engineering work and tests; preserve required review/security gates and explicit final release authorization. Changes to these Markdown files are not automated unless invoked by an agent or a CI workflow.
