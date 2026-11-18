@@ -1,6 +1,8 @@
-# GIZE AgentOne adoption — expert execution and master audit
+# AO integration — GIZE expert execution and master audit
 
-**Requested outcome:** Improve existing GIZE application + Chrome extension using pinned AgentOne reference files, while current experts work without interruption. **Release status:** NO_GO pending proof. **Source and terms:** [reference package](./README.md). Never treat installer contents as source.
+**Naming:** AO is the internal project-facing integration label; the original upstream identity is retained only in the pinned vendor references and required attribution.
+
+**Requested outcome:** Improve existing GIZE application + Chrome extension using pinned AO integration references, while current experts work without interruption. **Release status:** NO_GO pending proof. **Source and terms:** [reference package](./README.md). Never treat installer contents as source.
 
 ## Ownership and proposed implementation
 
@@ -11,7 +13,7 @@
 - [ ] Add risk classes: read-only, reversible write, consequential external write, destructive/privileged. Deterministic deny overrides model auto-approval. Audit permission decisions and token scope.
 - [ ] Reuse existing specialist queue and independent QA; add per-tool traces, bounded retry, cancellation and verified result rather than duplicate agent engines.
 - [ ] Ensure local-model operations, Windows native host and opt-in MCP degrade honestly offline; no cloud sign-in required for authorized offline local operations.
-- [ ] Preserve `.gize` default / `.gaiz` legacy read and GAIZ1/GAIZ2 signatures/protocol bytes. AgentOne is NOT cryptographic format authority.
+- [ ] Preserve `.gize` default / `.gaiz` legacy read and GAIZ1/GAIZ2 signatures/protocol bytes. AO is NOT cryptographic format authority.
 - [ ] Test extension/native host origin checks, request replay, OAuth storage/isolation, prompt injection from tools, arbitrary command prevention and manual Chrome side panel usability.
 
 ### TEBE (tenant-authenticated web/API, business governance; issue #642)
@@ -30,7 +32,7 @@
 - [ ] Keep marketing builds free of third-party reference source, native binaries, secrets and experimental MCP servers.
 
 ### Master auditor GIZE THEEPMO (issue #71)
-- [ ] Add an **AgentOne adoption evidence subsection** without renumbering or double counting original 150 source IDs.
+- [ ] Add an **AO integration evidence subsection** without renumbering or double counting original 150 source IDs.
 - [ ] Track `REFERENCE_ONLY → SPECIFIED → IMPLEMENTED_UNVERIFIED → VERIFIED` for each new pattern, separately from source-ID statuses. Crosswalk relevant 150-ID entries and do not claim new requirements completed.
 - [ ] Verify upstream source pin, copied-file paths and unmodified license; record actual owner grant terms before any proprietary distribution.
 - [ ] Confirm exact approval boundary, extension/native host/TEBE contract, tenant/recipient protection, offline Windows operation, all locales, installation integrity and customer acceptance.
