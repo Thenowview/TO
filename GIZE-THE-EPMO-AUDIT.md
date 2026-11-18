@@ -27,3 +27,24 @@
 
 ## Important limitations
 This Markdown is a **runbook and prompt reference**, not a self-executing script. Automatic periodic checks require actual CI workflows or scheduled agents. A source ZIP around 430 MB cannot be committed through GitHub's standard text-file contents interface; host its vetted source artifacts using appropriate durable storage and register a SHA-256 manifest.
+
+
+## Live first-pass baseline crosscheck — 2026-11-18
+**This section records direct source inspection, not a completed 150-item runtime audit.** Revalidate on each command run.
+
+| Repo | Requirement ownership | Inspected evidence | Remaining uncertainty |
+|---|---:|---|---|
+| [TEFE](https://github.com/2029TEFE/TEFE) | 12 | README identifies marketing-only scope; CI workflow defines Node tests and production candidate bundle; PR #74 describes cleanup and local tests | All 12 still unassessed at full acceptance depth; current CI success and Cloudflare production SHA not confirmed; historical README says auto-production deploy disabled |
+| [TEBE](https://github.com/2029TEBE/TEBE) | 60 | README lists Next.js 15, NestJS 11, PostgreSQL/Redis, tenancy controls; CI defines broad source gates including security, locale, GAIZ tests; recent PR #641 describes storage headroom | 60 IDs not yet end-to-end checked; no current production release/runtime check; security/runtime tests not proven green on current main |
+| [OT/TO](https://github.com/faisalwrokksa-hub/TO) | 78 | README describes Chrome MV3 + Windows bridge, SQLite and preview state; PR #70 preparatory cleanup; OT source instructions committed | 78 IDs not yet desktop-tested; no owner-PC installer proof, no complete offline decryption migration proof, reference desktop binary package not hosted |
+
+### Cross-cutting release blockers requiring evidence
+1. Versioned, access-controlled hosting for reference website and Windows binaries, plus `ref4` context and `ref7` original manifest. [Artifact registry](docs/gize-sources/ASSET-REGISTRY.md).
+2. Exact current main commit CI/security evidence from real completed GitHub Actions runs. GitHub combined-status lookup returned empty arrays for the documentation-only current heads; **not** proof of passing or failing actions.
+3. Source-linked test evidence for supported-language translations (not fallback), end-to-end strategy-to-outcome, secure GIZE encrypted exports and legacy reads, offline authorization, tenancy/permissions, billing and support/legal.
+4. Production version and deployment identity for public site, authenticated app and Windows installer; backup, rollback and final owner release authorization.
+
+### Owner instructions
+- `gize tefe: <change>`, `gize tebe: <change>`, `gize ot: <change>`: open/update linked expert issue and modify corresponding checklist/acceptance criteria with change log and evidence.
+- `gize the epmo: <change>`: record cross-repo instruction in master TO issue, map changes to specific task IDs, ask each expert to reconcile and update its checklist.
+- Each verified task: **update its checklist file and issue immediately**, not just after a batch. For failing tests/security checks report precise links, severity, cause and proposed safe bulk fixes; protect mandatory gates.
