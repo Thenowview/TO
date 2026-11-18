@@ -1,0 +1,35 @@
+{
+  "files": [
+    {
+      "path": "Theepmo ref1.md",
+      "size_bytes": 2336,
+      "sha256": "8cfdada3fe0a1fe72d70df43869bb8573c6ecac2159c51d749410619d0722290"
+    },
+    {
+      "path": "Theepmo ref2.md",
+      "size_bytes": 40589,
+      "sha256": "0fc466747c50a9b3740e98da095fa7b89d93f9355eee80e2456aaebabb8f8bc3"
+    },
+    {
+      "path": "Theepmo ref3.md",
+      "size_bytes": 15892,
+      "sha256": "8a146afab8e8ef7818ca3f762a814b067732f5c1fefd4ae7a7f2854bd0206374"
+    },
+    {
+      "path": "Theepmo ref4.txt",
+      "size_bytes": 14494,
+      "sha256": "84f48c9674a9a0aae89e86d583a1eb6bac3ab9174544bf3ddef43229b7058a12"
+    },
+    {
+      "path": "Theepmo ref5.zip",
+      "size_bytes": 237776248,
+      "sha256": "fcfe108b258c47e3896b5844a711c66d1cdb5fa43906d250d7bf7cd211596d66"
+    },
+    {
+      "path": "Theepmo ref6.zip",
+      "size_bytes": 877795554,
+      "sha256": "16d02926ae0a879d9b37e54ace6f983da70310ef6a1597a364b416506f38ffe1"
+    }
+  ],
+  "limitations": "All archive paths and readable UTF-8 text are neutralized. Opaque binary contents are unchanged and may retain embedded original identifiers. This is an analysis package; original runtime paths are not preserved."
+}
