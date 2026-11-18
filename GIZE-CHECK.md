@@ -33,3 +33,13 @@ Shared architecture, expert coordination, requirement source inventory, protocol
 
 ## Progress check
 Review repository-level `GIZE Expert Execution` issues for TEFE and TEBE plus the master TO coordination issue. Distinguish plan presence from implementation and deployment.
+
+
+## SOURCE-LINKED CHECKLIST — authoritative on every run (2026-11-18)
+**Command:** `gize ot`
+
+[Open the repository's source-linked full requirement checklist](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/GIZE-SOURCE-CHECKLIST.md). Cross-check each ID against full wording in the controlling `Theepmo ref2.md`; do not infer detailed requirements from short labels. Verify code, PRs, tests, security, deployed SHA and cross-repo integration. Update checkboxes and linked issue only on real evidence. Flag failing tests and security findings; propose safe grouped fixes and log blockers. Routine checks can run whenever an authorized agent is invoked; Markdown alone cannot schedule anything.
+
+**Cross-repository audit:** command `gize the epmo` -> [GIZE master 150-ID register](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/GIZE-MASTER-150-REGISTER.md) and [master audit instructions](https://github.com/faisalwrokksa-hub/TO/blob/main/GIZE-THE-EPMO-AUDIT.md).
+
+**Release constraint:** Source material explicitly requires **final production release authorization** before production merge/deployment/public installer release. Routine user approval must not be interpreted as that final authorization.
