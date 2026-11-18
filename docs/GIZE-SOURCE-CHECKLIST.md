@@ -111,6 +111,7 @@
 - [ ] **REL-14** — Deliver final demonstration and honest declaration: paying-customer-ready, release-candidate-ready or blocked, supported by evidence. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#REL-14](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 
 ## Expert update log
+| 2026-11-18 | OPS-06 CI concurrency — reduce redundant Windows builds after each PR revision; keep latest revision checks mandatory | None newly verified; current-head CI pending | Original archive, Windows signed installer, cross-repo integration and live deployment | `1102a01e71ca9dcc9bf57eef450c8245def541a1`: concurrency groups added to five OT workflows, cancel superseded PR runs only | Confirm CI runs on latest head, fix failures, preserve required security checks and release NO-GO |
 | UTC time | Checked IDs | Verified IDs | Blocked IDs | PR/commit and tests | Next action |
 |---|---|---|---|---|---|
 | 2026-11-18 | Initial source ID inventory | None verified | Source storage and original OT handoff | Instruction-only initial commit | Check actual repo implementation and link durable source artifacts |
