@@ -5,10 +5,8 @@ Only stale app-managed temp files and exact aborted import fragments qualify.
 """
 from __future__ import annotations
 import argparse
-import os
 import re
 import stat
-import sys
 import time
 from pathlib import Path
 

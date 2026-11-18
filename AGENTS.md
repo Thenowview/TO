@@ -4,7 +4,7 @@ Read [Orgaiz brand and repository architecture](docs/BRAND_ARCHITECTURE.md) befo
 ## Product direction
 - **Orgaiz / Orgaiz.com** is the single corporate/public brand. "TheOrg" is a *legacy internal* project/name, not an additional customer-facing website or product.
 - Exactly **two customer-facing web experiences** are planned: Orgaiz public/tools and THEEPMO authenticated enterprise application under the Orgaiz brand. THEEPMO is a product, not a separate marketing company.
-- The encrypted-file extension is exactly **`.gaiz`** (lowercase).
+- Current owner decision: new encrypted exports use **`.gize`** (lowercase); legacy **`.gaiz`** remains readable. Preserve GAIZ1/GAIZ2 wire identifiers. See [current implementation baseline](docs/CURRENT_IMPLEMENTATION_BASELINE.md); do not claim migration is complete without tests.
 - This repo currently contains a **Chrome extension + native Windows bridge/local-first agents**; do not assume it is already the deployed Orgaiz.com frontend. Preserve working local functionality and historical build names until an explicitly reviewed migration.
 
 ## Ownership

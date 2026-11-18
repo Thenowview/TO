@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Safe offline-only diagnostics, not a claim of model performance."""
-import json, sys, shutil
+import sys, shutil
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from engine import core, coding
