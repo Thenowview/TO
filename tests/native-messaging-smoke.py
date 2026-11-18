@@ -64,6 +64,23 @@ try:
     )
     assert all(r.get("ok") for r in results), results
     assert results[0]["protocolVersion"] == 1
+    # AO is discovery-only and must not silently enable tool execution.
+    ao, refused = native(
+        {"command": "ao_capabilities"},
+        {"command": "ao_execute", "toolId": "arbitrary.command", "input": {"command": "calc.exe"}},
+    )
+    assert ao == {
+        "ok": True,
+        "protocolVersion": 1,
+        "integration": "AO",
+        "enabled": False,
+        "status": "disabled_pending_authorization_and_contract_tests",
+        "tools": [],
+        "executionSupported": False,
+        "note": "Discovery handshake only. No MCP servers, commands or external tools are launched.",
+    }, ao
+    assert refused == {"ok": False, "error": "unsupported_command"}, refused
+    assert "ao_capabilities" in results[1]["commands"], results[1]
     order_id = results[2]["order"]["orderId"]
     assert len(order_id) == 32
 
