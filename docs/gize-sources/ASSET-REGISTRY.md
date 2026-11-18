@@ -7,10 +7,10 @@ This registry distinguishes **available controlling text** from **reference bina
 | `Theepmo ref1.md` | Reading guide | [Committed in TO](./Theepmo-ref1.md) | Confirm exact source checksum from manifest before archival equivalence |
 | `Theepmo ref2.md` | Canonical master prompt + 150 requirement IDs | [Committed in TO](./Theepmo-ref2.md) | `0fc466747c50a9b3740e98da095fa7b89d93f9355eee80e2456aaebabb8f8bc3` from supplied manifest |
 | `Theepmo ref3.md` | Windows/OT details | [Committed in TO](./Theepmo-ref3.md) | `8a146afab8e8ef7818ca3f762a814b067732f5c1fefd4ae7a7f2854bd0206374` from supplied manifest |
-| `Theepmo ref4.txt` | Infrastructure + design context | Extracted in model workspace; GitHub upload pending | `84f48c9674a9a0aae89e86d583a1eb6bac3ab9174544bf3ddef43229b7058a12` |
+| `Theepmo ref4.txt` | Infrastructure + design context | [Committed in TO](./Theepmo-ref4.txt) | `84f48c9674a9a0aae89e86d583a1eb6bac3ab9174544bf3ddef43229b7058a12` |
 | `Theepmo ref5.zip` | Reference website capture, ~237.8 MB, 81 entries | **Not hosted in GitHub** | `fcfe108b258c47e3896b5844a711c66d1cdb5fa43906d250d7bf7cd211596d66` |
 | `Theepmo ref6.zip` | Reference Windows package, ~877.8 MB, 8 entries | **Not hosted in GitHub** | `16d02926ae0a879d9b37e54ace6f983da70310ef6a1597a364b416506f38ffe1` |
-| `Theepmo ref7.json` | Original checksum manifest | Extracted in model workspace; GitHub upload pending | Manifest itself excluded from digest list |
+| `Theepmo ref7.json` | Original checksum manifest | [Committed in TO](./Theepmo-ref7.json) | Manifest itself excluded from digest list |
 
 These SHA-256 hashes are transcribed from the supplied source inventory and **do not prove the GitHub-transferred text is byte-for-byte identical**: text transport can normalize formatting. Requirements are available for review, but the source artifact receipt is only complete after checksum-verifiable binary storage.
 
