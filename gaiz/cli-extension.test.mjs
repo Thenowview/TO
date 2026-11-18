@@ -37,7 +37,9 @@ test('local GIZE export defaults to .gize; renamed .gaiz remains readable and ex
     const opened=run(['open','--confirm-local-open','--input','legacy.gaiz','--issuer','synthetic-issuer','--tenant','synthetic-a','--trusted-issuer-public','issuer-public.pem','--recipient-id','recipient-a','--recipient-private','recipient.pem','--output','opened.json'],dir);
     assert.equal(opened.status,0,opened.stderr);
     assert.equal(JSON.parse(readFileSync(join(dir,'opened.json'),'utf8')).title,'Synthetic board report');
-    const legacy=run([...base,'--artifact-id','another','--output','legacy-export.gaiz'],dir);
+    const unapprovedLegacy=run([...base,'--artifact-id','another','--output','legacy-export.gaiz'],dir);
+    assert.notEqual(unapprovedLegacy.status,0,'Legacy export requires explicit opt-in');
+    const legacy=run([...base,'--artifact-id','another','--output','legacy-export.gaiz','--allow-legacy-extension'],dir);
     assert.equal(legacy.status,0,legacy.stderr);
     assert.ok(existsSync(join(dir,'legacy-export.gaiz')));
     const overwrite=run(base,dir);
