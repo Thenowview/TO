@@ -67,7 +67,25 @@ internal sealed class LocalAgentEngine
                 "agent_recover" => Recover(request),
                 "agent_memory_put" => Remember(request),
                 "agent_memory_list" => Recall(request),
-                "agent_tools" => new {ok=true,toolNames=new[]{"write_note","read_note","list_notes","system_info","browser_open","windows_open_notepad"},browserLimitations="Navigation only, not site interaction or content extraction",windowsLimitations="Only an explicitly reviewed Notepad launch, not general desktop control"},
+                "agent_tools" => new {
+                    ok=true,
+                    toolNames=new[]{"write_note","read_note","list_notes","system_info","browser_open","windows_open_notepad"},
+                    catalogVersion="ao.local.tools.v1",
+                    mcpEnabled=false,
+                    remoteToolExecutionEnabled=false,
+                    // This contract is descriptive. It never grants permission on its own;
+                    // the server-side approved plan and native allowlist remain authoritative.
+                    toolDescriptors=new[] {
+                        new {id="write_note",version=1,riskClass="reversible_write",requiresOwnerApproval=true,permissionScope="company_order",execution="native_allowlist",safeBatch=true},
+                        new {id="read_note",version=1,riskClass="read_only",requiresOwnerApproval=true,permissionScope="company_order",execution="native_allowlist",safeBatch=true},
+                        new {id="list_notes",version=1,riskClass="read_only",requiresOwnerApproval=true,permissionScope="company_order",execution="native_allowlist",safeBatch=true},
+                        new {id="system_info",version=1,riskClass="read_only",requiresOwnerApproval=true,permissionScope="local_system_summary",execution="native_allowlist",safeBatch=true},
+                        new {id="browser_open",version=1,riskClass="consequential_external",requiresOwnerApproval=true,permissionScope="approved_https_host",execution="browser_navigation_only",safeBatch=false},
+                        new {id="windows_open_notepad",version=1,riskClass="consequential_external",requiresOwnerApproval=true,permissionScope="explicit_notepad_launch",execution="native_allowlist",safeBatch=false}
+                    },
+                    browserLimitations="Navigation only, not site interaction or content extraction",
+                    windowsLimitations="Only an explicitly reviewed Notepad launch, not general desktop control"
+                },
                 _ => new {ok=false,error="unsupported_command"}
             };
         }
