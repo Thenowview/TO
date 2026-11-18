@@ -653,6 +653,23 @@ async function showAgentJob() {
   const o=selectedOrder(),jobId=app.agentJobId;
   if(!o||!jobId)return;
   const r=await rpc("agent_get",{taskId:o.taskId,jobId});
+  // Display-only risk disclosure. The native host, not the extension, owns authorization.
+  let aoToolRisk="AO tool-risk catalog not available on this native host; review every tool manually.";
+  try {
+    const policy=await rpc("agent_tools",{taskId:o.taskId});
+    if(policy.catalogVersion==="ao.local.tools.v1" && policy.mcpEnabled===false &&
+       policy.remoteToolExecutionEnabled===false && Array.isArray(policy.toolDescriptors)){
+      const byId=new Map(policy.toolDescriptors.map(t=>[t.id,t]));
+      aoToolRisk=(r.plan?.steps||[]).map(step=>{
+        const t=byId.get(step.tool);
+        return t && t.requiresOwnerApproval===true
+          ? step.tool+": "+t.riskClass+" / "+t.permissionScope+
+            " / owner approval required"+(t.safeBatch?" / local batch eligible":" / separate action")
+          : step.tool+": UNKNOWN OR UNAPPROVED TOOL; do not execute";
+      }).join("\\n") || "No plan steps";
+      aoToolRisk+="\\nMCP remote execution: DISABLED";
+    }
+  } catch { /* Older preview hosts lack AO descriptors; never infer permission. */ }
   const details=[
     "LOCAL AGENT PREVIEW — NOT PRODUCTION",
     "Job: "+r.jobId+" | "+r.mode+" | "+r.status+" | next step "+(r.stepIndex+1),
@@ -660,6 +677,7 @@ async function showAgentJob() {
     "Approved sites: "+(r.approvedHosts||[]).join(", "),
     "OWNER INSTRUCTION:\n"+r.instruction,
     "REVIEW ALL PLAN TOOLS BEFORE APPROVAL:\n"+JSON.stringify(r.plan,null,2),
+    "AO NATIVE TOOL RISK (informational, not an authorization):\n"+aoToolRisk,
     "QA RESULT:\n"+(r.qaJson||"Not performed"),
     "RECENT EXECUTION EVENTS:\n"+(r.events||[]).slice(-10)
       .map(e=>e.createdUtc+" | "+e.eventType+" | "+e.evidence).join("\n")
