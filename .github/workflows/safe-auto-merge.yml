@@ -1,6 +1,15 @@
 name: Safe automatic PR merge
 
 on:
+  # Run promptly when an approved same-repository PR changes, its review is
+  # submitted, or a required CI workflow completes. Keep a periodic fallback.
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, dismissed]
+  workflow_run:
+    workflows: ["TheOrg Chrome and Windows Bridge CI"]
+    types: [completed]
   schedule:
     - cron: '*/15 * * * *'
   workflow_dispatch:
@@ -17,6 +26,10 @@ concurrency:
 
 jobs:
   merge:
+    # Never use untrusted PR content as executable code or evaluate fork PRs.
+    if: >-
+      ${{ github.event_name != 'pull_request_target' ||
+          github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
