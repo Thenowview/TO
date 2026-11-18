@@ -823,7 +823,7 @@ internal static class SelfTest
             // signature verification or authorization to decrypt.
             string envelopePath = Path.Combine(root, "synthetic.gize");
             File.WriteAllText(envelopePath,
-                "GAIZ1\\n{\\\"manifest\\\":{},\\\"signature\\\":\\\"synthetic\\\",\\\"ciphertext\\\":\\\"synthetic\\\"}");
+                "GAIZ1\n{\"manifest\":{},\"signature\":\"synthetic\",\"ciphertext\":\"synthetic\"}");
             Check(ArtifactInspection.Inspect(envelopePath, "synthetic.gize").Valid,
                 "GIZE structural intake");
             Check(ArtifactInspection.Inspect(envelopePath, "synthetic.gaiz").Valid,
