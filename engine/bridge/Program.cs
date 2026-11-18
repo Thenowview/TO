@@ -819,6 +819,18 @@ internal static class SelfTest
             var neverRun=Call(c,new {command="agent_run_next",companyId="demo",jobId=cancelledId});
             Check(!neverRun.GetProperty("ok").GetBoolean(),"cancelled jobs cannot run");
 
+            // Both extensions share the legacy envelope; a format check is never
+            // signature verification or authorization to decrypt.
+            string envelopePath = Path.Combine(root, "synthetic.gize");
+            File.WriteAllText(envelopePath,
+                "GAIZ1\\n{\\\"manifest\\\":{},\\\"signature\\\":\\\"synthetic\\\",\\\"ciphertext\\\":\\\"synthetic\\\"}");
+            Check(ArtifactInspection.Inspect(envelopePath, "synthetic.gize").Valid,
+                "GIZE structural intake");
+            Check(ArtifactInspection.Inspect(envelopePath, "synthetic.gaiz").Valid,
+                "legacy GAIZ structural intake");
+            File.WriteAllText(envelopePath, "NOT-A-GAIZ-ENVELOPE");
+            Check(!ArtifactInspection.Inspect(envelopePath, "synthetic.gize").Valid,
+                "malformed GIZE rejection");
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
