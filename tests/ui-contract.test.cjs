@@ -63,3 +63,15 @@ test("Chrome supervisor exposes GIZE AI as the product label without changing co
  assert.doesNotMatch(html,/<strong>TheOrg<\/strong>|<title>TheOrg/);
  assert.match(ui,/theorgTransfer:/); // persisted legacy key retained
 });
+
+test("AO tool-risk display is sourced from disabled-MCP native catalog and remains inert text",()=>{
+ assert.match(ui,/rpc\("agent_tools",\{taskId:o\.taskId\}\)/);
+ assert.match(ui,/catalogVersion==="ao\.local\.tools\.v1"/);
+ assert.match(ui,/policy\.mcpEnabled===false/);
+ assert.match(ui,/policy\.remoteToolExecutionEnabled===false/);
+ assert.match(ui,/t\.requiresOwnerApproval===true/);
+ assert.match(ui,/AO NATIVE TOOL RISK \(informational, not an authorization\)/);
+ assert.match(ui,/UNKNOWN OR UNAPPROVED TOOL; do not execute/);
+ assert.match(ui,/\$\("agentDetails"\)\.textContent=details\.join/);
+ assert.doesNotMatch(ui,/\$\("agentDetails"\)\.innerHTML/);
+});
