@@ -19,6 +19,7 @@ internal static class ArtifactInspection
             switch (ext)
             {
                 case ".gaiz":
+                case ".gize":
                     // Deliberately structural only; signature and tenant authorization
                     // require a trusted verifier and cannot be inferred from the magic bytes.
                     using (var stream = File.OpenRead(path))

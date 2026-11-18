@@ -1,6 +1,6 @@
 !include "MUI2.nsh"
 
-Name "TheOrg Workspace Developer Preview"
+Name "GIZE AI Workspace Developer Preview"
 OutFile "..\out\installer\TheOrg-DevPreview-Windows-x64-unsigned.exe"
 InstallDir "$LOCALAPPDATA\Programs\TheOrg"
 RequestExecutionLevel user
@@ -10,8 +10,8 @@ ShowInstDetails show
 ShowUninstDetails show
 
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Welcome to TheOrg Developer Preview"
-!define MUI_WELCOMEPAGE_TEXT "Installs a dedicated browser, TheOrg Supervisor and its local agent engine.$\r$\n$\r$\nTheOrg starts from your desktop or Start menu with its own isolated profile.$\r$\n$\r$\nUnsigned developer preview. Browser updates are manual; use synthetic test data."
+!define MUI_WELCOMEPAGE_TITLE "Welcome to GIZE AI Developer Preview"
+!define MUI_WELCOMEPAGE_TEXT "Installs a dedicated browser, GIZE AI Supervisor and its local agent engine.$\r$\n$\r$\nGIZE AI starts from your desktop or Start menu with its own isolated profile.$\r$\n$\r$\nUnsigned developer preview. Browser updates are manual; use synthetic test data."
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -53,7 +53,7 @@ Section "TheOrg local controller and Chrome extension" SecMain
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheOrgDevPreview" \
-    "DisplayName" "TheOrg Developer Preview (unsigned)"
+    "DisplayName" "GIZE AI Developer Preview (unsigned)"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheOrgDevPreview" \
     "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheOrgDevPreview" \

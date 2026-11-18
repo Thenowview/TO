@@ -7,7 +7,7 @@ const $ = (id) => document.getElementById(id);
 const app = { orders: [], activeId: null, providers: {}, handoffAgent: null, qaTarget: null };
 const allowedFileTypes = new Set([
   "txt","md","json","csv","py","js","ts","css","html","xml",
-  "pdf","docx","xlsx","pptx","png","jpg","jpeg","webp","zip"
+  "pdf","docx","xlsx","pptx","png","jpg","jpeg","webp","zip","gaiz","gize"
 ]);
 
 function node(tag, text, cls) {

@@ -98,6 +98,24 @@ try:
     assert base64.b64decode(content["result"]["dataBase64"]) == sample
     assert content["result"]["done"]
 
+    # Canonical and legacy names must both be accepted through real native framing.
+    # This is format-only validation, never signature/decryption authorization.
+    envelope = b'GAIZ1\n{"manifest":{},"signature":"synthetic","ciphertext":"synthetic"}'
+    for extension in ("gize", "gaiz"):
+        imported = native({
+            "command": "import_artifact", "companyId": company, "orderId": order_id,
+            "agentId": "research1", "fileName": f"encrypted-test.{extension}",
+            "dataBase64": base64.b64encode(envelope).decode(),
+            "sourceProvider": "ci_synthetic", "sourceReference": "format-only"
+        })[0]
+        assert imported["ok"], (extension, imported)
+        check = native({
+            "command": "verify_artifact", "companyId": company,
+            "orderId": order_id, "artifactId": imported["artifact"]["artifactId"]
+        })[0]
+        assert check["ok"] and check["artifact"]["formatValid"], (extension, check)
+        assert "unverified_signature" in check["artifact"]["structuralReview"], check
+
     bad = native({"command": "ping", "unexpected": "<script>"})[0]
     assert bad["ok"], bad
 

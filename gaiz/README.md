@@ -31,12 +31,12 @@ Provision issuer Ed25519 and recipient RSA-3072+ keys outside the repository, us
 Example command pattern (replace placeholders with operator-controlled local paths):
 
 \`\`\`sh
-node gaiz/cli.mjs export --confirm-local-export --report report.json --issuer-private ./issuer-private.pem --issuer orgaiz-test --tenant synthetic-a --artifact-id demo-1 --recipient-id reviewer-1 --recipient-public ./reviewer-public.pem --output ./report.gaiz
-node gaiz/cli.mjs verify --input ./report.gaiz --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem
-node gaiz/cli.mjs open --confirm-local-open --input ./report.gaiz --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem --recipient-id reviewer-1 --recipient-private ./reviewer-private.pem --output ./opened-report.json
+node gaiz/cli.mjs export --confirm-local-export --report report.json --issuer-private ./issuer-private.pem --issuer orgaiz-test --tenant synthetic-a --artifact-id demo-1 --recipient-id reviewer-1 --recipient-public ./reviewer-public.pem --output ./report.gize
+node gaiz/cli.mjs verify --input ./report.gize --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem
+node gaiz/cli.mjs open --confirm-local-open --input ./report.gize --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem --recipient-id reviewer-1 --recipient-private ./reviewer-private.pem --output ./opened-report.json
 \`\`\`
 
-These commands do **not** transmit data to TEBE. The recipient must be trusted through a separately authenticated policy and must satisfy real-world data/tenant authorization.
+New local exports default to a sanitized `gize-<artifact-id>.gize` filename when `--output` is omitted; legacy `.gaiz` exports require explicit `--allow-legacy-extension` opt-in; existing legacy imports remain supported. Both extensions carry the same versioned wire bytes and are parsed by content, not trusted by filename. Existing files are never overwritten by the CLI (`wx`).\n\nThese commands do **not** transmit data to TEBE. The recipient must be trusted through a separately authenticated policy and must satisfy real-world data/tenant authorization.
 
 ## JSON report schema v1 (application-defined synthetic example)
 
