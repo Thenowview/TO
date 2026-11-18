@@ -463,9 +463,9 @@ internal static class SelfTest
                     "AO tool cannot auto approve");
                 Check(descriptor.GetProperty("version").GetInt32()==1,
                     "AO tool descriptor version must be explicit");
-                string id=descriptor.GetProperty("id").GetString()!;
+                string aoToolId=descriptor.GetProperty("id").GetString()!;
                 bool safeBatch=descriptor.GetProperty("safeBatch").GetBoolean();
-                if(id=="browser_open"||id=="windows_open_notepad")
+                if(aoToolId=="browser_open"||aoToolId=="windows_open_notepad")
                     Check(!safeBatch,"AO consequential actions excluded from safe batch");
                 else
                     Check(safeBatch,"AO closed local actions remain eligible only after approval");
