@@ -619,10 +619,11 @@ test("AO Chrome discovery is disabled and sends only read-only native command",a
 test("AO fails closed on malformed or unexpectedly enabled host responses",async()=>{
   const valid={
     ok:true,protocolVersion:1,integration:"AO",enabled:false,
-    executionSupported:false,tools:[],status:"disabled"
+    executionSupported:false,tools:[],status:"disabled_pending_authorization_and_contract_tests"
   };
   const invalid=[
     {...valid,enabled:true},
+    {...valid,status:"unexpectedly_enabled"},
     {...valid,executionSupported:true},
     {...valid,protocolVersion:2},
     {...valid,integration:"Other"},
