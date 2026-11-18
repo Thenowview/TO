@@ -43,3 +43,11 @@ Review repository-level `GIZE Expert Execution` issues for TEFE and TEBE plus th
 **Cross-repository audit:** command `gize the epmo` -> [GIZE master 150-ID register](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/GIZE-MASTER-150-REGISTER.md) and [master audit instructions](https://github.com/faisalwrokksa-hub/TO/blob/main/GIZE-THE-EPMO-AUDIT.md).
 
 **Release constraint:** Source material explicitly requires **final production release authorization** before production merge/deployment/public installer release. Routine user approval must not be interpreted as that final authorization.
+
+
+## Mandatory per-task completion and owner changes (2026-11-18)
+**Read on EVERY command run:** [Owner instructions](docs/GIZE-OWNER-INSTRUCTIONS.md), [full source-text checklist](docs/GIZE-SOURCE-CHECKLIST.md) and [controlling 150-item source](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md).
+
+When each individual task is completed, reclassified or blocked, update its exact ID in `docs/GIZE-SOURCE-CHECKLIST.md` **immediately**, attach source code path/PR/SHA, tests/security results, deployment proof where required and UTC time, and add a comment to the repository's canonical progress issue. Take owner re-instructions from `gize tefe: ...`, `gize tebe: ...`, `gize ot: ...` or issue comments, preserve them in `docs/GIZE-OWNER-INSTRUCTIONS.md`, then reconcile affected IDs and cross-repo contracts. Never mark work complete without independent evidence.
+
+**Permanent source:** five readable reference documents reside in TO; complete original ZIP is preserved as [11 numbered parts in a private Drive folder](https://drive.google.com/drive/folders/1ANtZI7siXicrqqAb0-WIwaOFjLcdSccC), with [reconstruction/hash instructions](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/RECONSTRUCT-AND-VERIFY.md). Expert access and downloaded remote bytes still require verification; the source upload is not an implementation signoff.
