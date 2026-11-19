@@ -379,6 +379,17 @@ internal sealed class LocalAgentEngine
         return new{ok=true,memories=items};
     }
 
+
+    // Do not search the current directory or inherited PATH for the reviewed application.
+    internal static string NotepadExecutablePath()
+    {
+        if(!OperatingSystem.IsWindows())throw new InvalidOperationException("Windows Notepad only");
+        string systemDirectory=Environment.GetFolderPath(Environment.SpecialFolder.System);
+        if(string.IsNullOrWhiteSpace(systemDirectory)||!Path.IsPathFullyQualified(systemDirectory))
+            throw new InvalidOperationException("Windows system directory unavailable");
+        return Path.Combine(systemDirectory,"notepad.exe");
+    }
+
     private object PerformTool(Job job,AgentStep step)
     {
         if(step.Tool=="write_note")
@@ -413,8 +424,7 @@ internal sealed class LocalAgentEngine
         }
         if(step.Tool=="windows_open_notepad")
         {
-            if(!OperatingSystem.IsWindows())throw new InvalidOperationException("Windows Notepad only");
-            using var process=Process.Start(new ProcessStartInfo("notepad.exe")
+            using var process=Process.Start(new ProcessStartInfo(NotepadExecutablePath())
             {
                 UseShellExecute=false,CreateNoWindow=false
             }) ?? throw new InvalidOperationException("Notepad did not start");

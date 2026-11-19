@@ -541,6 +541,23 @@ internal static class SelfTest
                 Check(rejected,"model decoding honors deadline cancellation");
             }
 
+
+            if(OperatingSystem.IsWindows())
+            {
+                string? notepadPathEnvFixture=Environment.GetEnvironmentVariable("PATH");
+                try
+                {
+                    string expectedNotepadPath=Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.System),"notepad.exe");
+                    Environment.SetEnvironmentVariable("PATH",root);
+                    string resolvedNotepadPath=LocalAgentEngine.NotepadExecutablePath();
+                    Check(Path.IsPathFullyQualified(resolvedNotepadPath),"Notepad launch uses an absolute path");
+                    Check(string.Equals(resolvedNotepadPath,expectedNotepadPath,StringComparison.OrdinalIgnoreCase),
+                        "Notepad launch is pinned to Windows system directory despite hostile PATH");
+                }
+                finally {Environment.SetEnvironmentVariable("PATH",notepadPathEnvFixture);}
+            }
+
             var capabilities = Call(c, new { command = "capabilities" });
             Check(!capabilities.GetProperty("liveAiProvider").GetBoolean(), "capability honesty");
             var aoPolicy = Call(c, new { command = "agent_tools" });
