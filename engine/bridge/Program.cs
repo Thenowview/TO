@@ -946,6 +946,9 @@ internal static class SelfTest
                 "safe batch does not self-certify");
             var foreignJob=Call(c,new {command="agent_get",companyId="other",jobId});
             Check(!foreignJob.GetProperty("ok").GetBoolean(),"agent jobs isolated by company");
+            var beforeForeignBatch=Call(c,new {command="agent_get",companyId="demo",jobId=batchId});
+            string beforeForeignStatus=beforeForeignBatch.GetProperty("status").GetString()!;
+            int beforeForeignIndex=beforeForeignBatch.GetProperty("stepIndex").GetInt32();
             // A foreign workspace cannot mutate, execute, recover or certify a known job.
             foreach(string foreignCommand in new[]{
                 "agent_approve","agent_run_next","agent_run_safe_batch","agent_cancel",
@@ -958,7 +961,8 @@ internal static class SelfTest
                     "Foreign workspace denied: "+foreignCommand);
             }
             var unchangedBatch=Call(c,new {command="agent_get",companyId="demo",jobId=batchId});
-            Check(unchangedBatch.GetProperty("status").GetString()=="completed_pending_review",
+            Check(unchangedBatch.GetProperty("status").GetString()==beforeForeignStatus &&
+                  unchangedBatch.GetProperty("stepIndex").GetInt32()==beforeForeignIndex,
                 "Foreign commands cannot alter owner job state");
             var put=Call(c,new {command="agent_memory_put",companyId="demo",key="project",
                 value="Synthetic memory for test only"});
