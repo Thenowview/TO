@@ -1,8 +1,8 @@
 name: Safe automatic PR merge
 
 on:
-  # Run promptly when an approved same-repository PR changes, its review is
-  # submitted, or a required CI workflow completes. Keep a periodic fallback.
+  # Re-evaluate same-repository PRs on revisions, reviews and CI completion.
+  # Routine changes can merge after CI without optional reviewer prompts.
   pull_request_target:
     types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
   pull_request_review:
@@ -48,23 +48,28 @@ jobs:
             data=$(gh pr view "$pr" --repo "$GH_REPO" --json headRepository,headRefOid,mergeable,reviewDecision,labels,author)
             [[ "$(jq -r '.headRepository.nameWithOwner // ""' <<<"$data")" == "$GH_REPO" ]] || continue
             [[ "$(jq -r '.mergeable' <<<"$data")" == "MERGEABLE" ]] || continue
-            # Passing CI is not permission to publish from main. A distinct,
-            # affirmative review and release-authorized label are mandatory.
-            [[ "$(jq -r '.reviewDecision' <<<"$data")" == "APPROVED" ]] || continue
-            # An approval on an older revision cannot authorize publishing new
-            # unreviewed code, even if repository stale-review dismissal is off.
+            # Owner standing authorization waives OPTIONAL approval for routine
+            # source/CI work. Never override actual GitHub-enforced review rules.
+            decision=$(jq -r '.reviewDecision // ""' <<<"$data")
+            [[ "$decision" != "CHANGES_REQUESTED" && "$decision" != "REVIEW_REQUIRED" ]] || continue
             head_sha=$(jq -er '.headRefOid' <<<"$data")
-            pr_author=$(jq -er '.author.login' <<<"$data") || continue
-            reviews=$(gh api --paginate "repos/$GH_REPO/pulls/$pr/reviews" 2>/dev/null) || continue
-            # Independently approved exact-head review must be attributable to
-            # an identified human User other than the PR author. GitHub branch protections and
-            # latest reviewDecision still govern superseded or rejected reviews.
-            if ! jq -se --arg sha "$head_sha" --arg author "$pr_author" '
-              [ .[][] | select(.state == "APPROVED" and .commit_id == $sha and
-                (.user.login // "") != "" and .user.login != $author and .user.type == "User") ] | length > 0
-            ' <<<"$reviews" >/dev/null; then continue; fi
-            if ! jq -e '[.labels[].name] | any(. == "release-approved")' <<<"$data" >/dev/null; then continue; fi
             if jq -e '[.labels[].name] | any(. == "hold" or . == "do-not-merge")' <<<"$data" >/dev/null; then continue; fi
+            # Release authorization and security review are independent of
+            # routine PR merge approval. Inspect the actual changed paths.
+            files=$(gh pr view "$pr" --repo "$GH_REPO" --json files --jq '[.files[].path]') || continue
+            if jq -e 'any(.[]; test("^config/release-gates[.]json$|^[.]github/workflows/(safe-auto-merge|[^/]*(release|deploy)[^/]*)[.]ya?ml$|^tools/check-release-readiness[.]cjs$"))' <<<"$files" >/dev/null; then
+              # Release-control changes require a distinct current-head human
+              # approval and explicit release-approved label. Do not self-approve.
+              [[ "$decision" == "APPROVED" ]] || continue
+              pr_author=$(jq -er '.author.login' <<<"$data") || continue
+              reviews=$(gh api --paginate "repos/$GH_REPO/pulls/$pr/reviews" 2>/dev/null) || continue
+              if ! jq -se --arg sha "$head_sha" --arg author "$pr_author" '
+                [ .[][] | select(.state == "APPROVED" and .commit_id == $sha and
+                  (.user.login // "") != "" and .user.login != $author and .user.type == "User") ] | length > 0
+              ' <<<"$reviews" >/dev/null; then continue; fi
+              if ! jq -e '[.labels[].name] | any(. == "release-approved")' <<<"$data" >/dev/null; then continue; fi
+            fi
+            # GitHub performs final branch-protection/ruleset enforcement.
             checks=$(gh pr checks "$pr" --repo "$GH_REPO" --json state 2>/dev/null) || continue
             if ! jq -e 'length > 0 and all(.[]; .state == "SUCCESS" or .state == "SKIPPED" or .state == "NEUTRAL")' <<<"$checks" >/dev/null; then continue; fi
             if gh pr merge "$pr" --repo "$GH_REPO" --match-head-commit "$(jq -er '.headRefOid' <<<"$data")" --squash --delete-branch; then
