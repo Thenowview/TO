@@ -327,3 +327,8 @@ Exact head `733318899529058c1b92e022cf5267d9eaffa71f` failed Windows self-test (
 ## PC-05 / PC-07 recovery and stale receipt regression — 2026-11-19
 
 Candidate `5c2a7be1ca4cc82ea5e8a64953e3402e94d44c1f` adds compiled synthetic native tests: restart during pending browser navigation, require blocked/manual-review recovery, reject run-next/safe-batch/reapproval and late original-token receipt, preserve unfinished step index. No browser launched and no real hardware outcome inferred. Main baseline29676ed0f9785dea72c8f0e92e9191d52b72c6d4 had all five core checks SUCCESS. Fresh candidate Windows CI pending. All78 assigned IDs/statuses unchanged; NO_GO until signing, deployment destination/readback, real offline-model, tenant integration and independent hardware/security acceptance.
+
+
+## PC-05 / PC-07 atomic recovery candidate — 2026-11-19
+
+Codef162a6c517f854254e6137d95160d59362a4a069 replaces unconditional recovery update with BEGIN IMMEDIATE transaction, matching company/running state/step index/token and requiring one affected row before audit commit; clears persisted step token. Concurrently changed state fails closed rather than overwriting completion. Synthetic native tests assert database token is NULL and repeated recovery cannot resume, alongside existing late-receipt/replay denials. Exact-head Windows CI pending; no physical concurrency/hardware acceptance claimed. All78 original source statuses retained; deployment/signing/tenant/independent acceptance remain NO_GO.

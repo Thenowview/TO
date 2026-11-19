@@ -1058,6 +1058,23 @@ internal static class SelfTest
             Check(recoveryState.GetProperty("status").GetString()=="blocked" &&
                   recoveryState.GetProperty("stepIndex").GetInt32()==0,"recovery preserves unfinished step");
 
+            using(var recoveryDb=new Microsoft.Data.Sqlite.SqliteConnection(
+                new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder{
+                    DataSource=Path.Combine(root,"agent-jobs.sqlite")}.ToString()))
+            {
+                recoveryDb.Open();
+                using var recoveryTokenCheck=recoveryDb.CreateCommand();
+                recoveryTokenCheck.CommandText="SELECT step_token FROM agent_jobs WHERE id=$id";
+                recoveryTokenCheck.Parameters.AddWithValue("$id",interruptedId);
+                Check(recoveryTokenCheck.ExecuteScalar() is DBNull,
+                    "Recovery revokes persisted browser step token");
+            }
+            var recoveredAgain=Call(new Controller(root),new {command="agent_recover",
+                companyId="demo",jobId=interruptedId});
+            Check(recoveredAgain.GetProperty("status").GetString()=="blocked" &&
+                  !recoveredAgain.GetProperty("canResume").GetBoolean(),
+                  "Repeated recovery cannot resume unknown-outcome work");
+
             // Interrupted execution must not auto-replay potentially non-idempotent tools.
             var cancelledPlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
                 instruction="Create another short synthetic note.",mode="demo",model="qwen3:4b",approvedHosts=""});
