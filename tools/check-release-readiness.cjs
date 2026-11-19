@@ -7,6 +7,7 @@
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
+const {isIP} = require("node:net");
 
 const REQUIRED_GATES = Object.freeze([
   "ci_windows_native_controller",
@@ -30,9 +31,22 @@ function isVerifiedHttpsDestination(value) {
   if (typeof value !== "string" || value.length > 2048) return false;
   try {
     const u = new URL(value);
-    return u.protocol === "https:" && !!u.hostname &&
-      !u.username && !u.password &&
-      !["localhost", "127.0.0.1", "::1"].includes(u.hostname.toLowerCase());
+    if (u.protocol !== "https:" || !u.hostname || u.username || u.password)
+      return false;
+    // Production preflight requires an unambiguous DNS hostname. IP literals
+    // (including alternate loopback/IPv6 spellings) and local-only names are
+    // not independently verified public HTTPS release destinations.
+    // DNS ownership, certificate and route checks remain external release gates.
+    const hostname = u.hostname.toLowerCase().replace(/\.$/, "");
+    const literal = hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1) : hostname;
+    if (isIP(literal) !== 0 || hostname.length > 253 ||
+        hostname === "localhost" || hostname.endsWith(".localhost") ||
+        hostname.endsWith(".local") || hostname.endsWith(".localdomain"))
+      return false;
+    const labels = hostname.split(".");
+    return labels.length >= 2 &&
+      labels.every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label));
   } catch { return false; }
 }
 
@@ -65,7 +79,11 @@ function evaluatePolicy(policy, buildCommit = null) {
     blockers.push({gate:"deployment_destination_address",status:"missing_or_invalid_https_url"});
   if (typeof p.evidenceCommit !== "string" || !SHA40.test(p.evidenceCommit))
     blockers.push({gate:"evidence_commit",status:"missing_or_invalid"});
-  if (buildCommit && (!SHA40.test(buildCommit) || p.evidenceCommit !== buildCommit))
+  // A manually edited policy is never an attestation of the currently built
+  // commit. Refuse GO when the caller omits GITHUB_SHA or supplies a mismatch.
+  if (typeof buildCommit !== "string" || !SHA40.test(buildCommit))
+    blockers.push({gate:"evidence_commit",status:"current_build_commit_required"});
+  else if (p.evidenceCommit !== buildCommit)
     blockers.push({gate:"evidence_commit",status:"not_this_build"});
   return {
     product:p.product ?? null,
