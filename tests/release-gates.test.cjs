@@ -122,3 +122,38 @@ test("Windows Chromium licence is fetched from authoritative Gitiles with verifi
   assert.ok(workflow.includes("Redistribution"));
   assert.ok(!workflow.includes("raw.githubusercontent.com/chromium/chromium/main/LICENSE"),"avoid GitHub raw rate limits");
 });
+
+test("owner-waived routine merges preserve GitHub rules and separate release-control review",()=>{
+  const workflow=fs.readFileSync(path.join(__dirname,"..",".github","workflows","safe-auto-merge.yml"),"utf8");
+  assert.ok(workflow.includes('decision=$(jq -r \'.reviewDecision // ""\' <<<"$data")'));
+  assert.ok(workflow.includes('"CHANGES_REQUESTED" && "$decision" != "REVIEW_REQUIRED"'));
+  assert.ok(workflow.includes('gh pr view "$pr" --repo "$GH_REPO" --json files'));
+  // Non-executable audit Markdown may bypass an optional review. Code never may.
+  const routine = workflow.match(/length > 0 and all\(\.\[\]; test\("([^"]+)"\)\)/);
+  assert.ok(routine, "must require every changed path to belong to one closed routine class");
+  assert.ok(workflow.includes("if ! jq -e 'length > 0 and all("));
+  const allowed = new RegExp(routine[1]);
+  assert.ok(allowed.test("docs/gize-audits/STATUS-2026-11-19.md"));
+  for(const sensitive of [
+    "apps/chrome-extension/manifest.json",
+    "apps/chrome-extension/background.js",
+    "engine/bridge/LocalAgentEngine.cs",
+    "config/release-gates.json",
+    ".github/workflows/safe-auto-merge.yml",
+    ".github/workflows/bridge-ci.yml",
+    "tests/release-gates.test.cjs",
+    "tools/check-release-readiness.cjs",
+    "docs/GIZE-OWNER-INSTRUCTIONS.md",
+    "docs/gize-audits/../../engine/bridge/Program.cs"
+  ]) assert.equal(allowed.test(sensitive),false,"requires reviewed merge: "+sensitive);
+  assert.ok(workflow.includes('[[ "$decision" == "APPROVED" ]] || continue'));
+  assert.ok(workflow.includes('reviews=$(gh api --paginate'));
+  assert.ok(workflow.includes('release-approved'));
+  assert.ok(workflow.includes('gh pr checks "$pr"'));
+  assert.ok(workflow.includes('--json name,state'));
+  assert.ok(workflow.includes('all($required[]; . as $name | ($passed | index($name)) != null)'));
+  for(const job of ["portable","onefile-windows","windows-bridge","js-syntax","build"])
+    assert.ok(workflow.includes('"'+job+'"'),"Unattended merge must await "+job);
+  assert.ok(workflow.includes('gh pr merge "$pr"'));
+  assert.equal(policy.productionReady,false);
+});
