@@ -318,3 +318,7 @@ EVD-02 evidence-maintenance subcheck: counted the 78 original assigned checkbox 
 ## PC-05 / PC-07 cross-workspace native command regression — 2026-11-19
 
 Candidate test commit `5d59f7302d2b5375d246769f68deab8c35321b7d` in PR #97 extends compiled native self-tests to reject seven foreign-company commands against a known job (approve, run-next, safe-batch, cancel, recover, review, browser completion) and confirms owner job state is unchanged. Uses fresh native Controller instances and synthetic SQLite state. No runtime capability enabled; this tests local workspace isolation, not authenticated enterprise identity. Fresh exact-head Windows CI pending; physical hardware, tenant integration, signing and independent acceptance unavailable. All 78 IDs and statuses retained; customer NO_GO.
+
+
+### PC-05 / PC-07 test fixture correction — 2026-11-19
+Exact head `733318899529058c1b92e022cf5267d9eaffa71f` failed Windows self-test (run44553395746/job135662927449): owner state assertion assumed completed_pending_review after agent_review had already transitioned the job. Fix `280f01c1577518597bb3c91ba7427568c68e5494` snapshots actual owner status and step index before the seven foreign commands and requires both unchanged afterward. Denial assertions remain intact. Fresh exact-head CI pending; no runtime security failure or acceptance inferred. All original requirement statuses unchanged; NO_GO remains.
