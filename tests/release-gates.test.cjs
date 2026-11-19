@@ -123,6 +123,10 @@ test("owner-waived routine merges preserve GitHub rules and separate release-con
   assert.ok(workflow.includes('reviews=$(gh api --paginate'));
   assert.ok(workflow.includes('release-approved'));
   assert.ok(workflow.includes('gh pr checks "$pr"'));
+  assert.ok(workflow.includes('--json name,state'));
+  assert.ok(workflow.includes('all($required[]; . as $name | ($passed | index($name)) != null)'));
+  for(const job of ["portable","onefile-windows","windows-bridge","js-syntax","build"])
+    assert.ok(workflow.includes('"'+job+'"'),"Unattended merge must await "+job);
   assert.ok(workflow.includes('gh pr merge "$pr"'));
   assert.equal(policy.productionReady,false);
 });
