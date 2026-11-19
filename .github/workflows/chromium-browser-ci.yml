@@ -62,8 +62,16 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
-          Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/chromium/chromium/main/LICENSE' -OutFile 'out/browser/LICENSE'
-          if (!(Test-Path 'out/browser/LICENSE') -or (Get-Item 'out/browser/LICENSE').Length -lt 500) { throw 'Missing Chromium source license' }
+          # The upstream Chromium root license is tracked in source; packaging
+          # must not depend on rate-limited raw.github.com responses.
+          $licenseSource='licenses/chromium/LICENSE'
+          if (!(Test-Path -LiteralPath $licenseSource -PathType Leaf)) { throw 'Missing vendored Chromium source license' }
+          $licenseText=Get-Content -LiteralPath $licenseSource -Raw
+          if ($licenseText.Length -lt 500 -or $licenseText -notmatch 'Chromium Authors' -or
+              $licenseText -notmatch 'Redistribution and use') { throw 'Invalid Chromium source license' }
+          Copy-Item -LiteralPath $licenseSource -Destination 'out/browser/LICENSE' -Force
+          if (!(Test-Path -LiteralPath 'out/browser/LICENSE' -PathType Leaf) -or
+              (Get-Item 'out/browser/LICENSE').Length -lt 500) { throw 'Chromium source license was not packaged' }
           @'
           TheOrg Browser developer preview — third-party notices
           Chromium copyright (c) The Chromium Authors.
