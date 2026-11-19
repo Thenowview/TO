@@ -48,3 +48,12 @@ OT PRs [#73](https://github.com/faisalwrokksa-hub/TO/pull/73), [#75](https://git
 ## Native enforcement candidate — 2026-11-19
 
 PR #82 now also binds approval to an exact plan and host scope, rejects malformed/expanded persisted or model plan schemas and ambiguous native JSON, and verifies live completion tokens/state. Native self-tests exercise denial without file side effects, restored authorized plan execution across processes and replay rejection. This is pending compiled CI and independent review. Older queued preview jobs need fresh creation/approval; no automatic approval migration. This does not defend against an attacker controlling both SQLite state and its approval evidence. Real extension identity, OS key custody, signed installers and customer acceptance remain open. No MCP enabled.
+
+
+## Post-merge security and release reconciliation — 2026-11-19
+
+- PR #82 is closed and its native AO tool-catalog consistency hardening is present on `main`; the closed PR alone is not proof of independent security acceptance.
+- `apps/chrome-extension/home.js` validates that `toolNames` exactly match the six approved descriptors. `tests/ui-contract.test.cjs` includes negative cases for duplicate and inherited-property identifiers. Related commits: `5b2d6dc88d26c4892db614e0c622e7e852686acf` and `322bd63892b42d20f825257e95f2250f4a896b56`.
+- At the final checked feature-head `322bd638`, Chrome/Windows Bridge CI and Portable Existing Chrome CI succeeded; Offline Chromium Browser and Single EXE workflow runs were **cancelled**. A successful older-head run is not interchangeable with a complete final-head or integrated-main run.
+- Release gate remains **NO_GO** pending integrated-main Windows/Chromium/installer lifecycle evidence, independent current-code security review, real Windows GUI/native messaging identity and origin acceptance, installer signing and rollback, and ownership/licensing/key-custody verification.
+- Preserve disabled MCP and remote tool execution. No self-approval, arbitrary command execution, production signing, or customer deployment is authorized by this status update.
