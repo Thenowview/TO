@@ -62,16 +62,29 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
-          # The upstream Chromium root license is tracked in source; packaging
-          # must not depend on rate-limited raw.github.com responses.
-          $licenseSource='licenses/chromium/LICENSE'
-          if (!(Test-Path -LiteralPath $licenseSource -PathType Leaf)) { throw 'Missing vendored Chromium source license' }
-          $licenseText=Get-Content -LiteralPath $licenseSource -Raw
-          if ($licenseText.Length -lt 500 -or $licenseText -notmatch 'Chromium Authors' -or
-              $licenseText -notmatch 'Redistribution and use') { throw 'Invalid Chromium source license' }
-          Copy-Item -LiteralPath $licenseSource -Destination 'out/browser/LICENSE' -Force
-          if (!(Test-Path -LiteralPath 'out/browser/LICENSE' -PathType Leaf) -or
-              (Get-Item 'out/browser/LICENSE').Length -lt 500) { throw 'Chromium source license was not packaged' }
+          # Fetch directly from Chromium's authoritative Gitiles repository.
+          # raw.githubusercontent.com is intermittently throttled (HTTP 429),
+          # and no licence notice may be replaced with generated placeholder text.
+          $licenseUrl='https://chromium.googlesource.com/chromium/src/+/refs/heads/main/LICENSE?format=TEXT'
+          $licenseFile=Join-Path (Get-Location) 'out/browser/LICENSE'
+          for ($attempt=1; $attempt -le 3; $attempt++) {
+            try {
+              $response=Invoke-WebRequest -Uri $licenseUrl -TimeoutSec 30
+              $encoded=$response.Content
+              if ($encoded -is [byte[]]) { $encoded=[Text.Encoding]::ASCII.GetString($encoded) }
+              $licenseBytes=[Convert]::FromBase64String(($encoded -replace '\s',''))
+              if ($licenseBytes.Length -lt 500) { throw 'Chromium source license is incomplete' }
+              [IO.File]::WriteAllBytes($licenseFile,$licenseBytes)
+              break
+            } catch {
+              if ($attempt -eq 3) { throw "Could not retrieve the official Chromium LICENSE: $_" }
+              Start-Sleep -Seconds (2*$attempt)
+            }
+          }
+          $licenseText=[IO.File]::ReadAllText($licenseFile)
+          if ($licenseText -notmatch 'Chromium Authors' -or $licenseText -notmatch 'Redistribution') {
+            throw 'Unexpected Chromium source LICENSE content'
+          }
           @'
           TheOrg Browser developer preview — third-party notices
           Chromium copyright (c) The Chromium Authors.

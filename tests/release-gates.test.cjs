@@ -112,6 +112,17 @@ test("all four Windows/Chrome suites trigger guarded merge re-evaluation",()=>{
   assert.ok(w.includes('pull_request_review:'));
 });
 
+test("Windows Chromium licence is fetched from authoritative Gitiles with verified bytes",()=>{
+  const workflow=fs.readFileSync(path.join(__dirname,"..",".github","workflows","chromium-browser-ci.yml"),"utf8");
+  assert.ok(workflow.includes("https://chromium.googlesource.com/chromium/src/+/refs/heads/main/LICENSE?format=TEXT"));
+  assert.ok(workflow.includes("[Convert]::FromBase64String"));
+  assert.ok(workflow.includes("$attempt -le 3"),"licence fetch retries are bounded");
+  assert.ok(workflow.includes("$licenseBytes.Length -lt 500"));
+  assert.ok(workflow.includes("Chromium Authors"));
+  assert.ok(workflow.includes("Redistribution"));
+  assert.ok(!workflow.includes("raw.githubusercontent.com/chromium/chromium/main/LICENSE"),"avoid GitHub raw rate limits");
+});
+
 test("owner-waived routine merges preserve GitHub rules and separate release-control review",()=>{
   const workflow=fs.readFileSync(path.join(__dirname,"..",".github","workflows","safe-auto-merge.yml"),"utf8");
   assert.ok(workflow.includes('decision=$(jq -r \'.reviewDecision // ""\' <<<"$data")'));
@@ -145,17 +156,4 @@ test("owner-waived routine merges preserve GitHub rules and separate release-con
     assert.ok(workflow.includes('"'+job+'"'),"Unattended merge must await "+job);
   assert.ok(workflow.includes('gh pr merge "$pr"'));
   assert.equal(policy.productionReady,false);
-});
-
-test("Chromium developer preview bundles a verified upstream root license without live GitHub scraping",()=>{
-  const root=path.join(__dirname,"..");
-  const license=fs.readFileSync(path.join(root,"licenses","chromium","LICENSE"),"utf8");
-  const ci=fs.readFileSync(path.join(root,".github","workflows","chromium-browser-ci.yml"),"utf8");
-  assert.ok(license.length>=1000);
-  assert.match(license,/Chromium Authors/);
-  assert.match(license,/Redistribution and use/);
-  assert.ok(ci.includes("$licenseSource='licenses/chromium/LICENSE'"));
-  assert.ok(ci.includes("Copy-Item -LiteralPath $licenseSource -Destination 'out/browser/LICENSE' -Force"));
-  assert.ok(!ci.includes("Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/chromium/chromium/main/LICENSE'"),
-    "Chromium license packaging must not scrape rate-limited raw GitHub URLs");
 });
