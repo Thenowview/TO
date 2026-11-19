@@ -26,7 +26,7 @@
 ## Summary
 - Assigned: **78** / 150 source requirements (provisional ownership)
 - Verified: **0 confirmed from this extraction** (not a measured failure rate)
-- Not assessed: **78**; no completion percentage until evidence inspection
+- Measured register statuses: **71 NOT_ASSESSED**, **7 IN_PROGRESS**, **0 VERIFIED** across the 78 assigned rows; no acceptance percentage is inferred.
 - Last source inventory: **2026-11-18**
 
 ## Full assigned checklist
@@ -308,3 +308,8 @@ REL-08 / REL-09 / REL-11 candidate subcheck in PR to be linked from issue #71: t
 ## PC-07 browser navigation scope hardening — 2026-11-19
 
 **Candidate, not customer acceptance.** The OT native agent now rejects local and special-use DNS suffixes, IP literals, malformed labels, and blank comma entries when parsing owner-reviewed browser hosts. It preserves normal normalized DNS hosts and exact-URL receipts. Compiled .NET synthetic self-tests exercise 21 rejected host scopes and six mismatched browser navigation receipts without opening a browser. This reduces accidental local-service/navigation scope expansion; it does **not** resolve live DNS addresses, prove TLS ownership, certify a browser visit, or constitute independent Chrome GUI acceptance. PC-07 and cross-repo/Windows release requirements remain unchecked **IN_PROGRESS** until exact-head CI, physical-device and independent acceptance evidence are recorded. Production `NO_GO` remains unchanged.
+
+
+## Measured register reconciliation — 2026-11-19
+
+EVD-02 evidence-maintenance subcheck: counted the 78 original assigned checkbox rows against the controlling 150-ID source; all original rows remain unchecked. The prior summary said 78 not assessed despite seven rows already IN_PROGRESS. Corrected summary only; no requirement status upgraded. Current implementation baseline is `babb4c5cde3a912b62663ecc9fa2b86f3339f15b` (merged PR #96). Main Windows bridge and offline Chromium workflows succeeded (44514196998, 44514197133); these are CI evidence, not physical-device acceptance. Signing, actual release destination/readback, independent cryptography/security/legal acceptance, real offline inference and authenticated cross-repo customer acceptance remain unavailable; customer NO_GO. Next implementation batch: inspect tenant-bound native authorization contract and add negative tests without enabling remote execution.
