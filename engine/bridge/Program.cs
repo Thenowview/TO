@@ -530,13 +530,13 @@ internal static class SelfTest
                 Check(rejected && unknownLength.BytesRead==LocalAgentEngine.MaxModelResponseBytes+1,
                     "unknown-length model body stops after one overflow byte");
             }
-            using(var cancelled=new CancellationTokenSource())
+            using(var modelDeadlineFixture=new CancellationTokenSource())
             using(var reply=new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
                 Content=new StringContent("{\"message\":{\"content\":\"never read\"}}")})
             {
-                cancelled.Cancel();
+                modelDeadlineFixture.Cancel();
                 bool rejected=false;
-                try {LocalAgentEngine.ReadLocalModelReply(reply,cancelled.Token);}
+                try {LocalAgentEngine.ReadLocalModelReply(reply,modelDeadlineFixture.Token);}
                 catch(OperationCanceledException){rejected=true;}
                 Check(rejected,"model decoding honors deadline cancellation");
             }
