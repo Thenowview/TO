@@ -33,6 +33,8 @@ jobs:
         run: node --test tests/task-manager.test.cjs
       - name: Audit Supervisor UI to background contracts
         run: node --test tests/ui-contract.test.cjs
+      - name: Enforce Chrome privilege and browser-integration security regressions
+        run: node --test tests/extension-privilege-boundary.test.cjs tests/extension-browser-integration-guard.test.cjs
       - name: Audit fail-closed production release gates
         run: |
           node --test tests/release-gates.test.cjs
