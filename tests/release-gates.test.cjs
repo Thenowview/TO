@@ -111,3 +111,19 @@ test("all four Windows/Chrome suites trigger guarded merge re-evaluation",()=>{
   ]) assert.ok(w.includes(name),name+' should trigger immediate eligibility check');
   assert.ok(w.includes('pull_request_review:'));
 });
+
+test("owner-waived routine merges preserve GitHub rules and separate release-control review",()=>{
+  const workflow=fs.readFileSync(path.join(__dirname,"..",".github","workflows","safe-auto-merge.yml"),"utf8");
+  assert.ok(workflow.includes('decision=$(jq -r \' .reviewDecision // ""\'')===false,"Test the exact decision extraction below");
+  assert.ok(workflow.includes('decision=$(jq -r \'.reviewDecision // ""\' <<<"$data")'));
+  assert.ok(workflow.includes('"CHANGES_REQUESTED" && "$decision" != "REVIEW_REQUIRED"'));
+  assert.ok(workflow.includes('gh pr view "$pr" --repo "$GH_REPO" --json files'));
+  assert.ok(workflow.includes('^config/release-gates[.]json$'));
+  assert.ok(workflow.includes('^tools/check-release-readiness[.]cjs$'));
+  assert.ok(workflow.includes('[[ "$decision" == "APPROVED" ]] || continue'));
+  assert.ok(workflow.includes('reviews=$(gh api --paginate'));
+  assert.ok(workflow.includes('release-approved'));
+  assert.ok(workflow.includes('gh pr checks "$pr"'));
+  assert.ok(workflow.includes('gh pr merge "$pr"'));
+  assert.equal(policy.productionReady,false);
+});
