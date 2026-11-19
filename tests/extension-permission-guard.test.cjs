@@ -26,3 +26,17 @@ test("GIZE Supervisor does not request wildcard hosts or remote executable scrip
   assert.equal(manifest.background?.type ?? "classic", "classic");
   assert.equal(manifest.externally_connectable, undefined, "external extension messaging requires explicit review");
 });
+
+
+test("GIZE Supervisor does not expose extension resources or browser page overrides", () => {
+  assert.deepEqual(manifest.web_accessible_resources || [], [],
+    "web-accessible resources require explicit security review");
+  assert.deepEqual(manifest.sandbox?.pages || [], [],
+    "sandboxed extension pages require explicit security review");
+  assert.equal(manifest.content_security_policy, undefined,
+    "custom extension CSP requires explicit security review");
+  assert.equal(manifest.devtools_page, undefined,
+    "extension DevTools access requires explicit security review");
+  assert.equal(manifest.chrome_url_overrides, undefined,
+    "browser page overrides require explicit security review");
+});
