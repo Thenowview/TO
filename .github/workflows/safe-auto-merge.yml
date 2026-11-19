@@ -54,10 +54,13 @@ jobs:
             [[ "$decision" != "CHANGES_REQUESTED" && "$decision" != "REVIEW_REQUIRED" ]] || continue
             head_sha=$(jq -er '.headRefOid' <<<"$data")
             if jq -e '[.labels[].name] | any(. == "hold" or . == "do-not-merge")' <<<"$data" >/dev/null; then continue; fi
-            # Release authorization and security review are independent of
-            # routine PR merge approval. Inspect the actual changed paths.
+            # Standing authorization waives OPTIONAL review only for a narrow,
+            # non-executable audit-report class. Everything else, including
+            # native/Chrome code, workflows, tests, policies and release scripts,
+            # is security-sensitive until independently reviewed.
+            # Use all(), not any(): one risky file makes the whole PR sensitive.
             files=$(gh pr view "$pr" --repo "$GH_REPO" --json files --jq '[.files[].path]') || continue
-            if jq -e 'any(.[]; test("^config/release-gates[.]json$|^[.]github/workflows/(safe-auto-merge|[^/]*(release|deploy)[^/]*)[.]ya?ml$|^tools/check-release-readiness[.]cjs$"))' <<<"$files" >/dev/null; then
+            if ! jq -e 'length > 0 and all(.[]; test("^docs/gize-audits/[A-Za-z0-9._-]+[.]md$"))' <<<"$files" >/dev/null; then
               # Release-control changes require a distinct current-head human
               # approval and explicit release-approved label. Do not self-approve.
               [[ "$decision" == "APPROVED" ]] || continue
