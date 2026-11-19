@@ -156,5 +156,6 @@ test("Chromium developer preview bundles a verified upstream root license withou
   assert.match(license,/Redistribution and use/);
   assert.ok(ci.includes("$licenseSource='licenses/chromium/LICENSE'"));
   assert.ok(ci.includes("Copy-Item -LiteralPath $licenseSource -Destination 'out/browser/LICENSE' -Force"));
-  assert.doesNotMatch(ci,/Invoke-WebRequest[^\\n]*raw[.]githubusercontent[.]com\\/chromium\\/chromium\\/main\\/LICENSE/);
+  assert.ok(!ci.includes("Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/chromium/chromium/main/LICENSE'"),
+    "Chromium license packaging must not scrape rate-limited raw GitHub URLs");
 });
