@@ -46,7 +46,8 @@ function isVerifiedHttpsDestination(value) {
         hostname.endsWith(".internal") || hostname.endsWith(".lan") ||
         hostname === "home.arpa" || hostname.endsWith(".home.arpa") ||
         hostname.endsWith(".test") || hostname.endsWith(".invalid") ||
-        hostname.endsWith(".onion"))
+        hostname.endsWith(".onion") || hostname.endsWith(".example") ||
+        hostname === "example")
       return false;
     const labels = hostname.split(".");
     return labels.length >= 2 &&
