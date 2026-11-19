@@ -160,7 +160,7 @@ test("owner-waived routine merges preserve GitHub rules and separate release-con
 
 test("release destination must be DNS-named HTTPS, never local or IP-literal",()=>{
   for(const valid of ["https://release.example.org/orgaiz","https://downloads.orgaiz.com:443/v1",
-                       "https://xn--bcher-kva.example/preview"]){
+                       "https://xn--bcher-kva.example.org/preview"]){
     assert.equal(isVerifiedHttpsDestination(valid),true,valid);
   }
   for(const unsafe of [
@@ -190,4 +190,28 @@ test("production GO requires a current matching build-commit attestation",()=>{
   assert.equal(evaluatePolicy(candidate,candidate.evidenceCommit).status,"GO");
   assert.equal(evaluatePolicy(policy).status,"NO_GO",
     "Committed production config remains blocked regardless of unit fixtures");
+});
+
+test("production destination preflight denies special-use DNS names",()=>{
+  const blocked=[
+    "https://host.internal/releases",
+    "https://node.lan/",
+    "https://home.arpa/",
+    "https://server.home.arpa/download",
+    "https://example.test/",
+    "https://account.invalid/",
+    "https://service.onion/",
+    "https://demo.example/",
+    "https://example/"
+  ];
+  for(const url of blocked){
+    assert.equal(isVerifiedHttpsDestination(url),false,url);
+    const candidate=syntheticApprovedShape();
+    candidate.productionTarget.address=url;
+    assert.equal(evaluatePolicy(candidate,candidate.evidenceCommit).status,"NO_GO",url);
+  }
+  for(const url of ["https://download.orgaiz.com/release","https://releases.example.org/archive"])
+    assert.equal(isVerifiedHttpsDestination(url),true,url);
+  // DNS ownership, certificate and live route remain independent release gates.
+  assert.equal(evaluatePolicy(policy).status,"NO_GO");
 });

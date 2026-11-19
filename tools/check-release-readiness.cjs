@@ -42,7 +42,12 @@ function isVerifiedHttpsDestination(value) {
       ? hostname.slice(1, -1) : hostname;
     if (isIP(literal) !== 0 || hostname.length > 253 ||
         hostname === "localhost" || hostname.endsWith(".localhost") ||
-        hostname.endsWith(".local") || hostname.endsWith(".localdomain"))
+        hostname.endsWith(".local") || hostname.endsWith(".localdomain") ||
+        hostname.endsWith(".internal") || hostname.endsWith(".lan") ||
+        hostname === "home.arpa" || hostname.endsWith(".home.arpa") ||
+        hostname.endsWith(".test") || hostname.endsWith(".invalid") ||
+        hostname.endsWith(".onion") || hostname.endsWith(".example") ||
+        hostname === "example")
       return false;
     const labels = hostname.split(".");
     return labels.length >= 2 &&
