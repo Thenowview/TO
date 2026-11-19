@@ -387,7 +387,9 @@ internal sealed class LocalAgentEngine
         string systemDirectory=Environment.GetFolderPath(Environment.SpecialFolder.System);
         if(string.IsNullOrWhiteSpace(systemDirectory)||!Path.IsPathFullyQualified(systemDirectory))
             throw new InvalidOperationException("Windows system directory unavailable");
-        return Path.Combine(systemDirectory,"notepad.exe");
+        string executable=Path.Combine(systemDirectory,"notepad.exe");
+        if(!File.Exists(executable))throw new InvalidOperationException("Windows system Notepad unavailable");
+        return executable;
     }
 
     private object PerformTool(Job job,AgentStep step)
