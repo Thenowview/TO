@@ -1031,6 +1031,22 @@ internal static class SelfTest
                 jobId=browserJob,token=navToken,url="https://example.com/",tabId=123});
             Check(!replayedReceipt.GetProperty("ok").GetBoolean(),"completed browser receipt cannot replay");
 
+            // Completion wins first: later recovery must not rewrite or reopen the job.
+            var completedBeforeRecovery=Call(c,new {command="agent_get",companyId="demo",jobId=browserJob});
+            var completionRecovery=Call(new Controller(root),new {command="agent_recover",
+                companyId="demo",jobId=browserJob});
+            Check(completionRecovery.GetProperty("status").GetString()==
+                  completedBeforeRecovery.GetProperty("status").GetString() &&
+                  !completionRecovery.GetProperty("canResume").GetBoolean(),
+                  "Recovery preserves already completed browser job");
+            Check(!Call(new Controller(root),new {command="agent_complete_browser",companyId="demo",
+                jobId=browserJob,token=navToken,url="https://example.com/",tabId=123})
+                .GetProperty("ok").GetBoolean(),"Recovery cannot revive consumed completion token");
+            var completedAfterRecovery=Call(c,new {command="agent_get",companyId="demo",jobId=browserJob});
+            Check(completedAfterRecovery.GetProperty("stepIndex").GetInt32()==
+                  completedBeforeRecovery.GetProperty("stepIndex").GetInt32(),
+                  "Recovery cannot advance or rewind completed browser step");
+
             var browserQa=Call(c,new {command="agent_review",companyId="demo",jobId=browserJob});
             Check(browserQa.GetProperty("qa").GetProperty("browserOutcomeUnknown").GetBoolean(),
                 "browser navigation is not accepted as content QA");
