@@ -1043,9 +1043,9 @@ internal static class SelfTest
             Call(c,new {command="agent_approve",companyId="demo",jobId=interruptedId,approved=true});
             var interruptedNav=Call(c,new {command="agent_run_next",companyId="demo",jobId=interruptedId});
             string staleToken=interruptedNav.GetProperty("token").GetString()!;
-            var recovered=Call(new Controller(root),new {command="agent_recover",companyId="demo",jobId=interruptedId});
-            Check(recovered.GetProperty("status").GetString()=="blocked" &&
-                  recovered.GetProperty("manualReviewRequired").GetBoolean(),"unknown browser outcome blocks recovery");
+            var recoveredBrowserJob=Call(new Controller(root),new {command="agent_recover",companyId="demo",jobId=interruptedId});
+            Check(recoveredBrowserJob.GetProperty("status").GetString()=="blocked" &&
+                  recoveredBrowserJob.GetProperty("manualReviewRequired").GetBoolean(),"unknown browser outcome blocks recovery");
             foreach(string replayCommand in new[]{"agent_run_next","agent_run_safe_batch","agent_approve"}) {
                 Check(!Call(new Controller(root),new {command=replayCommand,companyId="demo",
                     jobId=interruptedId,approved=true}).GetProperty("ok").GetBoolean(),
