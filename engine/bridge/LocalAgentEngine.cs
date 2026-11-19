@@ -296,10 +296,19 @@ internal sealed class LocalAgentEngine
         using var db=Open();
         if(job.Status=="running")
         {
-            Exec(db,"UPDATE agent_jobs SET status='blocked',updated_utc=$utc WHERE id=$id",
-                ("$id",job.Id),("$utc",Now()));
-            Event(db,job.Id,job.StepIndex,"unknown_outcome",
-                "A prior process ended during a tool step. No automatic replay of non-idempotent actions.");
+            Exec(db,"BEGIN IMMEDIATE;");
+            try
+            {
+                int changed=Exec(db,@"UPDATE agent_jobs SET status='blocked',step_token=NULL,updated_utc=$utc
+                    WHERE id=$id AND company=$company AND status='running' AND step_index=$idx AND step_token=$token",
+                    ("$id",job.Id),("$company",job.Company),("$idx",job.StepIndex),
+                    ("$token",job.StepToken),("$utc",Now()));
+                if(changed!=1)throw new InvalidOperationException("Job changed during recovery; reload current state");
+                Event(db,job.Id,job.StepIndex,"unknown_outcome",
+                    "A prior process ended during a tool step. No automatic replay of non-idempotent actions.");
+                Exec(db,"COMMIT;");
+            }
+            catch {Exec(db,"ROLLBACK;");throw;}
             return new{ok=true,status="blocked",manualReviewRequired=true};
         }
         return new{ok=true,status=job.Status,canResume=job.Status=="queued"};
