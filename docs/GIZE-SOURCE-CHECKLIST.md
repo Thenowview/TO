@@ -322,3 +322,8 @@ Candidate test commit `5d59f7302d2b5375d246769f68deab8c35321b7d` in PR #97 exten
 
 ### PC-05 / PC-07 test fixture correction — 2026-11-19
 Exact head `733318899529058c1b92e022cf5267d9eaffa71f` failed Windows self-test (run44553395746/job135662927449): owner state assertion assumed completed_pending_review after agent_review had already transitioned the job. Fix `280f01c1577518597bb3c91ba7427568c68e5494` snapshots actual owner status and step index before the seven foreign commands and requires both unchanged afterward. Denial assertions remain intact. Fresh exact-head CI pending; no runtime security failure or acceptance inferred. All original requirement statuses unchanged; NO_GO remains.
+
+
+## PC-05 / PC-07 recovery and stale receipt regression — 2026-11-19
+
+Candidate `5c2a7be1ca4cc82ea5e8a64953e3402e94d44c1f` adds compiled synthetic native tests: restart during pending browser navigation, require blocked/manual-review recovery, reject run-next/safe-batch/reapproval and late original-token receipt, preserve unfinished step index. No browser launched and no real hardware outcome inferred. Main baseline29676ed0f9785dea72c8f0e92e9191d52b72c6d4 had all five core checks SUCCESS. Fresh candidate Windows CI pending. All78 assigned IDs/statuses unchanged; NO_GO until signing, deployment destination/readback, real offline-model, tenant integration and independent hardware/security acceptance.

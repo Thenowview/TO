@@ -1035,6 +1035,29 @@ internal static class SelfTest
             Check(browserQa.GetProperty("qa").GetProperty("browserOutcomeUnknown").GetBoolean(),
                 "browser navigation is not accepted as content QA");
 
+            // Simulate a host restart while browser navigation has an unknown outcome.
+            var interrupted=Call(c,new {command="agent_create",companyId="demo",orderId=id,
+                instruction="Open a synthetic approved page for recovery testing.",
+                mode="demo-browser",model="qwen3:4b",approvedHosts="example.com"});
+            string interruptedId=interrupted.GetProperty("jobId").GetString()!;
+            Call(c,new {command="agent_approve",companyId="demo",jobId=interruptedId,approved=true});
+            var interruptedNav=Call(c,new {command="agent_run_next",companyId="demo",jobId=interruptedId});
+            string staleToken=interruptedNav.GetProperty("token").GetString()!;
+            var recoveredBrowserJob=Call(new Controller(root),new {command="agent_recover",companyId="demo",jobId=interruptedId});
+            Check(recoveredBrowserJob.GetProperty("status").GetString()=="blocked" &&
+                  recoveredBrowserJob.GetProperty("manualReviewRequired").GetBoolean(),"unknown browser outcome blocks recovery");
+            foreach(string replayCommand in new[]{"agent_run_next","agent_run_safe_batch","agent_approve"}) {
+                Check(!Call(new Controller(root),new {command=replayCommand,companyId="demo",
+                    jobId=interruptedId,approved=true}).GetProperty("ok").GetBoolean(),
+                    "Recovered work cannot replay or reapprove: "+replayCommand);
+            }
+            Check(!Call(new Controller(root),new {command="agent_complete_browser",companyId="demo",
+                jobId=interruptedId,token=staleToken,url="https://example.com/",tabId=123})
+                .GetProperty("ok").GetBoolean(),"late browser receipt cannot complete recovered job");
+            var recoveryState=Call(c,new {command="agent_get",companyId="demo",jobId=interruptedId});
+            Check(recoveryState.GetProperty("status").GetString()=="blocked" &&
+                  recoveryState.GetProperty("stepIndex").GetInt32()==0,"recovery preserves unfinished step");
+
             // Interrupted execution must not auto-replay potentially non-idempotent tools.
             var cancelledPlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
                 instruction="Create another short synthetic note.",mode="demo",model="qwen3:4b",approvedHosts=""});
