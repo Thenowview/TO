@@ -552,6 +552,7 @@ internal static class SelfTest
                     Environment.SetEnvironmentVariable("PATH",root);
                     string resolvedNotepadPath=LocalAgentEngine.NotepadExecutablePath();
                     Check(Path.IsPathFullyQualified(resolvedNotepadPath),"Notepad launch uses an absolute path");
+                    Check(File.Exists(resolvedNotepadPath),"Notepad launch requires an existing system executable");
                     Check(string.Equals(resolvedNotepadPath,expectedNotepadPath,StringComparison.OrdinalIgnoreCase),
                         "Notepad launch is pinned to Windows system directory despite hostile PATH");
                 }
