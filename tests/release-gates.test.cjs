@@ -160,7 +160,7 @@ test("owner-waived routine merges preserve GitHub rules and separate release-con
 
 test("release destination must be DNS-named HTTPS, never local or IP-literal",()=>{
   for(const valid of ["https://release.example.org/orgaiz","https://downloads.orgaiz.com:443/v1",
-                       "https://xn--bcher-kva.example/preview"]){
+                       "https://xn--bcher-kva.example.org/preview"]){
     assert.equal(isVerifiedHttpsDestination(valid),true,valid);
   }
   for(const unsafe of [
