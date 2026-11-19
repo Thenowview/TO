@@ -146,3 +146,15 @@ test("owner-waived routine merges preserve GitHub rules and separate release-con
   assert.ok(workflow.includes('gh pr merge "$pr"'));
   assert.equal(policy.productionReady,false);
 });
+
+test("Chromium developer preview bundles a verified upstream root license without live GitHub scraping",()=>{
+  const root=path.join(__dirname,"..");
+  const license=fs.readFileSync(path.join(root,"licenses","chromium","LICENSE"),"utf8");
+  const ci=fs.readFileSync(path.join(root,".github","workflows","chromium-browser-ci.yml"),"utf8");
+  assert.ok(license.length>=1000);
+  assert.match(license,/Chromium Authors/);
+  assert.match(license,/Redistribution and use/);
+  assert.ok(ci.includes("$licenseSource='licenses/chromium/LICENSE'"));
+  assert.ok(ci.includes("Copy-Item -LiteralPath $licenseSource -Destination 'out/browser/LICENSE' -Force"));
+  assert.doesNotMatch(ci,/Invoke-WebRequest[^\\n]*raw[.]githubusercontent[.]com\\/chromium\\/chromium\\/main\\/LICENSE/);
+});
