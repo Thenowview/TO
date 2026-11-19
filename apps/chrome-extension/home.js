@@ -677,6 +677,9 @@ function validatedAoCatalog(policy) {
         t.execution !== execution || t.safeBatch !== batch) return null;
     byId.set(t.id, Object.freeze({...t}));
   }
+  // The advertised tool-name list must match the independently validated descriptors.
+  // A mismatched list is a malformed native contract, even when both lists have six entries.
+  if (policy.toolNames.some(id => !byId.has(id))) return null;
   return byId;
 }
 
