@@ -70,8 +70,17 @@ jobs:
               if ! jq -e '[.labels[].name] | any(. == "release-approved")' <<<"$data" >/dev/null; then continue; fi
             fi
             # GitHub performs final branch-protection/ruleset enforcement.
-            checks=$(gh pr checks "$pr" --repo "$GH_REPO" --json state 2>/dev/null) || continue
-            if ! jq -e 'length > 0 and all(.[]; .state == "SUCCESS" or .state == "SKIPPED" or .state == "NEUTRAL")' <<<"$checks" >/dev/null; then continue; fi
+            checks=$(gh pr checks "$pr" --repo "$GH_REPO" --json name,state 2>/dev/null) || continue
+            # Require all four core Windows/Chrome workflows, not merely the
+            # subset of checks registered at the instant this event fires.
+            # The bridge workflow has two named jobs. Additional present checks
+            # must also be successful (or explicitly neutral/skipped).
+            if ! jq -e --argjson required '["portable","onefile-windows","windows-bridge","js-syntax","build"]' '
+              (length >= ($required | length)) and
+              all(.[]; .state == "SUCCESS" or .state == "SKIPPED" or .state == "NEUTRAL") and
+              ([.[] | select(.state == "SUCCESS") | .name] as $passed |
+                all($required[]; . as $name | ($passed | index($name)) != null))
+            ' <<<"$checks" >/dev/null; then continue; fi
             if gh pr merge "$pr" --repo "$GH_REPO" --match-head-commit "$(jq -er '.headRefOid' <<<"$data")" --squash --delete-branch; then
               # A merge by GITHUB_TOKEN does not reliably trigger workflows
               # subscribed to push. Dispatch trusted main CI explicitly.
