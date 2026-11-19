@@ -114,7 +114,6 @@ test("all four Windows/Chrome suites trigger guarded merge re-evaluation",()=>{
 
 test("owner-waived routine merges preserve GitHub rules and separate release-control review",()=>{
   const workflow=fs.readFileSync(path.join(__dirname,"..",".github","workflows","safe-auto-merge.yml"),"utf8");
-  assert.ok(workflow.includes('decision=$(jq -r \' .reviewDecision // ""\'')===false,"Test the exact decision extraction below");
   assert.ok(workflow.includes('decision=$(jq -r \'.reviewDecision // ""\' <<<"$data")'));
   assert.ok(workflow.includes('"CHANGES_REQUESTED" && "$decision" != "REVIEW_REQUIRED"'));
   assert.ok(workflow.includes('gh pr view "$pr" --repo "$GH_REPO" --json files'));
