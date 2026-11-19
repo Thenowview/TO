@@ -489,6 +489,58 @@ internal static class SelfTest
                 Check(!denied.GetProperty("ok").GetBoolean(),"ambiguous or non-string native command rejected");
             }
 
+
+            // Synthetic transport decoder tests. These are not local-model inference acceptance.
+            using(var reply=new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                Content=new StringContent("{\"message\":{\"content\":\"valid synthetic plan\"}}")})
+                Check(LocalAgentEngine.ReadLocalModelReply(reply,CancellationToken.None)=="valid synthetic plan",
+                    "bounded model decoder accepts a valid reply");
+            foreach(string body in new[]{"{}", "[]", "{\"message\":null}",
+                "{\"message\":{\"content\":null}}", "{\"message\":{\"content\":\" \"}}", "{broken"})
+            {
+                using var reply=new HttpResponseMessage(System.Net.HttpStatusCode.OK) {Content=new StringContent(body)};
+                bool rejected=false;
+                try {LocalAgentEngine.ReadLocalModelReply(reply,CancellationToken.None);}
+                catch(JsonException){rejected=true;}
+                Check(rejected,"malformed local-model envelope rejected");
+            }
+            using(var redirect=new HttpResponseMessage(System.Net.HttpStatusCode.Redirect))
+            {
+                redirect.Headers.Location=new Uri("https://example.com/never-follow");
+                bool rejected=false;
+                try {LocalAgentEngine.ReadLocalModelReply(redirect,CancellationToken.None);}
+                catch(HttpRequestException){rejected=true;}
+                Check(rejected,"model decoder rejects redirect response");
+            }
+            using(var oversized=new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                Content=new ByteArrayContent(new byte[LocalAgentEngine.MaxModelResponseBytes+1])})
+            {
+                bool rejected=false;
+                try {LocalAgentEngine.ReadLocalModelReply(oversized,CancellationToken.None);}
+                catch(HttpRequestException){rejected=true;}
+                Check(rejected,"declared oversized model response rejected");
+            }
+            using(var unknownLength=new SyntheticModelStream(LocalAgentEngine.MaxModelResponseBytes+100))
+            using(var oversized=new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                Content=new StreamContent(unknownLength)})
+            {
+                bool rejected=false;
+                try {LocalAgentEngine.ReadLocalModelReply(oversized,CancellationToken.None);}
+                catch(HttpRequestException){rejected=true;}
+                Check(rejected && unknownLength.BytesRead==LocalAgentEngine.MaxModelResponseBytes+1,
+                    "unknown-length model body stops after one overflow byte");
+            }
+            using(var cancelled=new CancellationTokenSource())
+            using(var reply=new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                Content=new StringContent("{\"message\":{\"content\":\"never read\"}}")})
+            {
+                cancelled.Cancel();
+                bool rejected=false;
+                try {LocalAgentEngine.ReadLocalModelReply(reply,cancelled.Token);}
+                catch(OperationCanceledException){rejected=true;}
+                Check(rejected,"model decoding honors deadline cancellation");
+            }
+
             var capabilities = Call(c, new { command = "capabilities" });
             Check(!capabilities.GetProperty("liveAiProvider").GetBoolean(), "capability honesty");
             var aoPolicy = Call(c, new { command = "agent_tools" });
@@ -949,6 +1001,38 @@ internal static class SelfTest
         }
     }
 
+
+
+    private sealed class SyntheticModelStream : Stream
+    {
+        private readonly int _size;
+        internal int BytesRead {get;private set;}
+        internal SyntheticModelStream(int size) { _size=size; }
+        public override bool CanRead=>true;
+        public override bool CanSeek=>false;
+        public override bool CanWrite=>false;
+        public override long Length=>throw new NotSupportedException();
+        public override long Position {get=>BytesRead;set=>throw new NotSupportedException();}
+        public override int Read(byte[] buffer,int offset,int count)
+        {
+            int length=Math.Min(count,_size-BytesRead);
+            Array.Fill<byte>(buffer,(byte)'x',offset,length);
+            BytesRead+=length;
+            return length;
+        }
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken cancellationToken=default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int length=Math.Min(buffer.Length,_size-BytesRead);
+            buffer.Span[..length].Fill((byte)'x');
+            BytesRead+=length;
+            return ValueTask.FromResult(length);
+        }
+        public override void Flush(){}
+        public override long Seek(long offset,SeekOrigin origin)=>throw new NotSupportedException();
+        public override void SetLength(long length)=>throw new NotSupportedException();
+        public override void Write(byte[] buffer,int offset,int count)=>throw new NotSupportedException();
+    }
 
     private static void SetJobField(string root,string jobId,string column,string value)
     {
