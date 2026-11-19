@@ -157,3 +157,37 @@ test("owner-waived routine merges preserve GitHub rules and separate release-con
   assert.ok(workflow.includes('gh pr merge "$pr"'));
   assert.equal(policy.productionReady,false);
 });
+
+test("release destination must be DNS-named HTTPS, never local or IP-literal",()=>{
+  for(const valid of ["https://release.example.org/orgaiz","https://downloads.orgaiz.com:443/v1",
+                       "https://xn--bcher-kva.example/preview"]){
+    assert.equal(isVerifiedHttpsDestination(valid),true,valid);
+  }
+  for(const unsafe of [
+    "https://[::1]/","https://[fe80::1]/","https://[2001:db8::1]/",
+    "https://127.0.0.2/","https://127.1/","https://10.0.0.3/",
+    "https://169.254.169.254/latest/meta-data/","https://192.168.1.2/",
+    "https://localhost./","https://agent.localhost/",
+    "https://host.local/","https://host.localdomain/","https://intranet/",
+    "https://bad..example.org/","https://user:pass@release.example.org/"
+  ]){
+    assert.equal(isVerifiedHttpsDestination(unsafe),false,unsafe);
+    const candidate=syntheticApprovedShape();
+    candidate.productionTarget.address=unsafe;
+    assert.equal(evaluatePolicy(candidate,candidate.evidenceCommit).status,"NO_GO",unsafe);
+  }
+});
+
+test("production GO requires a current matching build-commit attestation",()=>{
+  const candidate=syntheticApprovedShape();
+  for(const missing of [null,undefined,"",0,"bad-sha","0".repeat(39)]){
+    const result=evaluatePolicy(candidate,missing);
+    assert.equal(result.status,"NO_GO",String(missing));
+    assert.ok(result.blockers.some(b=>b.gate==="evidence_commit" &&
+      b.status==="current_build_commit_required"));
+  }
+  assert.equal(evaluatePolicy(candidate,"b".repeat(40)).status,"NO_GO");
+  assert.equal(evaluatePolicy(candidate,candidate.evidenceCommit).status,"GO");
+  assert.equal(evaluatePolicy(policy).status,"NO_GO",
+    "Committed production config remains blocked regardless of unit fixtures");
+});
