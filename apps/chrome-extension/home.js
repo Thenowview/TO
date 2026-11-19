@@ -649,6 +649,37 @@ async function refreshAgentJobs(preferred=null) {
   await showAgentJob();
 }
 
+function validatedAoCatalog(policy) {
+  const expected = {
+    write_note: ["reversible_write", "company_order", "native_allowlist", true],
+    read_note: ["read_only", "company_order", "native_allowlist", true],
+    list_notes: ["read_only", "company_order", "native_allowlist", true],
+    system_info: ["read_only", "local_system_summary", "native_allowlist", true],
+    browser_open: ["consequential_external", "approved_https_host", "browser_navigation_only", false],
+    windows_open_notepad: ["consequential_external", "explicit_notepad_launch", "native_allowlist", false]
+  };
+  if (!policy || policy.catalogVersion !== "ao.local.tools.v1" ||
+      policy.mcpEnabled !== false || policy.remoteToolExecutionEnabled !== false ||
+      !Array.isArray(policy.toolDescriptors) || policy.toolDescriptors.length !== 6 ||
+      !Array.isArray(policy.toolNames) || policy.toolNames.length !== 6 ||
+      new Set(policy.toolNames).size !== 6 ||
+      policy.toolNames.some(id => !Object.hasOwn(expected, id))) return null;
+  const byId = new Map();
+  const fields = ["id", "version", "riskClass", "requiresOwnerApproval", "permissionScope", "execution", "safeBatch"];
+  for (const t of policy.toolDescriptors) {
+    if (!t || typeof t !== "object" || Array.isArray(t) ||
+        Object.keys(t).length !== fields.length ||
+        fields.some(key => !Object.hasOwn(t, key)) ||
+        !Object.hasOwn(expected, t.id) || byId.has(t.id)) return null;
+    const [risk, scope, execution, batch] = expected[t.id];
+    if (t.version !== 1 || t.requiresOwnerApproval !== true ||
+        t.riskClass !== risk || t.permissionScope !== scope ||
+        t.execution !== execution || t.safeBatch !== batch) return null;
+    byId.set(t.id, Object.freeze({...t}));
+  }
+  return byId;
+}
+
 async function showAgentJob() {
   const o=selectedOrder(),jobId=app.agentJobId;
   if(!o||!jobId)return;
@@ -657,9 +688,8 @@ async function showAgentJob() {
   let aoToolRisk="AO tool-risk catalog not available on this native host; review every tool manually.";
   try {
     const policy=await rpc("agent_tools",{taskId:o.taskId});
-    if(policy.catalogVersion==="ao.local.tools.v1" && policy.mcpEnabled===false &&
-       policy.remoteToolExecutionEnabled===false && Array.isArray(policy.toolDescriptors)){
-      const byId=new Map(policy.toolDescriptors.map(t=>[t.id,t]));
+    const byId=validatedAoCatalog(policy);
+    if(byId){
       aoToolRisk=(r.plan?.steps||[]).map(step=>{
         const t=byId.get(step.tool);
         return t && t.requiresOwnerApproval===true
