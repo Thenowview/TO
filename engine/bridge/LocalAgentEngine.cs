@@ -622,19 +622,35 @@ internal sealed class LocalAgentEngine
     private static long Number(JsonElement data,string key)=>data.TryGetProperty(key,out var v)&&v.ValueKind==JsonValueKind.Number&&v.TryGetInt64(out var n)?n:throw new ArgumentException("Missing numeric input");
     private static string RequireId(string s)=>Id.IsMatch(s)?s:throw new ArgumentException("Invalid identifier");
     private static string RequireCompany(string s)=>Company.IsMatch(s)?s:throw new ArgumentException("Invalid workspace");
-    private static string[] ParseHosts(string text)
+    // Browser navigation is only permitted to explicit, ordinary DNS hostnames.
+    // Syntax is not DNS ownership, resolution, TLS or destination-content verification.
+    private static readonly string[] BlockedBrowserHostSuffixes = {
+        ".localhost", ".local", ".localdomain", ".internal", ".lan",
+        ".home.arpa", ".test", ".invalid", ".example", ".onion"
+    };
+
+    internal static string[] ParseHosts(string text)
     {
         if(text.Length>700)throw new ArgumentException("Approved host list too long");
-        var parts=text.Split(',',StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries);
+        if(string.IsNullOrWhiteSpace(text))return Array.Empty<string>();
+        // Empty comma entries can silently reduce an explicitly reviewed scope.
+        var parts=text.Split(',',StringSplitOptions.TrimEntries);
         if(parts.Length>10)throw new ArgumentException("No more than 10 approved sites");
         var hosts=new List<string>();
         foreach(var part in parts)
         {
-            if(!Uri.CheckHostName(part).Equals(UriHostNameType.Dns)||part.Equals("localhost",StringComparison.OrdinalIgnoreCase))
+            if(part.Length is < 4 or > 200 || Uri.CheckHostName(part)!=UriHostNameType.Dns)
                 throw new ArgumentException("Invalid approved hostname");
-            if(!Regex.IsMatch(part,"^[a-zA-Z0-9.-]{3,200}$")||part.StartsWith(".")||part.EndsWith("."))
-                throw new ArgumentException("Invalid hostname");
-            hosts.Add(part.ToLowerInvariant());
+            string name=part.ToLowerInvariant();
+            if(BlockedBrowserHostSuffixes.Any(suffix => name.EndsWith(suffix,StringComparison.Ordinal)) ||
+                name=="home.arpa" || name.Contains("..",StringComparison.Ordinal))
+                throw new ArgumentException("Local or reserved sites cannot be approved for browser navigation");
+            string[] labels=name.Split('.');
+            if(labels.Length<2 || labels[^1].Length<2 || labels[^1].All(char.IsDigit) ||
+               labels.Any(label => label.Length>63 ||
+                 !Regex.IsMatch(label,"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")))
+                throw new ArgumentException("Invalid DNS hostname");
+            hosts.Add(name);
         }
         return hosts.Distinct(StringComparer.Ordinal).ToArray();
     }

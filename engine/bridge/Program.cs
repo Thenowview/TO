@@ -954,6 +954,27 @@ internal static class SelfTest
             var foreignMemory=Call(c,new {command="agent_memory_list",companyId="other"});
             Check(foreignMemory.GetProperty("memories").GetArrayLength()==0,"memory company isolation");
 
+            // A malformed, local-only or special-use hostname must never grant a navigation scope.
+            foreach(string invalidHost in new[]{
+                "localhost","127.0.0.1","127.1","10.0.0.2",
+                "service.local","service.localhost","service.internal","server.lan",
+                "service.home.arpa","home.arpa","demo.test","demo.invalid",
+                "demo.example","demo.onion","test..example.com",
+                "-bad.example.com","bad-.example.com","good.com,",
+                "good.com, ,other.com","good.com.","http://good.com"})
+            {
+                var deniedHost=Call(c,new {command="agent_create",companyId="demo",orderId=id,
+                    instruction="Open a synthetic website for scoped security verification.",
+                    mode="demo-browser",model="qwen3:4b",approvedHosts=invalidHost});
+                Check(!deniedHost.GetProperty("ok").GetBoolean(),
+                    "Local, reserved or malformed host scope rejected: "+invalidHost);
+            }
+            var ordinaryHosts=LocalAgentEngine.ParseHosts("Example.COM,api.Example.com");
+            Check(ordinaryHosts.Length==2 &&
+                  ordinaryHosts[0]=="example.com" && ordinaryHosts[1]=="api.example.com",
+                  "Normal DNS hostnames remain supported and normalized");
+            Check(LocalAgentEngine.ParseHosts("").Length==0,"Empty list remains valid for local tools");
+
             // Browser action is staged, reviewed, bound to an exact approved HTTPS hostname.
             var browser=Call(c,new {
                 command="agent_create",companyId="demo",orderId=id,
@@ -970,6 +991,18 @@ internal static class SelfTest
             var invalidToken=Call(c,new {command="agent_complete_browser",companyId="demo",
                 jobId=browserJob,token="0",url="https://example.com/",tabId=123});
             Check(!invalidToken.GetProperty("ok").GetBoolean(),"browser receipt token required");
+            // Even with the valid step token, a receipt must match the exact approved host,
+            // scheme, port and fragment-free URL; neither subdomains nor userinfo are scope grants.
+            foreach(string wrongUrl in new[]{
+                "https://sub.example.com/","https://example.com.evil.org/",
+                "http://example.com/","https://example.com:444/",
+                "https://example.com/#fragment","https://example.com@evil.org/"})
+            {
+                var rejectedReceipt=Call(c,new {command="agent_complete_browser",companyId="demo",
+                    jobId=browserJob,token=navToken,url=wrongUrl,tabId=123});
+                Check(!rejectedReceipt.GetProperty("ok").GetBoolean(),
+                    "Browser receipts cannot expand approved navigation hosts: "+wrongUrl);
+            }
             var receipt=Call(c,new {command="agent_complete_browser",companyId="demo",
                 jobId=browserJob,token=navToken,url="https://example.com/",tabId=123});
             Check(receipt.GetProperty("ok").GetBoolean()&&
