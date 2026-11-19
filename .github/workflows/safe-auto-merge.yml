@@ -8,7 +8,7 @@ on:
   pull_request_review:
     types: [submitted, dismissed]
   workflow_run:
-    workflows: ["TheOrg Chrome and Windows Bridge CI"]
+    workflows: ["TheOrg Chrome and Windows Bridge CI", "TheOrg Portable Existing Chrome CI", "TheOrg Single EXE - Existing Chrome", "TheOrg Offline Chromium Browser"]
     types: [completed]
   schedule:
     - cron: '*/15 * * * *'
