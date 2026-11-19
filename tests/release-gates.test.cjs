@@ -86,3 +86,28 @@ test("synthetic complete shape checks schema only and never certifies external e
   assert.equal(evaluatePolicy(policy).status,"NO_GO",
     "Real repository policy remains blocked");
 });
+
+test("bot merges dispatch trusted main checks and integrated-branch cleanup without bypassing release gates",()=>{
+  const mergeWorkflow=fs.readFileSync(path.join(__dirname,"..",".github","workflows","safe-auto-merge.yml"),"utf8");
+  for(const workflow of ["bridge-ci.yml","portable-chrome-ci.yml","onefile-existing-chrome-ci.yml","chromium-browser-ci.yml"]){
+    assert.ok(mergeWorkflow.includes('gh workflow run '+workflow+' --repo "$GH_REPO" --ref "$BASE"'),workflow+" main handoff required");
+  }
+  assert.ok(mergeWorkflow.includes('gh workflow run retire-integrated-branches.yml --repo "$GH_REPO" --ref "$BASE"'));
+  assert.ok(mergeWorkflow.includes("actions: write"));
+  assert.ok(mergeWorkflow.includes('reviewDecision'));
+  assert.ok(mergeWorkflow.includes('release-approved'));
+  assert.ok(mergeWorkflow.includes('--match-head-commit'));
+  assert.equal(policy.productionReady,false);
+});
+
+test("all four Windows/Chrome suites trigger guarded merge re-evaluation",()=>{
+  const w=fs.readFileSync(path.join(__dirname,"..",".github","workflows","safe-auto-merge.yml"),"utf8");
+  assert.ok(w.includes('workflow_run:'));
+  for(const name of [
+    'TheOrg Chrome and Windows Bridge CI',
+    'TheOrg Portable Existing Chrome CI',
+    'TheOrg Single EXE - Existing Chrome',
+    'TheOrg Offline Chromium Browser'
+  ]) assert.ok(w.includes(name),name+' should trigger immediate eligibility check');
+  assert.ok(w.includes('pull_request_review:'));
+});

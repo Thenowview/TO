@@ -1,11 +1,21 @@
 name: Safe automatic PR merge
 
 on:
+  # Run promptly when an approved same-repository PR changes, its review is
+  # submitted, or a required CI workflow completes. Keep a periodic fallback.
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, dismissed]
+  workflow_run:
+    workflows: ["TheOrg Chrome and Windows Bridge CI", "TheOrg Portable Existing Chrome CI", "TheOrg Single EXE - Existing Chrome", "TheOrg Offline Chromium Browser"]
+    types: [completed]
   schedule:
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
   checks: read
@@ -17,6 +27,10 @@ concurrency:
 
 jobs:
   merge:
+    # Never use untrusted PR content as executable code or evaluate fork PRs.
+    if: >-
+      ${{ github.event_name != 'pull_request_target' ||
+          github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -53,5 +67,22 @@ jobs:
             if jq -e '[.labels[].name] | any(. == "hold" or . == "do-not-merge")' <<<"$data" >/dev/null; then continue; fi
             checks=$(gh pr checks "$pr" --repo "$GH_REPO" --json state 2>/dev/null) || continue
             if ! jq -e 'length > 0 and all(.[]; .state == "SUCCESS" or .state == "SKIPPED" or .state == "NEUTRAL")' <<<"$checks" >/dev/null; then continue; fi
-            gh pr merge "$pr" --repo "$GH_REPO" --match-head-commit "$(jq -er '.headRefOid' <<<"$data")" --squash --delete-branch || echo "PR $pr remains open; merge blocked by GitHub"
+            if gh pr merge "$pr" --repo "$GH_REPO" --match-head-commit "$(jq -er '.headRefOid' <<<"$data")" --squash --delete-branch; then
+              # A merge by GITHUB_TOKEN does not reliably trigger workflows
+              # subscribed to push. Dispatch trusted main CI explicitly.
+              gh workflow run bridge-ci.yml --repo "$GH_REPO" --ref "$BASE" ||
+                echo "::warning::CI dispatch failed for bridge-ci.yml; verify main manually"
+              gh workflow run portable-chrome-ci.yml --repo "$GH_REPO" --ref "$BASE" ||
+                echo "::warning::CI dispatch failed for portable-chrome-ci.yml; verify main manually"
+              gh workflow run onefile-existing-chrome-ci.yml --repo "$GH_REPO" --ref "$BASE" ||
+                echo "::warning::CI dispatch failed for onefile-existing-chrome-ci.yml; verify main manually"
+              gh workflow run chromium-browser-ci.yml --repo "$GH_REPO" --ref "$BASE" ||
+                echo "::warning::CI dispatch failed for chromium-browser-ci.yml; verify main manually"
+              # The existing retirement workflow independently checks that the
+              # branch is fully integrated, unprotected and has no open PR.
+              gh workflow run retire-integrated-branches.yml --repo "$GH_REPO" --ref "$BASE" ||
+                echo "::warning::Cleanup dispatch unavailable; preserve branch for retry"
+            else
+              echo "PR $pr remains open; GitHub merge rules not satisfied"
+            fi
           done
