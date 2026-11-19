@@ -67,14 +67,32 @@ internal sealed class LocalAgentEngine
                 "agent_recover" => Recover(request),
                 "agent_memory_put" => Remember(request),
                 "agent_memory_list" => Recall(request),
-                "agent_tools" => new {ok=true,toolNames=new[]{"write_note","read_note","list_notes","system_info","browser_open","windows_open_notepad"},browserLimitations="Navigation only, not site interaction or content extraction",windowsLimitations="Only an explicitly reviewed Notepad launch, not general desktop control"},
+                "agent_tools" => new {
+                    ok=true,
+                    toolNames=new[]{"write_note","read_note","list_notes","system_info","browser_open","windows_open_notepad"},
+                    catalogVersion="ao.local.tools.v1",
+                    mcpEnabled=false,
+                    remoteToolExecutionEnabled=false,
+                    // This contract is descriptive. It never grants permission on its own;
+                    // the server-side approved plan and native allowlist remain authoritative.
+                    toolDescriptors=new[] {
+                        new {id="write_note",version=1,riskClass="reversible_write",requiresOwnerApproval=true,permissionScope="company_order",execution="native_allowlist",safeBatch=true},
+                        new {id="read_note",version=1,riskClass="read_only",requiresOwnerApproval=true,permissionScope="company_order",execution="native_allowlist",safeBatch=true},
+                        new {id="list_notes",version=1,riskClass="read_only",requiresOwnerApproval=true,permissionScope="company_order",execution="native_allowlist",safeBatch=true},
+                        new {id="system_info",version=1,riskClass="read_only",requiresOwnerApproval=true,permissionScope="local_system_summary",execution="native_allowlist",safeBatch=true},
+                        new {id="browser_open",version=1,riskClass="consequential_external",requiresOwnerApproval=true,permissionScope="approved_https_host",execution="browser_navigation_only",safeBatch=false},
+                        new {id="windows_open_notepad",version=1,riskClass="consequential_external",requiresOwnerApproval=true,permissionScope="explicit_notepad_launch",execution="native_allowlist",safeBatch=false}
+                    },
+                    browserLimitations="Navigation only, not site interaction or content extraction",
+                    windowsLimitations="Only an explicitly reviewed Notepad launch, not general desktop control"
+                },
                 _ => new {ok=false,error="unsupported_command"}
             };
         }
         catch (ArgumentException ex) {return new {ok=false,error="invalid_input",detail=ex.Message};}
         catch (InvalidOperationException ex) {return new {ok=false,error="invalid_state",detail=ex.Message};}
         catch (HttpRequestException) {return new {ok=false,error="ollama_unavailable",detail="Install/run Ollama on 127.0.0.1:11434 and pull the selected model"};}
-        catch (TaskCanceledException) {return new {ok=false,error="ollama_timeout"};}
+        catch (OperationCanceledException) {return new {ok=false,error="ollama_timeout"};}
         catch (JsonException) {return new {ok=false,error="model_invalid_json"};}
         catch (SqliteException) {return new {ok=false,error="local_queue_error"};}
         catch (IOException) {return new {ok=false,error="local_file_error"};}
@@ -160,9 +178,17 @@ internal sealed class LocalAgentEngine
         if(job.Status!="awaiting_approval") throw new InvalidOperationException("Only a reviewed proposal may be approved");
         if(!Flag(request,"approved")) throw new ArgumentException("Approval requires explicit owner action");
         using var db=Open();
-        Exec(db,"UPDATE agent_jobs SET status='queued',updated_utc=$utc WHERE id=$id AND status='awaiting_approval'",
-             ("$id",job.Id),("$utc",Now()));
-        Event(db,job.Id,-1,"owner_approved","Reviewed plan, tools, and approved sites");
+        Exec(db,"BEGIN IMMEDIATE;");
+        try
+        {
+            int approved=Exec(db,"UPDATE agent_jobs SET status='queued',updated_utc=$utc WHERE id=$id AND status='awaiting_approval' AND plan_json=$plan AND approved_hosts=$hosts",
+                ("$id",job.Id),("$utc",Now()),("$plan",JsonSerializer.Serialize(job.Plan,Options)),
+                ("$hosts",string.Join(",",job.Hosts)));
+            if(approved!=1)throw new InvalidOperationException("Plan changed or already approved");
+            Event(db,job.Id,-1,"owner_approved",ApprovalFingerprint(job));
+            Exec(db,"COMMIT;");
+        }
+        catch {Exec(db,"ROLLBACK;");throw;}
         return new{ok=true,status="queued",jobId=job.Id};
     }
     internal object RunNext(JsonElement request)
@@ -170,6 +196,7 @@ internal sealed class LocalAgentEngine
         var job=Find(request);
         if(job.Status!="queued") throw new InvalidOperationException("Job is not queued; recover blocked work manually");
         if(job.StepIndex>=job.Plan.Steps.Count) throw new InvalidOperationException("No steps remain");
+        ValidatePlan(job.Plan,job.Hosts);
         var step=job.Plan.Steps[job.StepIndex];
         string token=Guid.NewGuid().ToString("N");
         using(var db=Open())
@@ -177,14 +204,17 @@ internal sealed class LocalAgentEngine
             Exec(db,"BEGIN IMMEDIATE;");
             try
             {
-                var count=Exec(db,"UPDATE agent_jobs SET status='running',step_token=$token,updated_utc=$utc WHERE id=$id AND status='queued' AND step_index=$idx",
-                    ("$id",job.Id),("$idx",job.StepIndex),("$token",token),("$utc",Now()));
+                RequireApprovedPlan(db,job);
+                var count=Exec(db,"UPDATE agent_jobs SET status='running',step_token=$token,updated_utc=$utc WHERE id=$id AND status='queued' AND step_index=$idx AND plan_json=$plan AND approved_hosts=$hosts",
+                    ("$id",job.Id),("$idx",job.StepIndex),("$token",token),("$utc",Now()),
+                    ("$plan",JsonSerializer.Serialize(job.Plan,Options)),("$hosts",string.Join(",",job.Hosts)));
                 if(count!=1)throw new InvalidOperationException("Concurrent execution blocked");
                 Event(db,job.Id,job.StepIndex,"step_started",JsonSerializer.Serialize(step,Options));
                 Exec(db,"COMMIT;");
             }
             catch {Exec(db,"ROLLBACK;");throw;}
         }
+        job=job with {StepToken=token};
         if(step.Tool=="browser_open")
         {
             string url=RequireApprovedUrl(step.Input,job.Hosts);
@@ -201,8 +231,8 @@ internal sealed class LocalAgentEngine
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
         {
             using var db=Open();
-            Exec(db,"UPDATE agent_jobs SET status='blocked',updated_utc=$utc WHERE id=$id",
-                ("$id",job.Id),("$utc",Now()));
+            Exec(db,"UPDATE agent_jobs SET status='blocked',updated_utc=$utc WHERE id=$id AND status='running' AND step_token=$token",
+                ("$id",job.Id),("$utc",Now()),("$token",job.StepToken));
             Event(db,job.Id,job.StepIndex,"step_blocked",ex.GetType().Name);
             return new{ok=false,error="step_blocked",reason=ex.GetType().Name};
         }
@@ -238,6 +268,7 @@ internal sealed class LocalAgentEngine
         var step=job.Plan.Steps[job.StepIndex];
         if(step.Tool!="browser_open"||!FixedEqual(job.StepToken,Text(request,"token")))
             throw new ArgumentException("Invalid browser completion token");
+        using(var approvalDb=Open()) RequireApprovedPlan(approvalDb,job);
         string expected=RequireApprovedUrl(step.Input,job.Hosts);
         string observed=RequireApprovedUrl(Text(request,"url"),job.Hosts);
         if(!string.Equals(expected,observed,StringComparison.Ordinal))
@@ -396,8 +427,9 @@ internal sealed class LocalAgentEngine
     {
         int next=job.StepIndex+1;
         string status=next>=job.Plan.Steps.Count?"completed_pending_review":"queued";
-        Exec(db,"UPDATE agent_jobs SET status=$status,step_index=$idx,step_token=NULL,updated_utc=$utc WHERE id=$id AND status='running' AND step_index=$previous",
-            ("$status",status),("$idx",next),("$utc",Now()),("$id",job.Id),("$previous",job.StepIndex));
+        int changed=Exec(db,"UPDATE agent_jobs SET status=$status,step_index=$idx,step_token=NULL,updated_utc=$utc WHERE id=$id AND status='running' AND step_index=$previous AND step_token=$token",
+            ("$status",status),("$idx",next),("$utc",Now()),("$id",job.Id),("$previous",job.StepIndex),("$token",job.StepToken));
+        if(changed!=1)throw new InvalidOperationException("Stale or replayed step completion");
         Event(db,job.Id,job.StepIndex,eventType,evidence);
     }
     private AgentPlan GeneratePlan(string instruction,string model)
@@ -411,22 +443,98 @@ internal sealed class LocalAgentEngine
         Avoid suggesting unavailable actions. Do not claim real-world tasks or research completed.
         Browser actions and application launches require the owner to review and approve the entire plan.";
         using var payload=JsonDocument.Parse(Ask(model,system,instruction));
+        ValidatePlanJson(payload.RootElement);
         var plan=JsonSerializer.Deserialize<AgentPlan>(payload.RootElement.GetRawText(),Options)
             ?? throw new JsonException("Missing plan");
         return plan;
     }
+    internal const int MaxModelResponseBytes = 512 * 1024;
     private static string Ask(string model,string system,string user)
     {
-        using var http = new HttpClient(new HttpClientHandler {UseProxy=false}) {Timeout=TimeSpan.FromSeconds(65)};
+        // Local model traffic must never inherit a proxy or follow a redirect off loopback.
+        using var http = new HttpClient(new HttpClientHandler {
+            UseProxy=false, AllowAutoRedirect=false
+        }) {Timeout=Timeout.InfiniteTimeSpan};
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(65));
         var payload=new{model,stream=false,format="json",messages=new[]{
             new{role="system",content=system},new{role="user",content=user}}};
-        using var body=new StringContent(JsonSerializer.Serialize(payload),Encoding.UTF8,"application/json");
-        using var res=http.PostAsync("http://127.0.0.1:11434/api/chat",body).GetAwaiter().GetResult();
-        res.EnsureSuccessStatusCode();
-        using var response=JsonDocument.Parse(res.Content.ReadAsStringAsync().GetAwaiter().GetResult());
-        return response.RootElement.GetProperty("message").GetProperty("content").GetString()
-           ?? throw new JsonException("Empty local model output");
+        using var request=new HttpRequestMessage(HttpMethod.Post,"http://127.0.0.1:11434/api/chat");
+        request.Content=new StringContent(JsonSerializer.Serialize(payload),Encoding.UTF8,"application/json");
+        using var res=http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,deadline.Token)
+            .GetAwaiter().GetResult();
+        return ReadLocalModelReply(res,deadline.Token);
     }
+
+    // Shared bounded decoder; tests use synthetic HTTP responses, never claim real inference.
+    internal static string ReadLocalModelReply(HttpResponseMessage response,CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        response.EnsureSuccessStatusCode();
+        if(response.Content.Headers.ContentLength is long length && length>MaxModelResponseBytes)
+            throw new HttpRequestException("Local model response exceeds 512 KiB");
+        using var stream=response.Content.ReadAsStreamAsync(cancellation).GetAwaiter().GetResult();
+        using var bytes=new MemoryStream();
+        var buffer=new byte[8192];
+        while(true)
+        {
+            // Read at most one excess byte to detect unknown-length/chunked overflow.
+            int remaining=MaxModelResponseBytes+1-checked((int)bytes.Length);
+            int count=stream.ReadAsync(buffer.AsMemory(0,Math.Min(buffer.Length,remaining)),cancellation)
+                .AsTask().GetAwaiter().GetResult();
+            if(count==0)break;
+            if(bytes.Length+count>MaxModelResponseBytes)
+                throw new HttpRequestException("Local model response exceeds 512 KiB");
+            bytes.Write(buffer,0,count);
+        }
+        cancellation.ThrowIfCancellationRequested();
+        using var parsed=JsonDocument.Parse(bytes.ToArray());
+        var root=parsed.RootElement;
+        if(root.ValueKind!=JsonValueKind.Object ||
+           !root.TryGetProperty("message",out var message) || message.ValueKind!=JsonValueKind.Object ||
+           !message.TryGetProperty("content",out var content) || content.ValueKind!=JsonValueKind.String ||
+           string.IsNullOrWhiteSpace(content.GetString()))
+            throw new JsonException("Invalid or empty local model output");
+        return content.GetString()!;
+    }
+
+    // Enforce the same closed schema for model output and persisted plans.
+    internal static void ValidatePlanJson(JsonElement plan)
+    {
+        RequireFields(plan,new[]{"summary","steps"});
+        if(plan.GetProperty("summary").ValueKind!=JsonValueKind.String ||
+           plan.GetProperty("steps").ValueKind!=JsonValueKind.Array)
+            throw new ArgumentException("Invalid plan schema");
+        foreach(var step in plan.GetProperty("steps").EnumerateArray())
+        {
+            RequireFields(step,new[]{"title","agentId","tool","input","expectedOutput"});
+            foreach(var property in step.EnumerateObject())
+                if(property.Value.ValueKind!=JsonValueKind.String)
+                    throw new ArgumentException("Plan fields must be strings");
+        }
+    }
+    private static void RequireFields(JsonElement value,string[] fields)
+    {
+        if(value.ValueKind!=JsonValueKind.Object)throw new ArgumentException("Expected plan object");
+        var seen=new HashSet<string>(StringComparer.Ordinal);
+        foreach(var property in value.EnumerateObject())
+            if(!fields.Contains(property.Name,StringComparer.Ordinal)||!seen.Add(property.Name))
+                throw new ArgumentException("Unknown or duplicate plan field");
+        if(seen.Count!=fields.Length)throw new ArgumentException("Missing plan field");
+    }
+    private static string ApprovalFingerprint(Job job) =>
+        "plan-v1:"+Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
+            new {job.Id,job.Company,job.Order,job.Plan,job.Hosts},Options)));
+
+    private static void RequireApprovedPlan(SqliteConnection db,Job job)
+    {
+        using var cmd=Command(db,
+            "SELECT evidence FROM agent_events WHERE job_id=$id AND event_type='owner_approved' ORDER BY id DESC LIMIT 1",
+            ("$id",job.Id));
+        string evidence=cmd.ExecuteScalar() as string ?? "";
+        if(!string.Equals(evidence,ApprovalFingerprint(job),StringComparison.Ordinal))
+            throw new InvalidOperationException("Plan or scope changed; create and approve a fresh plan");
+    }
+
     private void ValidatePlan(AgentPlan plan,string[] approved)
     {
         if(plan.Summary.Length is < 4 or > 600||plan.Steps.Count is < 1 or > MaxSteps)
@@ -466,6 +574,8 @@ internal sealed class LocalAgentEngine
          ("$id",id),("$company",company));
         using var rd=cmd.ExecuteReader();
         if(!rd.Read())throw new ArgumentException("Unknown job in company workspace");
+        using var storedPlan=JsonDocument.Parse(rd.GetString(7));
+        ValidatePlanJson(storedPlan.RootElement);
         var plan=JsonSerializer.Deserialize<AgentPlan>(rd.GetString(7),Options)
             ?? throw new JsonException("Stored plan invalid");
         return new Job(rd.GetString(0),rd.GetString(1),rd.GetString(2),rd.GetString(3),rd.GetString(4),

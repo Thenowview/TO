@@ -649,10 +649,60 @@ async function refreshAgentJobs(preferred=null) {
   await showAgentJob();
 }
 
+function validatedAoCatalog(policy) {
+  const expected = {
+    write_note: ["reversible_write", "company_order", "native_allowlist", true],
+    read_note: ["read_only", "company_order", "native_allowlist", true],
+    list_notes: ["read_only", "company_order", "native_allowlist", true],
+    system_info: ["read_only", "local_system_summary", "native_allowlist", true],
+    browser_open: ["consequential_external", "approved_https_host", "browser_navigation_only", false],
+    windows_open_notepad: ["consequential_external", "explicit_notepad_launch", "native_allowlist", false]
+  };
+  if (!policy || policy.catalogVersion !== "ao.local.tools.v1" ||
+      policy.mcpEnabled !== false || policy.remoteToolExecutionEnabled !== false ||
+      !Array.isArray(policy.toolDescriptors) || policy.toolDescriptors.length !== 6 ||
+      !Array.isArray(policy.toolNames) || policy.toolNames.length !== 6 ||
+      new Set(policy.toolNames).size !== 6 ||
+      policy.toolNames.some(id => !Object.hasOwn(expected, id))) return null;
+  const byId = new Map();
+  const fields = ["id", "version", "riskClass", "requiresOwnerApproval", "permissionScope", "execution", "safeBatch"];
+  for (const t of policy.toolDescriptors) {
+    if (!t || typeof t !== "object" || Array.isArray(t) ||
+        Object.keys(t).length !== fields.length ||
+        fields.some(key => !Object.hasOwn(t, key)) ||
+        !Object.hasOwn(expected, t.id) || byId.has(t.id)) return null;
+    const [risk, scope, execution, batch] = expected[t.id];
+    if (t.version !== 1 || t.requiresOwnerApproval !== true ||
+        t.riskClass !== risk || t.permissionScope !== scope ||
+        t.execution !== execution || t.safeBatch !== batch) return null;
+    byId.set(t.id, Object.freeze({...t}));
+  }
+  // The advertised tool-name list must match the independently validated descriptors.
+  // A mismatched list is a malformed native contract, even when both lists have six entries.
+  if (policy.toolNames.some(id => !byId.has(id))) return null;
+  return byId;
+}
+
 async function showAgentJob() {
   const o=selectedOrder(),jobId=app.agentJobId;
   if(!o||!jobId)return;
   const r=await rpc("agent_get",{taskId:o.taskId,jobId});
+  // Display-only risk disclosure. The native host, not the extension, owns authorization.
+  let aoToolRisk="AO tool-risk catalog not available on this native host; review every tool manually.";
+  try {
+    const policy=await rpc("agent_tools",{taskId:o.taskId});
+    const byId=validatedAoCatalog(policy);
+    if(byId){
+      aoToolRisk=(r.plan?.steps||[]).map(step=>{
+        const t=byId.get(step.tool);
+        return t && t.requiresOwnerApproval===true
+          ? step.tool+": "+t.riskClass+" / "+t.permissionScope+
+            " / owner approval required"+(t.safeBatch?" / local batch eligible":" / separate action")
+          : step.tool+": UNKNOWN OR UNAPPROVED TOOL; do not execute";
+      }).join("\\n") || "No plan steps";
+      aoToolRisk+="\\nMCP remote execution: DISABLED";
+    }
+  } catch { /* Older preview hosts lack AO descriptors; never infer permission. */ }
   const details=[
     "LOCAL AGENT PREVIEW — NOT PRODUCTION",
     "Job: "+r.jobId+" | "+r.mode+" | "+r.status+" | next step "+(r.stepIndex+1),
@@ -660,6 +710,7 @@ async function showAgentJob() {
     "Approved sites: "+(r.approvedHosts||[]).join(", "),
     "OWNER INSTRUCTION:\n"+r.instruction,
     "REVIEW ALL PLAN TOOLS BEFORE APPROVAL:\n"+JSON.stringify(r.plan,null,2),
+    "AO NATIVE TOOL RISK (informational, not an authorization):\n"+aoToolRisk,
     "QA RESULT:\n"+(r.qaJson||"Not performed"),
     "RECENT EXECUTION EVENTS:\n"+(r.events||[]).slice(-10)
       .map(e=>e.createdUtc+" | "+e.eventType+" | "+e.evidence).join("\n")

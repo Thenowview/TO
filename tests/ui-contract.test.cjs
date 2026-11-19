@@ -63,3 +63,54 @@ test("Chrome supervisor exposes GIZE AI as the product label without changing co
  assert.doesNotMatch(html,/<strong>TheOrg<\/strong>|<title>TheOrg/);
  assert.match(ui,/theorgTransfer:/); // persisted legacy key retained
 });
+
+test("AO tool-risk display is sourced from disabled-MCP native catalog and remains inert text",()=>{
+ assert.match(ui,/rpc\("agent_tools",\{taskId:o\.taskId\}\)/);
+ assert.match(ui,/catalogVersion !== "ao\.local\.tools\.v1"/);
+ assert.match(ui,/policy\.mcpEnabled !== false/);
+ assert.match(ui,/policy\.remoteToolExecutionEnabled !== false/);
+ assert.match(ui,/t\.requiresOwnerApproval !== true/);
+ assert.match(ui,/AO NATIVE TOOL RISK \(informational, not an authorization\)/);
+ assert.match(ui,/UNKNOWN OR UNAPPROVED TOOL; do not execute/);
+ assert.match(ui,/\$\("agentDetails"\)\.textContent=details\.join/);
+ assert.doesNotMatch(ui,/\$\("agentDetails"\)\.innerHTML/);
+});
+
+test("AO catalog rejects duplicate, malformed, unauthorized and expanded descriptors",()=>{
+ const vm=require("node:vm");
+ const source=ui.slice(ui.indexOf("function validatedAoCatalog("),ui.indexOf("async function showAgentJob("));
+ const validate=vm.runInNewContext(source+";validatedAoCatalog");
+ const rows=[
+ ["write_note","reversible_write","company_order","native_allowlist",true],
+ ["read_note","read_only","company_order","native_allowlist",true],
+ ["list_notes","read_only","company_order","native_allowlist",true],
+ ["system_info","read_only","local_system_summary","native_allowlist",true],
+ ["browser_open","consequential_external","approved_https_host","browser_navigation_only",false],
+ ["windows_open_notepad","consequential_external","explicit_notepad_launch","native_allowlist",false]];
+ const valid=()=>({catalogVersion:"ao.local.tools.v1",mcpEnabled:false,remoteToolExecutionEnabled:false,
+ toolNames:rows.map(r=>r[0]),toolDescriptors:rows.map(([id,riskClass,permissionScope,execution,safeBatch])=>
+ ({id,version:1,riskClass,requiresOwnerApproval:true,permissionScope,execution,safeBatch}))});
+ assert.equal(validate(valid()).size,6);
+ for(const mutate of [
+ p=>p.toolDescriptors[1]=p.toolDescriptors[0],
+ p=>p.toolDescriptors[0]=null,
+ p=>p.toolDescriptors[0].id="shell",
+ p=>p.toolDescriptors[0].permissionScope="*",
+ p=>p.toolDescriptors[0].requiresOwnerApproval=false,
+ p=>p.toolDescriptors[0].version="1",
+ p=>p.toolDescriptors[0].riskClass="read_only",
+ p=>p.toolDescriptors[0].execution="shell",
+ p=>p.toolDescriptors[4].safeBatch=true,
+ p=>p.toolDescriptors[0].command="cmd.exe",
+ p=>delete p.toolDescriptors[0].version,
+ p=>p.toolNames[1]=p.toolNames[0],
+ p=>p.toolDescriptors[0].id="read_note", // duplicates an existing descriptor
+ p=>p.toolNames[0]="__proto__", // inherited property must never count as a tool
+ p=>p.toolDescriptors[0].id="__proto__", // inherited property must never count as a descriptor
+ p=>p.toolDescriptors.pop(),
+ p=>p.mcpEnabled=true,
+ p=>p.remoteToolExecutionEnabled=true,
+ p=>p.catalogVersion="unknown"
+ ]) {const p=valid();mutate(p);assert.equal(validate(p),null);}
+ for(const p of [null,{},[],{toolDescriptors:"bad"}]) assert.equal(validate(p),null);
+});

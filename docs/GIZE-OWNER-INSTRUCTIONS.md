@@ -20,6 +20,7 @@ The responding expert must:
 | Change ID | UTC timestamp | Owner instruction | Related requirement IDs | Status | Evidence/issue URL |
 |---|---|---|---|---|---|
 | CHANGE-20261118-1 | 2026-11-18 | Maintain exact source-backed checklist and update after every completed/reclassified task; allow owner amendments via chat/issue | ALL | ACTIVE | https://github.com/faisalwrokksa-hub/TO/issues/71 |
+| CHANGE-20261118-3 | 2026-11-18 | Continue all remaining GIZE OT tasks in bulk, complete AO Chrome/Windows integration, run all tests, auto-merge only after required checks and reviews pass, update the checklist, and report blockers. | PC-01–10, TASK-01–10, WIN-01–09, OPS-06, AO-OT-01–08 (separate pattern register) | PARTIAL / ROUTINE REVIEW OPTIONAL; CUSTOMER RELEASE BLOCKED | https://github.com/faisalwrokksa-hub/TO/pull/82 · https://github.com/faisalwrokksa-hub/TO/issues/71 |
 | CHANGE-20261118-2 | 2026-11-18 | Non-disruptive GIZE × THEEPMO owner amendment; preserve 150 IDs, reviewable expert ownership and release gates | OWN-01; EVD-01–EVD-04; AUD-01–AUD-09; encryption, interoperability, Windows, localization and REL-01–REL-14 source IDs in the 78-ID register | RECORDED; acceptance unverified | https://github.com/faisalwrokksa-hub/TO/issues/71#issuecomment-6988321232 |
 
 ## Amendment acceptance detail — CHANGE-20261118-2
@@ -30,3 +31,8 @@ This records an owner instruction, **not** software implementation, review appro
 
 ## Do not confuse instruction with execution
 This Markdown is a persistent protocol. The check is run only when invoked by a GitHub-capable chat/agent or a separately configured and verified automation. A static MD cannot itself autonomously read tests, approve PRs, or deploy.
+
+
+## CHANGE-20261119-BULK-NATIVE
+
+Owner: "fix in bulk, auto approval = 1". Execute reversible OT fixes in the existing PR #82, including PC-05/PC-07 native plan schema, approval binding and completion replay protection. Routine implementation authorized; required GitHub checks/reviews and customer release gates remain. See PR #82 and issue #71 for exact candidate SHA/CI; no independent acceptance inferred.
