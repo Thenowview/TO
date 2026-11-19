@@ -116,9 +116,13 @@ internal sealed class Controller
         if (request.ValueKind != JsonValueKind.Object)
             return Fail("invalid_request");
 
-        string command = Text(request, "command");
         try
         {
+            RequireUnambiguousJson(request);
+            if (!request.TryGetProperty("command", out var commandValue) ||
+                commandValue.ValueKind != JsonValueKind.String)
+                return Fail("invalid_request");
+            string command = commandValue.GetString() ?? "";
             return command switch
             {
                 "ping" => new
@@ -182,6 +186,22 @@ internal sealed class Controller
         catch (IOException) { return Fail("storage_error"); }
         catch (UnauthorizedAccessException) { return Fail("access_denied"); }
         catch (JsonException) { return Fail("invalid_stored_record"); }
+    }
+
+
+    private static void RequireUnambiguousJson(JsonElement value)
+    {
+        if(value.ValueKind==JsonValueKind.Object)
+        {
+            var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var property in value.EnumerateObject())
+            {
+                if(!names.Add(property.Name))throw new ArgumentException("Duplicate JSON property");
+                RequireUnambiguousJson(property.Value);
+            }
+        }
+        else if(value.ValueKind==JsonValueKind.Array)
+            foreach(var item in value.EnumerateArray())RequireUnambiguousJson(item);
     }
 
     private object ImportArtifact(JsonElement request)
@@ -456,6 +476,18 @@ internal static class SelfTest
             var c = new Controller(root);
             var pong = Call(c, new { command = "ping" });
             Check(pong.GetProperty("ok").GetBoolean(), "ping");
+
+
+            foreach(string raw in new[]{
+                "{\"command\":\"ping\",\"command\":\"agent_run_next\"}",
+                "{\"command\":\"ping\",\"COMMAND\":\"agent_run_next\"}",
+                "{\"command\":\"ping\",\"scope\":{\"companyId\":\"demo\",\"companyId\":\"other\"}}",
+                "{\"command\":null}", "{\"command\":3}"})
+            {
+                using var ambiguous=JsonDocument.Parse(raw);
+                var denied=JsonSerializer.SerializeToElement(c.Execute(ambiguous.RootElement));
+                Check(!denied.GetProperty("ok").GetBoolean(),"ambiguous or non-string native command rejected");
+            }
 
             var capabilities = Call(c, new { command = "capabilities" });
             Check(!capabilities.GetProperty("liveAiProvider").GetBoolean(), "capability honesty");
@@ -773,6 +805,37 @@ internal static class SelfTest
             Check(!noApproval.GetProperty("ok").GetBoolean(),"agent approval is explicit");
             var approvedJob=Call(c,new {command="agent_approve",companyId="demo",jobId,approved=true});
             Check(approvedJob.GetProperty("ok").GetBoolean(),"agent plan approval");
+
+            // Approval binds exact plan and host scope across fresh native processes.
+            var boundPlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
+                instruction="Write a bounded synthetic approval binding note.",mode="demo",model="qwen3:4b",approvedHosts=""});
+            string boundId=boundPlan.GetProperty("jobId").GetString()!;
+            Call(c,new {command="agent_approve",companyId="demo",jobId=boundId,approved=true});
+            string originalPlan=boundPlan.GetProperty("plan").GetRawText();
+            foreach(string changedPlan in new[]{
+                originalPlan.Replace("Demo request:","Changed request:"),
+                originalPlan.Replace("write_note","shell"),
+                originalPlan.Replace("\"summary\":","\"permissions\":[\"*\"],\"summary\":"),
+                originalPlan.Replace("\"summary\":","\"summary\":\"duplicate\",\"summary\":"),
+                originalPlan.Replace("\"tool\":\"write_note\"","\"tool\":null"),
+                originalPlan.Replace("\"tool\":\"write_note\"","\"tool\":123"),
+                originalPlan.Replace("\"tool\":\"write_note\"","\"tool\":\"write_note\",\"command\":\"cmd.exe\"")})
+            {
+                Check(changedPlan!=originalPlan,"negative fixture changed plan");
+                SetJobField(root,boundId,"plan_json",changedPlan);
+                var denied=Call(new Controller(root),new {command="agent_run_next",companyId="demo",jobId=boundId});
+                Check(!denied.GetProperty("ok").GetBoolean(),"changed, unsupported or malformed native plan rejected");
+            }
+            SetJobField(root,boundId,"plan_json",originalPlan);
+            SetJobField(root,boundId,"approved_hosts","example.com");
+            Check(!Call(c,new {command="agent_run_safe_batch",companyId="demo",jobId=boundId})
+                .GetProperty("ok").GetBoolean(),"expanded native host scope requires fresh approval");
+            SetJobField(root,boundId,"approved_hosts","");
+            var boundOutput=Path.Combine(folder,"agent_outputs","agent-"+boundId+"-01.md");
+            Check(!File.Exists(boundOutput),"denied plans have no file side effect");
+            Check(Call(new Controller(root),new {command="agent_run_next",companyId="demo",jobId=boundId})
+                .GetProperty("ok").GetBoolean(),"exact approved plan survives process restart");
+
             var step1=Call(c,new {command="agent_run_next",companyId="demo",jobId});
             Check(step1.GetProperty("ok").GetBoolean(),"agent executes local file tool");
             var outInfo=step1.GetProperty("result");
@@ -842,6 +905,11 @@ internal static class SelfTest
             Check(receipt.GetProperty("ok").GetBoolean()&&
                 !receipt.GetProperty("verifiedPageContents").GetBoolean(),
                 "navigation evidence never claims page contents verified");
+
+            var replayedReceipt=Call(new Controller(root),new {command="agent_complete_browser",companyId="demo",
+                jobId=browserJob,token=navToken,url="https://example.com/",tabId=123});
+            Check(!replayedReceipt.GetProperty("ok").GetBoolean(),"completed browser receipt cannot replay");
+
             var browserQa=Call(c,new {command="agent_review",companyId="demo",jobId=browserJob});
             Check(browserQa.GetProperty("qa").GetProperty("browserOutcomeUnknown").GetBoolean(),
                 "browser navigation is not accepted as content QA");
@@ -879,6 +947,21 @@ internal static class SelfTest
         {
             try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
         }
+    }
+
+
+    private static void SetJobField(string root,string jobId,string column,string value)
+    {
+        if(column is not ("plan_json" or "approved_hosts"))throw new ArgumentException("Invalid fixture column");
+        using var db=new Microsoft.Data.Sqlite.SqliteConnection(
+            new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder{
+                DataSource=Path.Combine(root,"agent-jobs.sqlite")}.ToString());
+        db.Open();
+        using var cmd=db.CreateCommand();
+        cmd.CommandText="UPDATE agent_jobs SET "+column+"=$value WHERE id=$id";
+        cmd.Parameters.AddWithValue("$value",value);
+        cmd.Parameters.AddWithValue("$id",jobId);
+        Check(cmd.ExecuteNonQuery()==1,"native negative fixture updated exactly one job");
     }
 
     private static JsonElement Call(Controller controller, object req)

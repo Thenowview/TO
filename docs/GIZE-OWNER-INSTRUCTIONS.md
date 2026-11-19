@@ -31,3 +31,8 @@ This records an owner instruction, **not** software implementation, review appro
 
 ## Do not confuse instruction with execution
 This Markdown is a persistent protocol. The check is run only when invoked by a GitHub-capable chat/agent or a separately configured and verified automation. A static MD cannot itself autonomously read tests, approve PRs, or deploy.
+
+
+## CHANGE-20261119-BULK-NATIVE
+
+Owner: "fix in bulk, auto approval = 1". Execute reversible OT fixes in the existing PR #82, including PC-05/PC-07 native plan schema, approval binding and completion replay protection. Routine implementation authorized; required GitHub checks/reviews and customer release gates remain. See PR #82 and issue #71 for exact candidate SHA/CI; no independent acceptance inferred.

@@ -43,3 +43,8 @@ No blanket PASS, production readiness, deployment, arbitrary tool access, or AI-
 ## Integration reconciliation — 2026-11-19
 
 OT PRs [#73](https://github.com/faisalwrokksa-hub/TO/pull/73), [#75](https://github.com/faisalwrokksa-hub/TO/pull/75), [#79](https://github.com/faisalwrokksa-hub/TO/pull/79), [#80](https://github.com/faisalwrokksa-hub/TO/pull/80) and [#81](https://github.com/faisalwrokksa-hub/TO/pull/81) have merged to main with CI evidence. Earlier notes are dated snapshots. PR #82 adds catalog and UI *descriptions*, not permission grants. Re-run exact-commit bridge/Windows and Chromium CI after reconciliation. Leave AO MCP/remote execution disabled and production gate NO_GO until security and hardware acceptance are demonstrated.
+
+
+## Native enforcement candidate — 2026-11-19
+
+PR #82 now also binds approval to an exact plan and host scope, rejects malformed/expanded persisted or model plan schemas and ambiguous native JSON, and verifies live completion tokens/state. Native self-tests exercise denial without file side effects, restored authorized plan execution across processes and replay rejection. This is pending compiled CI and independent review. Older queued preview jobs need fresh creation/approval; no automatic approval migration. This does not defend against an attacker controlling both SQLite state and its approval evidence. Real extension identity, OS key custody, signed installers and customer acceptance remain open. No MCP enabled.
