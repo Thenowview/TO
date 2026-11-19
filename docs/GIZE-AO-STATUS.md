@@ -62,3 +62,8 @@ PR #82 now also binds approval to an exact plan and host scope, rejects malforme
 ## Cancelled-job recovery — 2026-11-19
 
 The cancelled final-feature-head workflow jobs were explicitly restarted without altering test definitions or approval controls: Offline Chromium Browser run [44494349638](https://github.com/faisalwrokksa-hub/TO/actions/runs/44494349638), job `135457666307`; Single EXE Existing Chrome run [44494349443](https://github.com/faisalwrokksa-hub/TO/actions/runs/44494349443), job `135457670036`. GitHub accepted both rerun requests. At the latest observation the new jobs (`135475408163`, `135475430759`) were **in_progress**, with no final verdict. This is a recovery action, not a PASS or production release authorization. Do not bypass independent review or device acceptance.
+
+
+## CI rerun final result — 2026-11-19
+
+Both previously cancelled jobs on feature commit `322bd63892b42d20f825257e95f2250f4a896b56` completed successfully after authorized reruns: [Offline Chromium Browser run 44494349638](https://github.com/faisalwrokksa-hub/TO/actions/runs/44494349638), job `135475408163` **SUCCESS**; [Single EXE Existing Chrome run 44494349443](https://github.com/faisalwrokksa-hub/TO/actions/runs/44494349443), job `135475430759` **SUCCESS**. Earlier Chrome/Windows Bridge and Portable Existing Chrome checks on that commit also succeeded. This resolves the cancelled-job CI evidence gap for that commit only; integrated-main exact-head acceptance, independent security review, Windows GUI/native-origin validation, signing, rights and key custody remain open. Release remains **NO_GO**.
