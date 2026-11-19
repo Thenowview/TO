@@ -31,12 +31,12 @@ Provision issuer Ed25519 and recipient RSA-3072+ keys outside the repository, us
 Example command pattern (replace placeholders with operator-controlled local paths):
 
 \`\`\`sh
-node gaiz/cli.mjs export --confirm-local-export --report report.json --issuer-private ./issuer-private.pem --issuer orgaiz-test --tenant synthetic-a --artifact-id demo-1 --recipient-id reviewer-1 --recipient-public ./reviewer-public.pem --output ./report.gaiz
-node gaiz/cli.mjs verify --input ./report.gaiz --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem
-node gaiz/cli.mjs open --confirm-local-open --input ./report.gaiz --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem --recipient-id reviewer-1 --recipient-private ./reviewer-private.pem --output ./opened-report.json
+node gaiz/cli.mjs export --confirm-local-export --report report.json --issuer-private ./issuer-private.pem --issuer orgaiz-test --tenant synthetic-a --artifact-id demo-1 --recipient-id reviewer-1 --recipient-public ./reviewer-public.pem --output ./report.gize
+node gaiz/cli.mjs verify --input ./report.gize --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem
+node gaiz/cli.mjs open --confirm-local-open --input ./report.gize --issuer orgaiz-test --tenant synthetic-a --trusted-issuer-public ./issuer-public.pem --recipient-id reviewer-1 --recipient-private ./reviewer-private.pem --output ./opened-report.json
 \`\`\`
 
-These commands do **not** transmit data to TEBE. The recipient must be trusted through a separately authenticated policy and must satisfy real-world data/tenant authorization.
+New local exports default to a sanitized `gize-<artifact-id>.gize` filename when `--output` is omitted; legacy `.gaiz` exports require explicit `--allow-legacy-extension` opt-in; existing legacy imports remain supported. Both extensions carry the same versioned wire bytes and are parsed by content, not trusted by filename. Existing files are never overwritten by the CLI (`wx`).\n\nThese commands do **not** transmit data to TEBE. The recipient must be trusted through a separately authenticated policy and must satisfy real-world data/tenant authorization.
 
 ## JSON report schema v1 (application-defined synthetic example)
 
@@ -98,3 +98,15 @@ and merge queuing can run after required CI success. It must not
 auto-approve a high-risk cryptographic protocol change, human import
 decision, KMS release, or production release. Keep this branch in
 draft until a separate reviewer signs off.
+
+## Canonical .gize filenames (OT development branch)
+
+For **new encrypted CLI exports**, use lowercase `.gize`. When `--output` is omitted, the CLI generates `gize-<sanitized-artifact-id>.gize` without overwriting existing files. The export command now rejects other output suffixes before loading report data or key files. A legacy `.gaiz` export remains possible only with an explicit `--allow-legacy-extension` flag for controlled compatibility testing.
+
+```sh
+node gaiz/cli.mjs export --confirm-local-export --report report.json --issuer-private ./issuer-private.pem --issuer orgaiz-test --tenant synthetic-a --artifact-id demo-1 --recipient-id reviewer-1 --recipient-public ./reviewer-public.pem --output ./report.gize
+```
+
+The new filename **does not change** the experimental signed wire envelope, which still starts with `GAIZ2\\n`. Verification and decryption inspect the bytes, enforce independently supplied issuer/tenant/recipient policy, and do not trust a file suffix for authorization. Existing `.gaiz` input can still be verified or opened with the existing explicit operator flags. This is naming compatibility work, **not** production cryptographic certification, a new on-disk format, or approval for cloud import.
+
+Test the filename policy separately with `node --test gaiz/file-extension.test.mjs`.

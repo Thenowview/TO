@@ -15,6 +15,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   (async()=>{
     switch(message.command){
       case "ping": return await manager.checkEngine();
+      case "ao_capabilities": return {ok:true,...await manager.aoCapabilities()};
       case "providers": return {ok:true,providers:manager.providers()};
       case "agent_skills": return {ok:true,version:globalThis.TheOrgSkills.version,profiles:globalThis.TheOrgSkills.profiles(),rubric:globalThis.TheOrgSkills.qualityRubric()};
       case "orders": return {ok:true,orders:await manager.listOrders()};

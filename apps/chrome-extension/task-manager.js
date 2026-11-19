@@ -73,6 +73,21 @@
       return this.native({ command: "ping" });
     }
 
+    // Read-only AO discovery; native host is the security boundary.
+    async aoCapabilities() {
+      const reply = await this.native({ command: "ao_capabilities" });
+      if (reply.integration !== "AO" || reply.protocolVersion !== 1 ||
+          reply.enabled !== false || reply.executionSupported !== false ||
+          reply.status !== "disabled_pending_authorization_and_contract_tests" ||
+          !Array.isArray(reply.tools) || reply.tools.length !== 0) {
+        throw new Error("Unrecognized or unexpectedly enabled AO capabilities");
+      }
+      return {
+        integration: "AO", enabled: false, executionSupported: false,
+        status: reply.status, tools: []
+      };
+    }
+
     async createOrder(companyId, instruction) {
       if (!COMPANY.test(companyId)) throw new Error("Company ID must be lowercase letters, digits, _ or -");
       if (typeof instruction !== "string" || instruction.trim().length < 5 ||

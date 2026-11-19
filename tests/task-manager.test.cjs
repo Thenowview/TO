@@ -55,6 +55,11 @@ function fakeChrome(options = {}) {
       nativeRequests.push(request);
       switch(request.command){
         case "ping":return {ok:true,engine:"TheOrg.Bridge"};
+        case "ao_capabilities":return Object.hasOwn(options,"aoReply") ? options.aoReply : {
+          ok:true,protocolVersion:1,integration:"AO",enabled:false,
+          status:"disabled_pending_authorization_and_contract_tests",
+          executionSupported:false,tools:[]
+        };
         case "submit_order":return {ok:true,order:{
           orderId:"a".repeat(32),companyId:request.companyId,
           createdUtc:"2026-11-10T00:00:00Z",aiMode:"deterministic_demo_no_external_provider"
@@ -565,4 +570,88 @@ test("untrusted browser plan mismatch does not open a Chrome tab",async()=>{
   await assert.rejects(()=>man.agentCommand(order.taskId,"f".repeat(32),"agent_run_next"),
     /did not match reviewed plan/);
   assert.equal(fake.tabs.size,0);
+});
+
+
+test("AO Chrome/native capabilities use disabled, read-only handshake",async()=>{
+  const fake=fakeChrome();
+  const manager=new context.TheOrgTaskManager(fake.api);
+  const result=await manager.aoCapabilities();
+  assert.equal(result.enabled,false);
+  assert.equal(result.executionSupported,false);
+  assert.equal(result.integration,"AO");
+  assert.equal(result.tools.length,0);
+  assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
+  assert.equal(fake.tabs.size,0);
+});
+
+test("AO handshake fails closed on missing host, unexpected enablement or tool injection",async()=>{
+  const standard={ok:true,integration:"AO",protocolVersion:1,enabled:false,executionSupported:false,status:"disabled",tools:[]};
+  for(const reply of [
+    {ok:false,error:"unsupported_command"},
+    {...standard,enabled:true},
+    {...standard,executionSupported:true},
+    {...standard,tools:[{id:"arbitrary.shell"}]},
+    {...standard,protocolVersion:2},
+    {...standard,integration:"untrusted"}
+  ]){
+    const fake=fakeChrome({aoReply:reply});
+    const manager=new context.TheOrgTaskManager(fake.api);
+    await assert.rejects(()=>manager.aoCapabilities());
+    assert.equal(fake.tabs.size,0);
+    assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
+  }
+});
+
+test("AO Chrome discovery is disabled and sends only read-only native command",async()=>{
+  const fake=fakeChrome();
+  const man=new context.TheOrgTaskManager(fake.api);
+  const reply=await man.aoCapabilities();
+  assert.equal(reply.integration,"AO");
+  assert.equal(reply.enabled,false);
+  assert.equal(reply.executionSupported,false);
+  assert.equal(reply.tools.length,0);
+  assert.equal(fake.nativeRequests.length,1);
+  assert.equal(fake.nativeRequests[0].command,"ao_capabilities");
+});
+
+test("AO fails closed on malformed or unexpectedly enabled host responses",async()=>{
+  const valid={
+    ok:true,protocolVersion:1,integration:"AO",enabled:false,
+    executionSupported:false,tools:[],status:"disabled_pending_authorization_and_contract_tests"
+  };
+  const invalid=[
+    {...valid,enabled:true},
+    {...valid,status:"unexpectedly_enabled"},
+    {...valid,executionSupported:true},
+    {...valid,protocolVersion:2},
+    {...valid,integration:"Other"},
+    {...valid,tools:[{id:"shell"}]},
+    {...valid,tools:null},
+    {...valid,ok:false,error:"unavailable"},
+    null
+  ];
+  for(const response of invalid){
+    const fake=fakeChrome({aoReply:response});
+    const man=new context.TheOrgTaskManager(fake.api);
+    await assert.rejects(()=>man.aoCapabilities());
+    assert.deepEqual(fake.nativeRequests.map(x=>x.command),["ao_capabilities"]);
+  }
+});
+
+test("AO native registration restricts each Windows host to one syntactically valid Chrome extension ID",()=>{
+  for(const rel of ["tools/install-native-host.ps1","portable/register-native-host.ps1"]){
+    const script=fs.readFileSync(path.join(__dirname,"..",...rel.split("/")),"utf8");
+    assert.match(script,/ValidatePattern\('\^\[a-p\]\{32\}\$'\)/,
+      rel+" must reject invalid Chrome extension IDs");
+    assert.match(script,/allowed_origins\s*=\s*@\("chrome-extension:\/\/\$ExtensionId\/"\)/,
+      rel+" must bind exactly the installed extension origin");
+    assert.doesNotMatch(script,/allowed_origins\s*=\s*@\(\s*["']\*/,
+      rel+" must not allow a wildcard origin");
+  }
+  const manifest=JSON.parse(src("manifest.json"));
+  assert.ok(manifest.permissions.includes("nativeMessaging"));
+  assert.ok(!manifest.permissions.includes("debugger"));
+  assert.ok(!Object.hasOwn(manifest,"host_permissions"),
+    "AO discovery must not add broad host access");
 });

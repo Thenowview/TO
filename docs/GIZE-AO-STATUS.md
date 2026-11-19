@@ -20,7 +20,7 @@ This is a **separate AO pattern register**, not extra completed requirements or 
 
 ## Safe auto-merge policy
 
-Routine reversible implementation and testing may proceed under owner approval. **Do not enable auto-merge or mark a draft ready** until the PR head is stable, required checks pass, an independent required reviewer approves and release-scoped authorization is recorded. Auto-merge does not mean deploy; no production deployment is configured here. Preserve open branches until explicitly approved cleanup.
+Routine reversible implementation and testing may proceed under owner approval, with optional review waived on the owner's updated instruction. Never bypass GitHub-enforced protections or failed CI. This catalog-only change does not enable AO execution; production signing, real-device acceptance and final release authorization remain separate gates. Auto-merge does not mean deploy; no production deployment is configured here. Preserve open branches until explicitly approved cleanup.
 
 ## Active implementation evidence — current batch
 
@@ -38,3 +38,8 @@ Routine reversible implementation and testing may proceed under owner approval. 
 - **P1** — Source ZIP ownership/integrity and separate OT handoff still require owner-provided durable access.
 
 No blanket PASS, production readiness, deployment, arbitrary tool access, or AI-driven automatic approval is claimed.
+
+
+## Integration reconciliation — 2026-11-19
+
+OT PRs [#73](https://github.com/faisalwrokksa-hub/TO/pull/73), [#75](https://github.com/faisalwrokksa-hub/TO/pull/75), [#79](https://github.com/faisalwrokksa-hub/TO/pull/79), [#80](https://github.com/faisalwrokksa-hub/TO/pull/80) and [#81](https://github.com/faisalwrokksa-hub/TO/pull/81) have merged to main with CI evidence. Earlier notes are dated snapshots. PR #82 adds catalog and UI *descriptions*, not permission grants. Re-run exact-commit bridge/Windows and Chromium CI after reconciliation. Leave AO MCP/remote execution disabled and production gate NO_GO until security and hardware acceptance are demonstrated.

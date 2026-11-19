@@ -3,10 +3,16 @@ on:
   pull_request:
     paths:
       - 'gaiz/**'
+      - 'offline_desktop/scripts/gize_ot_readiness.py'
+      - 'offline_desktop/tests/test_gize_ot_readiness.py'
       - 'engine/bridge/ArtifactInspection.cs'
       - 'engine/bridge/ArtifactStore.cs'
       - '.github/workflows/gaiz-ci.yml'
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 jobs:
@@ -22,13 +28,19 @@ jobs:
         run: |
           node --check gaiz/core.mjs
           node --check gaiz/v2.mjs
+          node --check gaiz/file-extension.mjs
+          node --check gaiz/gize-acceptance.test.mjs
           node --check gaiz/cli.mjs
           node --check gaiz/custodian-process.mjs
           node --check gaiz/custodian-worker.mjs
-          node --test gaiz/test.mjs gaiz/v2.test.mjs gaiz/report.test.mjs gaiz/key-policy.test.mjs gaiz/custody.test.mjs gaiz/local-custodian.test.mjs gaiz/custodian-process.test.mjs gaiz/synthetic-custodian-provider.test.mjs gaiz/synthetic-custodian-server.test.mjs gaiz/custody-attestation.test.mjs gaiz/quarantine.test.mjs gaiz/conformance/pinned.test.mjs gaiz/gaze-naming.test.mjs gaiz/fixtures/fixed-fixture.test.mjs
+          node --test gaiz/test.mjs gaiz/v2.test.mjs gaiz/cli-extension.test.mjs gaiz/file-extension.test.mjs gaiz/gize-acceptance.test.mjs gaiz/report.test.mjs gaiz/key-policy.test.mjs gaiz/custody.test.mjs gaiz/local-custodian.test.mjs gaiz/custodian-process.test.mjs gaiz/synthetic-custodian-provider.test.mjs gaiz/synthetic-custodian-server.test.mjs gaiz/custody-attestation.test.mjs gaiz/quarantine.test.mjs gaiz/conformance/pinned.test.mjs gaiz/gaze-naming.test.mjs gaiz/fixtures/fixed-fixture.test.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Read-only OT readiness regression
+        run: |
+          python -m unittest discover -s offline_desktop/tests -p 'test_gize_ot_readiness.py' -v
+          python offline_desktop/scripts/gize_ot_readiness.py --root . --json
       - name: Install independent Python crypto reader
         run: python -m pip install 'cryptography==46.0.3'
       - name: Cross-language Node producer and Python consumer

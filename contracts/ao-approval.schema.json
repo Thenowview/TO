@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AO Approval v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "toolId",
+    "verdict",
+    "policyVersion",
+    "reason",
+    "tenantId",
+    "principalId"
+  ],
+  "properties": {
+    "requestId": {
+      "type": "string"
+    },
+    "toolId": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "ALLOW",
+        "ASK",
+        "DENY"
+      ]
+    },
+    "policyVersion": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "approvedBy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "principalId": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

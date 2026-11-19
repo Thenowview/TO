@@ -130,7 +130,7 @@ internal sealed class Controller
                 "capabilities" => new
                 {
                     ok = true,
-                    commands = new[] { "ping", "capabilities", "submit_order", "get_order", "list_orders",
+                    commands = new[] { "ping", "capabilities", "ao_capabilities", "submit_order", "get_order", "list_orders",
                         "import_artifact", "list_artifacts", "verify_artifact", "read_artifact", "preview_text_artifact",
                         "begin_artifact_upload", "append_artifact_chunk", "upload_status",
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk",
@@ -147,6 +147,17 @@ internal sealed class Controller
                     browserNavigationOnly = true,
                     desktopOperation = "notepad-launch-only",
                     offlineFiles = true
+                },
+                "ao_capabilities" => new
+                {
+                    ok = true,
+                    protocolVersion = 1,
+                    integration = "AO",
+                    enabled = false,
+                    status = "disabled_pending_authorization_and_contract_tests",
+                    tools = Array.Empty<object>(),
+                    executionSupported = false,
+                    note = "Discovery handshake only. No MCP servers, commands or external tools are launched."
                 },
                 "submit_order" => Submit(request),
                 "get_order" => Get(request),
@@ -470,6 +481,8 @@ internal static class SelfTest
                 else
                     Check(safeBatch,"AO closed local actions remain eligible only after approval");
             }
+
+
 
 
             var bad = Call(c, new { command = "submit_order", companyId = "../escape", instruction = "Create a sample" });
