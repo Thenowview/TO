@@ -99,3 +99,15 @@ test("bot merges dispatch trusted main checks and integrated-branch cleanup with
   assert.ok(mergeWorkflow.includes('--match-head-commit'));
   assert.equal(policy.productionReady,false);
 });
+
+test("all four Windows/Chrome suites trigger guarded merge re-evaluation",()=>{
+  const w=fs.readFileSync(path.join(__dirname,"..",".github","workflows","safe-auto-merge.yml"),"utf8");
+  assert.ok(w.includes('workflow_run:'));
+  for(const name of [
+    'TheOrg Chrome and Windows Bridge CI',
+    'TheOrg Portable Existing Chrome CI',
+    'TheOrg Single EXE - Existing Chrome',
+    'TheOrg Offline Chromium Browser'
+  ]) assert.ok(w.includes(name),name+' should trigger immediate eligibility check');
+  assert.ok(w.includes('pull_request_review:'));
+});
