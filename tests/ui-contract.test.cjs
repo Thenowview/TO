@@ -104,6 +104,9 @@ test("AO catalog rejects duplicate, malformed, unauthorized and expanded descrip
  p=>p.toolDescriptors[0].command="cmd.exe",
  p=>delete p.toolDescriptors[0].version,
  p=>p.toolNames[1]=p.toolNames[0],
+ p=>p.toolDescriptors[0].id="read_note", // duplicates an existing descriptor
+ p=>p.toolNames[0]="__proto__", // inherited property must never count as a tool
+ p=>p.toolDescriptors[0].id="__proto__", // inherited property must never count as a descriptor
  p=>p.toolDescriptors.pop(),
  p=>p.mcpEnabled=true,
  p=>p.remoteToolExecutionEnabled=true,
