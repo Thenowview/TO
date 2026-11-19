@@ -313,3 +313,8 @@ REL-08 / REL-09 / REL-11 candidate subcheck in PR to be linked from issue #71: t
 ## Measured register reconciliation — 2026-11-19
 
 EVD-02 evidence-maintenance subcheck: counted the 78 original assigned checkbox rows against the controlling 150-ID source; all original rows remain unchecked. The prior summary said 78 not assessed despite seven rows already IN_PROGRESS. Corrected summary only; no requirement status upgraded. Current implementation baseline is `babb4c5cde3a912b62663ecc9fa2b86f3339f15b` (merged PR #96). Main Windows bridge and offline Chromium workflows succeeded (44514196998, 44514197133); these are CI evidence, not physical-device acceptance. Signing, actual release destination/readback, independent cryptography/security/legal acceptance, real offline inference and authenticated cross-repo customer acceptance remain unavailable; customer NO_GO. Next implementation batch: inspect tenant-bound native authorization contract and add negative tests without enabling remote execution.
+
+
+## PC-05 / PC-07 cross-workspace native command regression — 2026-11-19
+
+Candidate test commit `5d59f7302d2b5375d246769f68deab8c35321b7d` in PR #97 extends compiled native self-tests to reject seven foreign-company commands against a known job (approve, run-next, safe-batch, cancel, recover, review, browser completion) and confirms owner job state is unchanged. Uses fresh native Controller instances and synthetic SQLite state. No runtime capability enabled; this tests local workspace isolation, not authenticated enterprise identity. Fresh exact-head Windows CI pending; physical hardware, tenant integration, signing and independent acceptance unavailable. All 78 IDs and statuses retained; customer NO_GO.
