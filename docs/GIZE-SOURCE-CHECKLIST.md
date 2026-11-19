@@ -280,3 +280,8 @@
 ## AO native-tool catalog integration — 2026-11-19
 
 **Pending current-head CI; no source requirement verified.** PR [#82](https://github.com/faisalwrokksa-hub/TO/pull/82) adds six descriptive local tool-risk entries, fail-closed Chrome disclosures, and Windows self-tests. Original PC-05 and PC-07 remain unchecked **IN_PROGRESS** because per-action native enforcement, device acceptance and authenticated TEBE tenant policy are not proved by this catalog. Existing AO #79 contracts and #80 disabled read-only handshake are merged in `main`. All 78 source IDs and original evidence remain intact. Arbitrary MCP/tool execution and production deployment remain disabled.
+
+
+## AO catalog validation patch — 2026-11-19
+
+PC-05 and PC-07 remain IN_PROGRESS; no acceptance upgrade. PR #82 commit `35bcf26e28824ddd6b7c2205b99272f23ca1addf` adds strict Chrome-side descriptive catalog validation in `apps/chrome-extension/home.js` and executable negative tests in `tests/ui-contract.test.cjs`. Rejects duplicate/unknown tools, malformed records, expanded fields, altered risk/scope/execution/version/approval/batch flags, and remote execution. Local Node 24 syntax passed and UI contract suite passed 7/7 including 20 invalid-catalog cases. This display validator does not grant native authority or prove native enforcement. Exact-head Windows/Chromium CI and independent security review pending; no .NET runtime or Windows hardware in this execution environment. MCP remains disabled; customer release NO_GO. Modern Web Guidance adapter read; upstream npm CLI not run in restricted network environment; existing MV3/CSP standards preserved.
