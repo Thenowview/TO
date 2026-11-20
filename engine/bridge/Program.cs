@@ -1142,6 +1142,23 @@ internal static class SelfTest
                 "GIZE structural intake");
             Check(ArtifactInspection.Inspect(envelopePath, "synthetic.gaiz").Valid,
                 "legacy GAIZ structural intake");
+            foreach(string magicVersion in new[]{"GAIZ1","GAIZ2"})
+            foreach(string artifactName in new[]{"synthetic.gize","synthetic.gaiz"})
+            {
+                File.WriteAllText(envelopePath,magicVersion+"\\n".Replace("\\n","\n")+
+                    "{\"manifest\":{},\"signature\":\"synthetic\",\"ciphertext\":\"synthetic\"}");
+                Check(ArtifactInspection.Inspect(envelopePath,artifactName).Valid,
+                    "Both legacy wire headers accepted structurally for both suffixes");
+                foreach(string ambiguous in new[]{
+                    "{\"manifest\":{},\"signature\":\"a\",\"signature\":\"b\",\"ciphertext\":\"x\"}",
+                    "{\"manifest\":{\"tenant\":\"a\",\"tenant\":\"b\"},\"signature\":\"s\",\"ciphertext\":\"x\"}"})
+                {
+                    File.WriteAllText(envelopePath,magicVersion+"\n"+ambiguous);
+                    var ambiguity=ArtifactInspection.Inspect(envelopePath,artifactName);
+                    Check(!ambiguity.Valid && ambiguity.Code=="gaiz_duplicate_property",
+                        "Ambiguous envelope properties rejected before structural acceptance");
+                }
+            }
             File.WriteAllText(envelopePath, "NOT-A-GAIZ-ENVELOPE");
             Check(!ArtifactInspection.Inspect(envelopePath, "synthetic.gize").Valid,
                 "malformed GIZE rejection");
