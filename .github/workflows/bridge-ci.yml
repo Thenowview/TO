@@ -102,7 +102,16 @@ jobs:
 
       - name: Install NSIS compiler
         shell: pwsh
-        run: choco install nsis --yes --no-progress --limit-output
+        run: |
+          $ErrorActionPreference = 'Stop'
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            choco install nsis --yes --no-progress --limit-output
+            $installExit = $LASTEXITCODE
+            $compiler = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+            if ($installExit -eq 0 -and (Test-Path -LiteralPath $compiler)) { break }
+            if ($attempt -eq 3) { throw "NSIS acquisition failed after three attempts (exit $installExit)" }
+            Start-Sleep -Seconds (5 * $attempt)
+          }
       - name: Compile unsigned Windows developer-preview installer
         shell: pwsh
         run: |

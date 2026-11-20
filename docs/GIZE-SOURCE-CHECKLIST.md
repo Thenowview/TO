@@ -332,3 +332,8 @@ Candidate `5c2a7be1ca4cc82ea5e8a64953e3402e94d44c1f` adds compiled synthetic nat
 ## PC-05 / PC-07 atomic recovery candidate — 2026-11-19
 
 Codef162a6c517f854254e6137d95160d59362a4a069 replaces unconditional recovery update with BEGIN IMMEDIATE transaction, matching company/running state/step index/token and requiring one affected row before audit commit; clears persisted step token. Concurrently changed state fails closed rather than overwriting completion. Synthetic native tests assert database token is NULL and repeated recovery cannot resume, alongside existing late-receipt/replay denials. Exact-head Windows CI pending; no physical concurrency/hardware acceptance claimed. All78 original source statuses retained; deployment/signing/tenant/independent acceptance remain NO_GO.
+
+
+## PC-05 / PC-07 completion-before-recovery regression — 2026-11-20
+
+Test candidate0b8e1e8d0c61874d4fbe09a0f6aace237dc0d4f7 checks completed browser status/index survive subsequent recovery and consumed receipt cannot be revived. Complements recovery-before-receipt tests. These are deterministic ordered SQLite/Controller fixtures, not simultaneous thread interleaving or physical browser acceptance. Main0103ed7c1465018615be5a4c05e8564d7b99627e has all five core checks SUCCESS. Fresh candidate Windows CI pending; all78 requirement statuses preserved and customer NO_GO remains for signing/real target/hardware/model/tenant/independent acceptance.
