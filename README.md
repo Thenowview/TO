@@ -74,7 +74,7 @@ The CI workflow also builds an **unsigned** NSIS installer containing the bridge
 7. To unregister the host without deleting workspaces:
 
    \`\`\`powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\uninstall-native-host.ps1
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\uninstall-native-host.ps1 -ExecutablePath ".\out\bridge\TheOrg.Bridge.exe"
    \`\`\`
 
 **Important limitations:** The setup has not been manually verified on the owner's Windows/Chrome installation. The bridge and developer-preview installer candidates are unsigned. The installer packages the controller and Chrome extension, but the extension still requires Chrome's authorized **Load unpacked** and the user-scoped Native Messaging registration. File imports support up to 32 MiB via 128 KiB chunks; files remain untrusted until independent content QA. Never load or execute unknown AI-generated code. Do not import confidential files into AI providers without authorization.
@@ -118,3 +118,4 @@ Follow [docs/IMPORT_EXISTING_SOURCE.md](docs/IMPORT_EXISTING_SOURCE.md) to impor
 6. Clean Windows 11 installation, restart and uninstall; release status based on actual test results.
 
 **Security:** Never automate unauthorized AI-provider access or bypass CAPTCHAs, login protections or message quotas. Human approval is mandatory for consequential actions. No production operations are authorized by this repository setup.
+
