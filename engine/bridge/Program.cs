@@ -926,6 +926,19 @@ internal static class SelfTest
             Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
                 !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
                 "independent checksum QA does not certify content quality");
+            // Replace a real completed job output before invoking the public review command.
+            byte[] originalReviewNote = File.ReadAllBytes(savedNote);
+            try
+            {
+                File.WriteAllBytes(savedNote, new byte[32769]);
+                var oversizedReview = Call(new Controller(root), new {command="agent_review",companyId="demo",jobId});
+                Check(!oversizedReview.GetProperty("ok").GetBoolean(),
+                    "Public review rejects oversized replacement output");
+                var afterRejectedReview = Call(c, new {command="agent_get",companyId="demo",jobId});
+                Check(afterRejectedReview.GetProperty("status").GetString() == "completed_pending_review",
+                    "Rejected integrity review cannot approve completed job");
+            }
+            finally { File.WriteAllBytes(savedNote, originalReviewNote); }
             // One-click safe batch cannot bypass approval or launch external applications.
             var batchPlan=Call(c,new {
                 command="agent_create",companyId="demo",orderId=id,
