@@ -377,3 +377,11 @@ Test candidate 775b94177f5f4464c10abbf6c5ab3a9a0e79a06d creates a real synthetic
 
 ## EVD-02/EVD-03 — bounded output integrity hashing, 2026-11-20
 Runtime4a00e4296d55fe63964d457c8b6de40c70208ff5 replaces unbounded review File.ReadAllBytes with an open-stream 32768-byte bound and hashes original bytes without decoding. Tests259e071813d90f1a55eb79be7e5fc126cdc10112 require exact-limit raw-byte SHA equivalence and one-byte overflow rejection. Exact-head Windows CI pending; no physical acceptance. Existing reparse/parent replacement custody remains separate. Original statuses unchanged; customer NO_GO signing/key custody, hardware, real inference, tenant integration, independent security/legal and target/rollback/readback.
+
+
+## Amuse intake and policy hardening — 2026-11-20 UTC
+
+Owner instruction: "fix in bulk" after requesting relevant source files pushed across repositories, latest-build PC acceptance and removal of the superseded installed app. Selected uploaded source is now readable and hash-pinned in the OT companion candidate. OT authorization flags, allowlist types and MCP URL syntax are hardened; 19 targeted policy tests pass. See `docs/vendor/amuse/GIZE-ADOPTION.md`.
+
+Scope remains IMPLEMENTED_UNVERIFIED / partial integration. No source ID is newly VERIFIED. Amuse runtime/credential broker wiring, exact-build physical Chrome/Windows acceptance, signing and release remain outstanding. The older TheOrg Workspace 2 observations are excluded from current-build acceptance. The prior claim of no open OT PRs was stale at this audit. Follow the linked candidate PR and canonical issue for exact SHA/CI and subsequent device evidence.
+
