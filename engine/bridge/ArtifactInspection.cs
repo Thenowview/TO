@@ -33,7 +33,11 @@ internal static class ArtifactInspection
                             return new(false, "gaiz_magic_invalid");
                         // Minimal bounded JSON-shape check only; cryptographic verification
                         // MUST be performed by a separately trusted GAIZ verifier.
-                        using var envelope = JsonDocument.Parse(stream, new JsonDocumentOptions
+                        // JsonDocument may defer string decoding; reject invalid UTF8 even in unused fields.
+                        using var reader = new StreamReader(stream, new UTF8Encoding(false, true),
+                            detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
+                        string envelopeText = reader.ReadToEnd();
+                        using var envelope = JsonDocument.Parse(envelopeText, new JsonDocumentOptions
                         {
                             MaxDepth = 24,
                             AllowTrailingCommas = false,

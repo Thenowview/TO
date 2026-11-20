@@ -347,3 +347,12 @@ Candidate5acde1f10163edda0a35479feab14a6bb80ab038 releases two native Controller
 ## Artifact compatibility ambiguity rejection — 2026-11-20
 
 Candidate2071fbd74ff8d08e35ba35b01639e39e644e7b42 rejects duplicate JSON member names recursively before GAIZ1/GAIZ2 structural acceptance. Tests a46f551f986534eda8ba5e3d7cbec7d1a8e3b215 cover positive structural intake and duplicate signature/manifest tenant denial across both wire headers and .gaiz/.gize suffixes. Structural intake is not signature verification/decryption/tenant authorization. Fresh Windows CI pending; all78 original source statuses unchanged, release NO_GO retained.
+
+
+## Artifact malformed-envelope regression — 2026-11-20
+
+Candidate1c13f46a9fa084cce5f06fdb5570c27e06507787 adds36 negative structural intake cases: invalid root/manifest/signature/ciphertext types, trailing commas/comments/trailing data, excessive nesting and invalid UTF8, across GAIZ1/GAIZ2 and both .gaiz/.gize suffixes. Baseline75fa745 core checks SUCCESS. Exact-head compiled Windows CI pending; no cryptographic/decryption/tenant acceptance inferred. All78 original statuses retained; customer NO_GO remains for signing/target/hardware/model/tenant/independent acceptance.
+
+
+### Invalid UTF8 intake finding — 2026-11-20
+PR #103 head3d3f75d Windows job136102748609 failed invalidUTF8 rejection: JsonDocument structural parsing did not force decoding of unused string data. Candidate fix explicitly decodes the already8MiB-bounded envelope with throwing UTF8 before JSON parsing, retaining depth/comments/duplicate restrictions and the negative test. Fresh exact-head CI required; no cryptographic or customer acceptance claimed. NO_GO unchanged.
