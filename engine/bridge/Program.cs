@@ -922,10 +922,6 @@ internal static class SelfTest
             var pending=Call(c,new {command="agent_get",companyId="demo",jobId});
             Check(pending.GetProperty("status").GetString()=="completed_pending_review",
                 "completed task is not automatically certified");
-            var qa=Call(c,new {command="agent_review",companyId="demo",jobId});
-            Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
-                !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
-                "independent checksum QA does not certify content quality");
             // Replace a real completed job output before invoking the public review command.
             byte[] originalReviewNote = File.ReadAllBytes(savedNote);
             try
@@ -939,6 +935,10 @@ internal static class SelfTest
                     "Rejected integrity review cannot approve completed job");
             }
             finally { File.WriteAllBytes(savedNote, originalReviewNote); }
+            var qa=Call(c,new {command="agent_review",companyId="demo",jobId});
+            Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
+                !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
+                "independent checksum QA does not certify content quality");
             // One-click safe batch cannot bypass approval or launch external applications.
             var batchPlan=Call(c,new {
                 command="agent_create",companyId="demo",orderId=id,
