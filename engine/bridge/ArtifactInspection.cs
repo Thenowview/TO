@@ -172,8 +172,10 @@ internal static class ArtifactInspection
         };
         foreach(var entry in zip.Entries)
         {
-            if (entry.FullName.StartsWith("/",StringComparison.Ordinal) ||
-                entry.FullName.Replace('\\','/').Split('/').Contains(".."))
+            // Apply Windows path rules on every host; never accept drive/ADS or UNC roots.
+            string entryPath = entry.FullName.Replace('\\','/');
+            if (entryPath.StartsWith("/",StringComparison.Ordinal) ||
+                entryPath.Contains(':') || entryPath.Split('/').Contains(".."))
                 return new(false,"archive_has_unsafe_entry_path");
             if (entry.FullName.EndsWith("vbaProject.bin",StringComparison.OrdinalIgnoreCase))
                 return new(false,"archive_contains_macro_payload");

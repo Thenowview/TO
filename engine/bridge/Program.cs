@@ -1185,6 +1185,29 @@ internal static class SelfTest
             File.WriteAllText(envelopePath, "NOT-A-GAIZ-ENVELOPE");
             Check(!ArtifactInspection.Inspect(envelopePath, "synthetic.gize").Valid,
                 "malformed GIZE rejection");
+            // Structural archive intake must use Windows rules even on a non-Windows host.
+            string archivePath = Path.Combine(root, "synthetic-paths.zip");
+            foreach(string entryName in new[]{
+                "/root.txt", "\\root.txt", "\\\\server\\share\\note.txt",
+                "C:\\note.txt", "C:note.txt", "folder/note.txt:stream",
+                "../note.txt", "folder\\..\\note.txt", "folder/../note.txt",
+                "folder/note.txt", "folder\\note.txt"})
+            {
+                if(File.Exists(archivePath)) File.Delete(archivePath);
+                using(var archive = System.IO.Compression.ZipFile.Open(
+                    archivePath, System.IO.Compression.ZipArchiveMode.Create))
+                {
+                    using var entryStream = archive.CreateEntry(entryName).Open();
+                    entryStream.WriteByte(65);
+                }
+                var archiveResult = ArtifactInspection.Inspect(archivePath, "synthetic.zip");
+                bool safeRelative = entryName is "folder/note.txt" or "folder\\note.txt";
+                Check(archiveResult.Valid == safeRelative &&
+                    archiveResult.Code == (safeRelative
+                        ? "archive_structure_only_not_malware_scanned"
+                        : "archive_has_unsafe_entry_path"),
+                    "Archive Windows path boundary: " + entryName);
+            }
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
