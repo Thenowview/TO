@@ -1242,6 +1242,16 @@ internal static class SelfTest
             try { LocalAgentEngine.ReadNoteBounded(boundedNote); }
             catch (DecoderFallbackException) { invalidNoteDenied = true; }
             Check(invalidNoteDenied, "Malformed UTF8 note rejected");
+            string hashFixture = Path.Combine(root, "hash-output.md");
+            byte[] rawOutput = Enumerable.Repeat((byte)0xFF, 32768).ToArray();
+            File.WriteAllBytes(hashFixture, rawOutput);
+            Check(LocalAgentEngine.HashOutputBounded(hashFixture) ==
+                Convert.ToHexString(SHA256.HashData(rawOutput)), "Integrity hashing preserves raw bytes at limit");
+            using(var appendHash = new FileStream(hashFixture, FileMode.Append)) appendHash.WriteByte(0);
+            bool oversizedHashDenied = false;
+            try { LocalAgentEngine.HashOutputBounded(hashFixture); }
+            catch (ArgumentException) { oversizedHashDenied = true; }
+            Check(oversizedHashDenied, "Oversized replacement output cannot be hashed unbounded");
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
