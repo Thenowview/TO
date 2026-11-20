@@ -1208,6 +1208,19 @@ internal static class SelfTest
                         : "archive_has_unsafe_entry_path"),
                     "Archive Windows path boundary: " + entryName);
             }
+            string boundedNote = Path.Combine(root, "bounded-note.md");
+            File.WriteAllBytes(boundedNote, Enumerable.Repeat((byte)65, 32768).ToArray());
+            Check(LocalAgentEngine.ReadNoteBounded(boundedNote).Length == 32768, "Note exact byte limit");
+            File.AppendAllText(boundedNote, "B");
+            bool oversizeDenied = false;
+            try { LocalAgentEngine.ReadNoteBounded(boundedNote); }
+            catch (ArgumentException) { oversizeDenied = true; }
+            Check(oversizeDenied, "Open-stream note size limit");
+            File.WriteAllBytes(boundedNote, new byte[]{0xFF});
+            bool invalidNoteDenied = false;
+            try { LocalAgentEngine.ReadNoteBounded(boundedNote); }
+            catch (DecoderFallbackException) { invalidNoteDenied = true; }
+            Check(invalidNoteDenied, "Malformed UTF8 note rejected");
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
