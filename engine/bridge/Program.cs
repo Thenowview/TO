@@ -1159,6 +1159,29 @@ internal static class SelfTest
                         "Ambiguous envelope properties rejected before structural acceptance");
                 }
             }
+            foreach(string wireHeader in new[]{"GAIZ1\n","GAIZ2\n"})
+            foreach(string suffixName in new[]{"bad.gize","bad.gaiz"})
+            {
+                foreach(string malformedEnvelope in new[]{
+                    "[]                         ",
+                    "{\"manifest\":[],\"signature\":\"s\",\"ciphertext\":\"c\"}",
+                    "{\"manifest\":{},\"signature\":null,\"ciphertext\":\"c\"}",
+                    "{\"manifest\":{},\"signature\":\"s\",\"ciphertext\":123}",
+                    "{\"manifest\":{},\"signature\":\"s\",\"ciphertext\":\"c\",}",
+                    "{\"manifest\":{/*comment*/},\"signature\":\"s\",\"ciphertext\":\"c\"}",
+                    "{\"manifest\":{},\"signature\":\"s\",\"ciphertext\":\"c\"} trailing",
+                    "{\"manifest\":"+new string('[',25)+"0"+new string(']',25)+",\"signature\":\"s\",\"ciphertext\":\"c\"}"})
+                {
+                    File.WriteAllText(envelopePath,wireHeader+malformedEnvelope);
+                    Check(!ArtifactInspection.Inspect(envelopePath,suffixName).Valid,
+                        "Malformed envelope rejected for both wire headers and suffixes");
+                }
+                byte[] invalidUtf8=System.Text.Encoding.ASCII.GetBytes(wireHeader+
+                    "{\"manifest\":{},\"signature\":\"s\",\"ciphertext\":\"");
+                File.WriteAllBytes(envelopePath,invalidUtf8.Concat(new byte[]{0xFF,0x22,0x7D}).ToArray());
+                Check(!ArtifactInspection.Inspect(envelopePath,suffixName).Valid,
+                    "Invalid UTF8 envelope rejected");
+            }
             File.WriteAllText(envelopePath, "NOT-A-GAIZ-ENVELOPE");
             Check(!ArtifactInspection.Inspect(envelopePath, "synthetic.gize").Valid,
                 "malformed GIZE rejection");
