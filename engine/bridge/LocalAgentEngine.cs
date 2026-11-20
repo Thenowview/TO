@@ -682,6 +682,15 @@ internal sealed class LocalAgentEngine
     }
     internal static string ReadNoteBounded(string path)
     {
+        // Reject existing link/reparse components before opening. This is defense in depth,
+        // not a handle-based guarantee against a concurrently replaced parent directory.
+        FileSystemInfo? component = new FileInfo(Path.GetFullPath(path));
+        while (component != null)
+        {
+            if ((component.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new ArgumentException("Linked note paths are not permitted");
+            component = component is FileInfo file ? file.Directory : ((DirectoryInfo)component).Parent;
+        }
         // Bound bytes from the open handle, even if the file grew after metadata inspection.
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         byte[] bytes = new byte[32769];

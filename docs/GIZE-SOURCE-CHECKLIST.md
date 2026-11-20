@@ -365,3 +365,7 @@ EVD-02/EVD-03 bounded native intake evidence: runtime `45379e6ed70cc90fcb24196c3
 
 ## EVD-02/EVD-03 — bounded offline note reads, 2026-11-20
 Runtime 5d1ab9096a244cef138f281c1abb105caee684eb bounds actual open-stream reads to 32768 bytes and uses strict UTF8, avoiding reliance on an earlier file-size observation. Tests cover exact limit, one-byte overflow and malformed UTF8. Exact-head Windows CI pending; no local dotnet or physical hardware evidence. Reparse-point custody is a separate unresolved dependency. Original 78 source statuses unchanged; no full requirement verification. NO_GO remains signing/key custody, hardware, real inference, tenant integration, independent security/legal and release target/rollback/readback.
+
+
+## EVD-02/EVD-03 — existing note-link denial, 2026-11-20
+Candidate runtime abba678dbecf08742b624843380959ed01d1bcc9 rejects existing reparse-point components before bounded note reads; negative symbolic-link fixture51fe1bbd98347570ee7722ca2add7fb406d22bc1. This pre-open inspection does not solve concurrent parent replacement or establish complete handle-based custody. Windows CI must create the real synthetic link and pass; privilege failure is not a pass. Baseline42dd9f1 postmerge checks SUCCESS. No original requirement status promoted; customer NO_GO remains signing/key custody, physical hardware, real inference, tenant integration, independent security/legal and actual deployment/rollback/readback.

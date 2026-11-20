@@ -1216,6 +1216,13 @@ internal static class SelfTest
             try { LocalAgentEngine.ReadNoteBounded(boundedNote); }
             catch (ArgumentException) { oversizeDenied = true; }
             Check(oversizeDenied, "Open-stream note size limit");
+            string linkedNote = Path.Combine(root, "linked-note.md");
+            File.CreateSymbolicLink(linkedNote, boundedNote);
+            bool linkedNoteDenied = false;
+            try { LocalAgentEngine.ReadNoteBounded(linkedNote); }
+            catch (ArgumentException) { linkedNoteDenied = true; }
+            Check(linkedNoteDenied, "Existing symbolic note link denied");
+            File.Delete(linkedNote);
             File.WriteAllBytes(boundedNote, new byte[]{0xFF});
             bool invalidNoteDenied = false;
             try { LocalAgentEngine.ReadNoteBounded(boundedNote); }
