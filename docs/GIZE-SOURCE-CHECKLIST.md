@@ -342,3 +342,8 @@ Test candidate0b8e1e8d0c61874d4fbe09a0f6aace237dc0d4f7 checks completed browser 
 ## PC-05 / PC-07 concurrent recovery regression — 2026-11-20
 
 Candidate5acde1f10163edda0a35479feab14a6bb80ab038 releases two native Controller workers together against synthetic SQLite: receipt completion versus recovery. Requires completion within30seconds, either blocked/index0 or completed_pending_review/index1, and denies receipt replay afterward. Actual worker scheduling is nondeterministic; this does not force every stale-snapshot interleaving or prove physical hardware acceptance. Exact-head Windows CI pending. Baselinebdf9287 core checks all SUCCESS. All78 original statuses unchanged; customer NO_GO for signing/target/hardware/model/tenant/independent acceptance.
+
+
+## Artifact compatibility ambiguity rejection — 2026-11-20
+
+Candidate2071fbd74ff8d08e35ba35b01639e39e644e7b42 rejects duplicate JSON member names recursively before GAIZ1/GAIZ2 structural acceptance. Tests a46f551f986534eda8ba5e3d7cbec7d1a8e3b215 cover positive structural intake and duplicate signature/manifest tenant denial across both wire headers and .gaiz/.gize suffixes. Structural intake is not signature verification/decryption/tenant authorization. Fresh Windows CI pending; all78 original source statuses unchanged, release NO_GO retained.
