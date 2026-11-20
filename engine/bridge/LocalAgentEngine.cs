@@ -340,7 +340,7 @@ internal sealed class LocalAgentEngine
                     string sha=data.RootElement.GetProperty("sha256").GetString() ?? "";
                     var path=Path.Combine(OutputFolder(job),file);
                     if(!File.Exists(path)||
-                       !string.Equals(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))),sha,StringComparison.OrdinalIgnoreCase))
+                       !string.Equals(HashOutputBounded(path),sha,StringComparison.OrdinalIgnoreCase))
                         fileIntegrity=false;
                 }
             }
@@ -680,6 +680,21 @@ internal sealed class LocalAgentEngine
         public string Summary {get;set;}="";
         public List<AgentStep> Steps {get;set;}=new();
     }
+    internal static string HashOutputBounded(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        byte[] bytes = new byte[32769];
+        int count = 0;
+        while (count < bytes.Length)
+        {
+            int read = stream.Read(bytes, count, bytes.Length - count);
+            if (read == 0) break;
+            count += read;
+        }
+        if (count > 32768) throw new ArgumentException("Output too large for integrity review");
+        return Convert.ToHexString(SHA256.HashData(bytes.AsSpan(0, count)));
+    }
+
     internal static string ReadNoteBounded(string path)
     {
         // Reject existing link/reparse components before opening. This is defense in depth,
