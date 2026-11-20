@@ -40,6 +40,7 @@ internal static class ArtifactInspection
                             CommentHandling = JsonCommentHandling.Disallow
                         });
                         var root = envelope.RootElement;
+                        if (HasDuplicateProperties(root)) return new(false, "gaiz_duplicate_property");
                         if (root.ValueKind != JsonValueKind.Object ||
                             !root.TryGetProperty("manifest", out var manifest) ||
                             manifest.ValueKind != JsonValueKind.Object ||
@@ -135,6 +136,20 @@ internal static class ArtifactInspection
         catch (JsonException) { return new(false,"invalid_json"); }
         catch (EndOfStreamException) { return new(false,"truncated_file"); }
         catch (IOException) { return new(false,"file_read_error"); }
+    }
+
+    private static bool HasDuplicateProperties(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in value.EnumerateObject())
+                if (!names.Add(property.Name) || HasDuplicateProperties(property.Value)) return true;
+        }
+        else if (value.ValueKind == JsonValueKind.Array)
+            foreach (var item in value.EnumerateArray())
+                if (HasDuplicateProperties(item)) return true;
+        return false;
     }
 
     private static InspectionResult InspectArchive(string path,string extension)
