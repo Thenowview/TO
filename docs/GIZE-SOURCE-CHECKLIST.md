@@ -337,3 +337,8 @@ Codef162a6c517f854254e6137d95160d59362a4a069 replaces unconditional recovery upd
 ## PC-05 / PC-07 completion-before-recovery regression — 2026-11-20
 
 Test candidate0b8e1e8d0c61874d4fbe09a0f6aace237dc0d4f7 checks completed browser status/index survive subsequent recovery and consumed receipt cannot be revived. Complements recovery-before-receipt tests. These are deterministic ordered SQLite/Controller fixtures, not simultaneous thread interleaving or physical browser acceptance. Main0103ed7c1465018615be5a4c05e8564d7b99627e has all five core checks SUCCESS. Fresh candidate Windows CI pending; all78 requirement statuses preserved and customer NO_GO remains for signing/real target/hardware/model/tenant/independent acceptance.
+
+
+## PC-05 / PC-07 concurrent recovery regression — 2026-11-20
+
+Candidate5acde1f10163edda0a35479feab14a6bb80ab038 releases two native Controller workers together against synthetic SQLite: receipt completion versus recovery. Requires completion within30seconds, either blocked/index0 or completed_pending_review/index1, and denies receipt replay afterward. Actual worker scheduling is nondeterministic; this does not force every stale-snapshot interleaving or prove physical hardware acceptance. Exact-head Windows CI pending. Baselinebdf9287 core checks all SUCCESS. All78 original statuses unchanged; customer NO_GO for signing/target/hardware/model/tenant/independent acceptance.

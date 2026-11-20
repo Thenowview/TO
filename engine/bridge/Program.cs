@@ -1091,6 +1091,39 @@ internal static class SelfTest
                   !recoveredAgain.GetProperty("canResume").GetBoolean(),
                   "Repeated recovery cannot resume unknown-outcome work");
 
+            // Release both workers together against real SQLite; either safe winner is valid.
+            var racePlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
+                instruction="Synthetic concurrency boundary test for browser recovery.",
+                mode="demo-browser",model="qwen3:4b",approvedHosts="example.com"});
+            string raceId=racePlan.GetProperty("jobId").GetString()!;
+            Call(c,new {command="agent_approve",companyId="demo",jobId=raceId,approved=true});
+            var raceNav=Call(c,new {command="agent_run_next",companyId="demo",jobId=raceId});
+            string raceToken=raceNav.GetProperty("token").GetString()!;
+            using(var raceStart=new System.Threading.ManualResetEventSlim(false))
+            {
+                var raceRecover=System.Threading.Tasks.Task.Run(()=> {
+                    raceStart.Wait();
+                    return Call(new Controller(root),new {command="agent_recover",companyId="demo",jobId=raceId});
+                });
+                var raceComplete=System.Threading.Tasks.Task.Run(()=> {
+                    raceStart.Wait();
+                    return Call(new Controller(root),new {command="agent_complete_browser",companyId="demo",
+                        jobId=raceId,token=raceToken,url="https://example.com/",tabId=123});
+                });
+                raceStart.Set();
+                Check(System.Threading.Tasks.Task.WaitAll(new System.Threading.Tasks.Task[]{
+                    raceRecover,raceComplete},TimeSpan.FromSeconds(30)),"Recovery race finishes within bound");
+            }
+            var raceFinal=Call(c,new {command="agent_get",companyId="demo",jobId=raceId});
+            string raceStatus=raceFinal.GetProperty("status").GetString()!;
+            int raceIndex=raceFinal.GetProperty("stepIndex").GetInt32();
+            Check((raceStatus=="blocked" && raceIndex==0) ||
+                  (raceStatus=="completed_pending_review" && raceIndex==1),
+                  "Concurrent completion/recovery has one consistent terminal outcome");
+            Check(!Call(c,new {command="agent_complete_browser",companyId="demo",
+                jobId=raceId,token=raceToken,url="https://example.com/",tabId=123})
+                .GetProperty("ok").GetBoolean(),"Concurrent outcome cannot replay receipt");
+
             // Interrupted execution must not auto-replay potentially non-idempotent tools.
             var cancelledPlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
                 instruction="Create another short synthetic note.",mode="demo",model="qwen3:4b",approvedHosts=""});
