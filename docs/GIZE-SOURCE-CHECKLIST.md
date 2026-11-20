@@ -356,3 +356,8 @@ Candidate1c13f46a9fa084cce5f06fdb5570c27e06507787 adds36 negative structural int
 
 ### Invalid UTF8 intake finding — 2026-11-20
 PR #103 head3d3f75d Windows job136102748609 failed invalidUTF8 rejection: JsonDocument structural parsing did not force decoding of unused string data. Candidate fix explicitly decodes the already8MiB-bounded envelope with throwing UTF8 before JSON parsing, retaining depth/comments/duplicate restrictions and the negative test. Fresh exact-head CI required; no cryptographic or customer acceptance claimed. NO_GO unchanged.
+
+
+## Windows archive path boundary — 2026-11-20
+
+EVD-02/EVD-03 bounded native intake evidence: runtime `45379e6ed70cc90fcb24196c34ec3687e6a298a3` normalizes separators before rejecting rooted/UNC paths, drive paths, alternate data streams and traversal. Self-tests `34d77146a3c2ef7b333e8497002a5e7c46327796` cover nine unsafe names plus two safe nested relative names. Baseline `beae57fb4db3b263624e3902aa4d2cd7e94e6e9e` actual postmerge checks SUCCESS. Exact-head Windows CI pending; dotnet unavailable locally. This is structural intake only, not extraction, malware scanning, cryptographic or independent Windows acceptance. Original source statuses remain unchanged; signing/key custody, physical hardware, real inference, tenant integration, independent security/legal and actual deployment target/rollback/readback remain NO_GO. Next: inspect final CI and remaining offline runtime gaps.
