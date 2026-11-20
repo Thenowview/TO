@@ -341,7 +341,14 @@
       const all=await this.orders();
       const order=all[taskId];
       if(!order)throw new Error("Unknown work order");
-      const request={command,companyId:order.companyId,jobId,...extra};
+      const request={command,companyId:order.companyId,jobId};
+      if(command==="agent_approve") {
+        if(extra?.approved!==true || typeof extra.reviewFingerprint!=="string" ||
+            !/^plan-v1:[A-F0-9]{64}$/.test(extra.reviewFingerprint))
+          throw new Error("Refresh and review the exact plan before approving");
+        request.approved=true;
+        request.reviewFingerprint=extra.reviewFingerprint;
+      }
       const reply=await this.native(request);
       if(command!=="agent_run_next" || reply.status!=="awaiting_browser_navigation")
         return reply;
@@ -936,3 +943,4 @@
 
   globalThis.TheOrgTaskManager = TaskManager;
 })();
+

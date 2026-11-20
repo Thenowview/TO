@@ -135,9 +135,30 @@ try:
     assert not native({
         "command": "agent_get", "companyId": "other", "jobId": job_id
     })[0]["ok"], "Another company read agent state"
+    snapshot = native({"command": "agent_get", "companyId": company, "jobId": job_id})[0]
+    fingerprint = snapshot["reviewFingerprint"]
+    for invalid in ({}, {"reviewFingerprint": "plan-v1:" + "0" * 64}):
+        denied = native({
+            "command": "agent_approve", "companyId": company, "jobId": job_id,
+            "approved": True, **invalid
+        })[0]
+        assert not denied["ok"], "Missing/mismatched reviewed snapshot was approved"
+    # Simulate a scope change after display but before the owner clicks approval.
+    import sqlite3
+    db_path = root.parent.parent / "agent-jobs.sqlite"
+    with sqlite3.connect(db_path) as db:
+        db.execute("UPDATE agent_jobs SET approved_hosts=? WHERE id=?", ("example.com", job_id))
+    stale = native({
+        "command": "agent_approve", "companyId": company, "jobId": job_id,
+        "approved": True, "reviewFingerprint": fingerprint
+    })[0]
+    assert not stale["ok"], "Changed scope accepted stale reviewed fingerprint"
+    assert native({"command": "agent_get", "companyId": company, "jobId": job_id})[0]["status"] == "awaiting_approval"
+    with sqlite3.connect(db_path) as db:
+        db.execute("UPDATE agent_jobs SET approved_hosts=? WHERE id=?", ("", job_id))
     approved = native({
         "command": "agent_approve", "companyId": company, "jobId": job_id,
-        "approved": True
+        "approved": True, "reviewFingerprint": fingerprint
     })[0]
     assert approved["ok"] and approved["status"] == "queued", approved
     running = native({
@@ -183,3 +204,4 @@ finally:
     # The integration test never touches other companies or user files.
     if root.exists():
         shutil.rmtree(root)
+

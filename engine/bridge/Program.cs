@@ -873,14 +873,23 @@ internal static class SelfTest
                 "agent cannot auto approve");
             var noApproval=Call(c,new {command="agent_approve",companyId="demo",jobId,approved=false});
             Check(!noApproval.GetProperty("ok").GetBoolean(),"agent approval is explicit");
-            var approvedJob=Call(c,new {command="agent_approve",companyId="demo",jobId,approved=true});
+            string reviewedFingerprint=ReviewedFingerprint(c,jobId);
+            Check(!Call(c,new {command="agent_approve",companyId="demo",jobId,approved=true})
+                .GetProperty("ok").GetBoolean(),"missing review fingerprint cannot approve");
+            SetJobField(root,jobId,"approved_hosts","example.com");
+            Check(!Call(c,new {command="agent_approve",companyId="demo",jobId,approved=true,reviewFingerprint=reviewedFingerprint})
+                .GetProperty("ok").GetBoolean(),"scope changed after display cannot approve");
+            Check(Call(c,new {command="agent_get",companyId="demo",jobId})
+                .GetProperty("status").GetString()=="awaiting_approval","stale approval leaves job pending");
+            SetJobField(root,jobId,"approved_hosts","");
+            var approvedJob=Call(c,new {command="agent_approve",companyId="demo",jobId,approved=true,reviewFingerprint=ReviewedFingerprint(c,jobId)});
             Check(approvedJob.GetProperty("ok").GetBoolean(),"agent plan approval");
 
             // Approval binds exact plan and host scope across fresh native processes.
             var boundPlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
                 instruction="Write a bounded synthetic approval binding note.",mode="demo",model="qwen3:4b",approvedHosts=""});
             string boundId=boundPlan.GetProperty("jobId").GetString()!;
-            Call(c,new {command="agent_approve",companyId="demo",jobId=boundId,approved=true});
+            Call(c,new {command="agent_approve",companyId="demo",jobId=boundId,approved=true,reviewFingerprint=ReviewedFingerprint(c,boundId)});
             string originalPlan=boundPlan.GetProperty("plan").GetRawText();
             foreach(string changedPlan in new[]{
                 originalPlan.Replace("Demo request:","Changed request:"),
@@ -948,7 +957,7 @@ internal static class SelfTest
             string batchId=batchPlan.GetProperty("jobId").GetString()!;
             var unapprovedBatch=Call(c,new {command="agent_run_safe_batch",companyId="demo",jobId=batchId});
             Check(!unapprovedBatch.GetProperty("ok").GetBoolean(),"batch cannot bypass owner approval");
-            Call(c,new {command="agent_approve",companyId="demo",jobId=batchId,approved=true});
+            Call(c,new {command="agent_approve",companyId="demo",jobId=batchId,approved=true,reviewFingerprint=ReviewedFingerprint(c,batchId)});
             var batchResult=Call(new Controller(root),new {command="agent_run_safe_batch",companyId="demo",jobId=batchId});
             Check(batchResult.GetProperty("ok").GetBoolean()&&
                   batchResult.GetProperty("executedSteps").GetInt32()==2&&
@@ -1014,7 +1023,7 @@ internal static class SelfTest
             });
             Check(browser.GetProperty("ok").GetBoolean(),"browser plan created");
             string browserJob=browser.GetProperty("jobId").GetString()!;
-            Call(c,new {command="agent_approve",companyId="demo",jobId=browserJob,approved=true});
+            Call(c,new {command="agent_approve",companyId="demo",jobId=browserJob,approved=true,reviewFingerprint=ReviewedFingerprint(c,browserJob)});
             var nav=Call(c,new {command="agent_run_next",companyId="demo",jobId=browserJob});
             Check(nav.GetProperty("status").GetString()=="awaiting_browser_navigation",
                 "browser work requires extension action");
@@ -1069,7 +1078,7 @@ internal static class SelfTest
                 instruction="Open a synthetic approved page for recovery testing.",
                 mode="demo-browser",model="qwen3:4b",approvedHosts="example.com"});
             string interruptedId=interrupted.GetProperty("jobId").GetString()!;
-            Call(c,new {command="agent_approve",companyId="demo",jobId=interruptedId,approved=true});
+            Call(c,new {command="agent_approve",companyId="demo",jobId=interruptedId,approved=true,reviewFingerprint=ReviewedFingerprint(c,interruptedId)});
             var interruptedNav=Call(c,new {command="agent_run_next",companyId="demo",jobId=interruptedId});
             string staleToken=interruptedNav.GetProperty("token").GetString()!;
             var recoveredBrowserJob=Call(new Controller(root),new {command="agent_recover",companyId="demo",jobId=interruptedId});
@@ -1109,7 +1118,7 @@ internal static class SelfTest
                 instruction="Synthetic concurrency boundary test for browser recovery.",
                 mode="demo-browser",model="qwen3:4b",approvedHosts="example.com"});
             string raceId=racePlan.GetProperty("jobId").GetString()!;
-            Call(c,new {command="agent_approve",companyId="demo",jobId=raceId,approved=true});
+            Call(c,new {command="agent_approve",companyId="demo",jobId=raceId,approved=true,reviewFingerprint=ReviewedFingerprint(c,raceId)});
             var raceNav=Call(c,new {command="agent_run_next",companyId="demo",jobId=raceId});
             string raceToken=raceNav.GetProperty("token").GetString()!;
             using(var raceStart=new System.Threading.ManualResetEventSlim(false))
@@ -1326,6 +1335,10 @@ internal static class SelfTest
         Check(cmd.ExecuteNonQuery()==1,"native negative fixture updated exactly one job");
     }
 
+    private static string ReviewedFingerprint(Controller controller,string jobId) =>
+        Call(controller,new {command="agent_get",companyId="demo",jobId})
+            .GetProperty("reviewFingerprint").GetString()!;
+
     private static JsonElement Call(Controller controller, object req)
     {
         var input = JsonSerializer.SerializeToElement(req);
@@ -1341,3 +1354,4 @@ internal static class SelfTest
         if (!condition) throw new Exception("Failed check: " + label);
     }
 }
+
