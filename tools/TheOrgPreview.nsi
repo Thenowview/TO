@@ -70,7 +70,12 @@ SectionEnd
 
 Section "Uninstall"
   SetShellVarContext current
-  DeleteRegKey HKCU "Software\Google\Chrome\NativeMessagingHosts\com.theorg.bridge"
+  ; Do not unregister a newer/different install that now owns the shared host.
+  nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -File "$INSTDIR\uninstall-native-host.ps1" -ExecutablePath "$INSTDIR\TheOrg.Bridge.exe"'
+  Pop $0
+  StrCmp $0 "0" hostCleanupDone
+  DetailPrint "Native host ownership cleanup could not complete; registration retained."
+  hostCleanupDone:
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheOrgDevPreview"
   Delete "$DESKTOP\TheOrg Workspace.lnk"
   Delete "$SMPROGRAMS\TheOrg\TheOrg Workspace.lnk"
@@ -90,3 +95,4 @@ Section "Uninstall"
   RMDir "$INSTDIR"
   DetailPrint "TheOrg BrowserProfile, workspaces and company data were retained under LocalAppData."
 SectionEnd
+

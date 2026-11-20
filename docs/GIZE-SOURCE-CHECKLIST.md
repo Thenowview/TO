@@ -1,5 +1,17 @@
 # GIZE TO — Source-linked Progress Register
 
+## Native-host uninstall ownership — 2026-11-21 Riyadh
+
+Owner: "bulk fix, auto approval". The uninstaller previously deleted the shared
+host registry key unconditionally, including when another installation owned it.
+Candidate cleanup checks the registered manifest's exact executable path before
+removal; malformed/unreadable/foreign records are retained. NSIS calls that check
+instead of deleting the key directly. Synthetic ownership tests pass locally;
+Windows registry integration now verifies foreign preservation and owned removal.
+See `docs/NATIVE-HOST-UNINSTALL-OWNERSHIP.md`. Partial WIN-07 evidence only; no live
+PC process/profile/registration was changed by local tests and no signing or
+physical Chrome acceptance is inferred.
+
 ## Dedicated-browser launcher fallback — 2026-11-21 Riyadh
 
 Owner: "bulk fix, auto approval". Synthetic preference regression reproduced a
@@ -425,6 +437,7 @@ Test da95532fa08d6b4e21e518b2557911bc78da1435 replaces a real completed syntheti
 Owner instruction: "fix in bulk" after requesting relevant source files pushed across repositories, latest-build PC acceptance and removal of the superseded installed app. Selected uploaded source is now readable and hash-pinned in the OT companion candidate. OT authorization flags, allowlist types and MCP URL syntax are hardened; 19 targeted policy tests pass. See `docs/vendor/amuse/GIZE-ADOPTION.md`.
 
 Scope remains IMPLEMENTED_UNVERIFIED / partial integration. No source ID is newly VERIFIED. Amuse runtime/credential broker wiring, exact-build physical Chrome/Windows acceptance, signing and release remain outstanding. The older TheOrg Workspace 2 observations are excluded from current-build acceptance. The prior claim of no open OT PRs was stale at this audit. Follow the linked candidate PR and canonical issue for exact SHA/CI and subsequent device evidence.
+
 
 
 
