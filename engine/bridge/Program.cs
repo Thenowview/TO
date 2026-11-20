@@ -1223,6 +1223,20 @@ internal static class SelfTest
             catch (ArgumentException) { linkedNoteDenied = true; }
             Check(linkedNoteDenied, "Existing symbolic note link denied");
             File.Delete(linkedNote);
+            // A regular leaf underneath a linked parent must also be denied.
+            string noteParent = Path.Combine(root, "real-note-parent");
+            Directory.CreateDirectory(noteParent);
+            File.WriteAllText(Path.Combine(noteParent, "note.md"), "synthetic");
+            string linkedParent = Path.Combine(root, "linked-note-parent");
+            Directory.CreateSymbolicLink(linkedParent, noteParent);
+            bool linkedParentDenied = false;
+            try { LocalAgentEngine.ReadNoteBounded(Path.Combine(linkedParent, "note.md")); }
+            catch (ArgumentException) { linkedParentDenied = true; }
+            Check(linkedParentDenied, "Existing symbolic parent directory denied");
+            Directory.Delete(linkedParent);
+            Check(LocalAgentEngine.ReadNoteBounded(Path.Combine(noteParent, "note.md")) == "synthetic",
+                "Ordinary parent directory remains readable");
+
             File.WriteAllBytes(boundedNote, new byte[]{0xFF});
             bool invalidNoteDenied = false;
             try { LocalAgentEngine.ReadNoteBounded(boundedNote); }

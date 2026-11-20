@@ -369,3 +369,7 @@ Runtime 5d1ab9096a244cef138f281c1abb105caee684eb bounds actual open-stream reads
 
 ## EVD-02/EVD-03 — existing note-link denial, 2026-11-20
 Candidate runtime abba678dbecf08742b624843380959ed01d1bcc9 rejects existing reparse-point components before bounded note reads; negative symbolic-link fixture51fe1bbd98347570ee7722ca2add7fb406d22bc1. This pre-open inspection does not solve concurrent parent replacement or establish complete handle-based custody. Windows CI must create the real synthetic link and pass; privilege failure is not a pass. Baseline42dd9f1 postmerge checks SUCCESS. No original requirement status promoted; customer NO_GO remains signing/key custody, physical hardware, real inference, tenant integration, independent security/legal and actual deployment/rollback/readback.
+
+
+## EVD-02/EVD-03 — parent-directory link regression, 2026-11-20
+Test candidate 775b94177f5f4464c10abbf6c5ab3a9a0e79a06d creates a real synthetic directory symbolic link, requires denial of a regular leaf reached through it, and requires the same leaf through its ordinary parent to remain readable. Baseline abe75fa60529905833cc65107d802aeaade07e38 postmerge Windows/build/packaging checks SUCCESS. Exact-head Windows CI pending; do not skip privilege failures. No concurrent replacement/handle custody guarantee, physical Windows or independent acceptance inferred. Original source statuses and customer NO_GO unchanged. Next: exact-head checks then handle-bound custody investigation.
