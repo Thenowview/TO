@@ -377,3 +377,7 @@ Test candidate 775b94177f5f4464c10abbf6c5ab3a9a0e79a06d creates a real synthetic
 
 ## EVD-02/EVD-03 — bounded output integrity hashing, 2026-11-20
 Runtime4a00e4296d55fe63964d457c8b6de40c70208ff5 replaces unbounded review File.ReadAllBytes with an open-stream 32768-byte bound and hashes original bytes without decoding. Tests259e071813d90f1a55eb79be7e5fc126cdc10112 require exact-limit raw-byte SHA equivalence and one-byte overflow rejection. Exact-head Windows CI pending; no physical acceptance. Existing reparse/parent replacement custody remains separate. Original statuses unchanged; customer NO_GO signing/key custody, hardware, real inference, tenant integration, independent security/legal and target/rollback/readback.
+
+
+## EVD-02/EVD-03 — public review oversized-output regression, 2026-11-21
+Test da95532fa08d6b4e21e518b2557911bc78da1435 replaces a real completed synthetic job output with32769 bytes, calls agent_review through a fresh Controller, requires rejection and unchanged completed_pending_review status, then restores fixture bytes in finally. Baseline fba5b4b07c5d7dd5f8074856c03b488ad44a0895 actual postmerge Windows/build/packaging checks SUCCESS. Exact-head Windows CI pending; no physical/independent acceptance. No original requirement status promoted; customer NO_GO retained for signing/key custody, hardware, real inference, tenant integration, independent security/legal and deployment/rollback/readback. Next: inspect CI and review replacement/link custody.
