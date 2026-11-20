@@ -1,5 +1,16 @@
 # GIZE TO — Source-linked Progress Register
 
+## Dedicated-browser launcher fallback — 2026-11-21 Riyadh
+
+Owner: "bulk fix, auto approval". Synthetic preference regression reproduced a
+strict-mode launcher exception when ordinary Chrome Preferences omitted extension
+metadata, preventing the Secure Preferences fallback. The candidate fixes missing,
+null, malformed and incomplete records while preserving exact manifest name,
+absolute installation path and extension-ID checks. Local synthetic PowerShell
+regression passes after the fix and failed before it. Windows PowerShell CI added.
+No real profile, native-host registry or permissions were modified by the test.
+This is partial PC-01/WIN launch evidence, not physical device or signing acceptance.
+
 ## Windows crypto and merged review binding — 2026-11-20 UTC
 
 PR #111 merged as `63691056c965e0479ac8ebc08dcea8a9294ce280` after all four
@@ -414,6 +425,7 @@ Test da95532fa08d6b4e21e518b2557911bc78da1435 replaces a real completed syntheti
 Owner instruction: "fix in bulk" after requesting relevant source files pushed across repositories, latest-build PC acceptance and removal of the superseded installed app. Selected uploaded source is now readable and hash-pinned in the OT companion candidate. OT authorization flags, allowlist types and MCP URL syntax are hardened; 19 targeted policy tests pass. See `docs/vendor/amuse/GIZE-ADOPTION.md`.
 
 Scope remains IMPLEMENTED_UNVERIFIED / partial integration. No source ID is newly VERIFIED. Amuse runtime/credential broker wiring, exact-build physical Chrome/Windows acceptance, signing and release remain outstanding. The older TheOrg Workspace 2 observations are excluded from current-build acceptance. The prior claim of no open OT PRs was stale at this audit. Follow the linked candidate PR and canonical issue for exact SHA/CI and subsequent device evidence.
+
 
 
 

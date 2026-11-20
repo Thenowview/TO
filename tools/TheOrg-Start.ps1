@@ -36,14 +36,28 @@ function Find-InstalledExtensionId {
     (Join-Path $profile 'Default\Secure Preferences')
   )) {
     if (-not (Test-Path -LiteralPath $preferencesFile -PathType Leaf)) { continue }
-    $data = Get-Content -LiteralPath $preferencesFile -Raw -Encoding UTF8 | ConvertFrom-Json
-    if (-not $data.extensions -or -not $data.extensions.settings) { continue }
-    foreach ($entry in $data.extensions.settings.PSObject.Properties) {
+    # Chrome can put installation metadata only in Secure Preferences. Missing
+    # fields in the ordinary file must not terminate discovery under strict mode.
+    try {
+      $data = Get-Content -LiteralPath $preferencesFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch { continue }
+    if ($null -eq $data) { continue }
+    $extensionsProperty = $data.PSObject.Properties['extensions']
+    if ($null -eq $extensionsProperty -or $null -eq $extensionsProperty.Value) { continue }
+    $settingsProperty = $extensionsProperty.Value.PSObject.Properties['settings']
+    if ($null -eq $settingsProperty -or $null -eq $settingsProperty.Value) { continue }
+    foreach ($entry in $settingsProperty.Value.PSObject.Properties) {
       $candidate = $entry.Value
-      if (-not $candidate -or -not $candidate.path -or -not $candidate.manifest) { continue }
-      if ($candidate.manifest.name -cne $expectedName) { continue }
+      if ($null -eq $candidate) { continue }
+      $pathProperty = $candidate.PSObject.Properties['path']
+      $manifestProperty = $candidate.PSObject.Properties['manifest']
+      if ($null -eq $pathProperty -or $pathProperty.Value -isnot [string] -or
+          [string]::IsNullOrWhiteSpace($pathProperty.Value) -or
+          $null -eq $manifestProperty -or $null -eq $manifestProperty.Value) { continue }
+      $nameProperty = $manifestProperty.Value.PSObject.Properties['name']
+      if ($null -eq $nameProperty -or $nameProperty.Value -cne $expectedName) { continue }
       try {
-        $foundPath = [IO.Path]::GetFullPath([string]$candidate.path).TrimEnd('\')
+        $foundPath = [IO.Path]::GetFullPath($pathProperty.Value).TrimEnd('\')
       } catch { continue }
       if ($foundPath -ine $expectedPath) { continue }
       if ($entry.Name -cmatch '^[a-p]{32}$') { return $entry.Name }
@@ -103,3 +117,4 @@ try {
   } catch { Write-Error $message }
   exit 1
 }
+

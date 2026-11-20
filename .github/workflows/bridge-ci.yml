@@ -61,6 +61,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test strict-mode Chrome installation discovery on Windows PowerShell
+        shell: powershell
+        run: '& .\tests\windows-launcher-preferences.ps1'
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -199,5 +202,6 @@ jobs:
           path: out/bridge/
           if-no-files-found: error
           retention-days: 30
+
 
 
