@@ -373,3 +373,7 @@ Candidate runtime abba678dbecf08742b624843380959ed01d1bcc9 rejects existing repa
 
 ## EVD-02/EVD-03 — parent-directory link regression, 2026-11-20
 Test candidate 775b94177f5f4464c10abbf6c5ab3a9a0e79a06d creates a real synthetic directory symbolic link, requires denial of a regular leaf reached through it, and requires the same leaf through its ordinary parent to remain readable. Baseline abe75fa60529905833cc65107d802aeaade07e38 postmerge Windows/build/packaging checks SUCCESS. Exact-head Windows CI pending; do not skip privilege failures. No concurrent replacement/handle custody guarantee, physical Windows or independent acceptance inferred. Original source statuses and customer NO_GO unchanged. Next: exact-head checks then handle-bound custody investigation.
+
+
+## EVD-02/EVD-03 — bounded output integrity hashing, 2026-11-20
+Runtime4a00e4296d55fe63964d457c8b6de40c70208ff5 replaces unbounded review File.ReadAllBytes with an open-stream 32768-byte bound and hashes original bytes without decoding. Tests259e071813d90f1a55eb79be7e5fc126cdc10112 require exact-limit raw-byte SHA equivalence and one-byte overflow rejection. Exact-head Windows CI pending; no physical acceptance. Existing reparse/parent replacement custody remains separate. Original statuses unchanged; customer NO_GO signing/key custody, hardware, real inference, tenant integration, independent security/legal and target/rollback/readback.
