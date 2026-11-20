@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
 import {mkdtempSync, writeFileSync, readFileSync, copyFileSync, rmSync, existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join, resolve} from 'node:path';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 
-const script=resolve(new URL('./cli.mjs',import.meta.url).pathname);
+const script=fileURLToPath(new URL('./cli.mjs',import.meta.url));
 function run(args,cwd){
   return spawnSync(process.execPath,[script,...args],{cwd,encoding:'utf8',timeout:30000});
 }
@@ -46,3 +47,4 @@ test('local GIZE export defaults to .gize; renamed .gaiz remains readable and ex
     assert.notEqual(overwrite.status,0,'Must not overwrite existing encrypted output');
   } finally {rmSync(dir,{recursive:true,force:true});}
 });
+

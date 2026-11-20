@@ -1,5 +1,18 @@
 # GIZE TO — Source-linked Progress Register
 
+## Windows crypto and merged review binding — 2026-11-20 UTC
+
+PR #111 merged as `63691056c965e0479ac8ebc08dcea8a9294ce280` after all four
+candidate workflows passed. Its downloaded Windows bridge passed both real
+executable stdio smoke suites on the owner's PC. Offline crypto acceptance found
+and fixed a Windows-only CLI test path (`C:\C:\...`); all 17 focused GAIZ1/GAIZ2,
+`.gize` / legacy `.gaiz`, wrong-key/tenant and tamper tests then passed locally.
+The focused suite is added to Windows CI. Details and exact hashes are in
+`docs/OT-PC-ACCEPTANCE-20261121.md`. These are partial ENC/WIN/TASK evidence;
+physical Chrome acceptance and trusted signing remain unverified. Superseded-app
+removal is partial/locked, and user data remains preserved. No requirement ID is
+newly VERIFIED by these automated checks.
+
 ## Reviewed-plan approval binding — 2026-11-20 UTC
 
 Owner: "bulk fix, auto approval". The first Amuse intake/policy batch is merged
@@ -401,5 +414,6 @@ Test da95532fa08d6b4e21e518b2557911bc78da1435 replaces a real completed syntheti
 Owner instruction: "fix in bulk" after requesting relevant source files pushed across repositories, latest-build PC acceptance and removal of the superseded installed app. Selected uploaded source is now readable and hash-pinned in the OT companion candidate. OT authorization flags, allowlist types and MCP URL syntax are hardened; 19 targeted policy tests pass. See `docs/vendor/amuse/GIZE-ADOPTION.md`.
 
 Scope remains IMPLEMENTED_UNVERIFIED / partial integration. No source ID is newly VERIFIED. Amuse runtime/credential broker wiring, exact-build physical Chrome/Windows acceptance, signing and release remain outstanding. The older TheOrg Workspace 2 observations are excluded from current-build acceptance. The prior claim of no open OT PRs was stale at this audit. Follow the linked candidate PR and canonical issue for exact SHA/CI and subsequent device evidence.
+
 
 
