@@ -28,3 +28,26 @@ test("approved HTTPS MCP read permitted",()=>assert.equal(run({transport:"mcp_ht
 test("privileged tool always asks absent verified human grant",()=>assert.equal(run({risk:"privileged"}).verdict,"ASK"));
 test("unknown transport fails closed",()=>assert.equal(run({transport:"unknown"}).verdict,"DENY"));
 test("unbound approval cannot authorize privileged execution",()=>assert.equal(run({risk:"privileged"},{},{approvedByHuman:true,verifiedForRequest:true}).verdict,"ASK"));
+
+test("authorization flags must be boolean true, not truthy claims",()=>{
+  for(const value of ["false","true",1,[],{}]) {
+    assert.equal(run({enabled:value}).verdict,"DENY");
+    for(const field of ["authenticated","entitled","tenantAuthorized"])
+      assert.equal(run({}, {[field]:value}).verdict,"DENY");
+    assert.equal(run({transport:"mcp_stdio"},{approvedNativeHost:value}).verdict,"DENY");
+    assert.equal(run({risk:"reversible_write"},{routineWriteAllowed:value}).verdict,"ASK");
+  }
+});
+test("allowlists must be arrays rather than substring matches",()=>{
+  assert.equal(run({}, {allowedToolIds:"prefix-ao.read-suffix"}).verdict,"DENY");
+  assert.equal(run({transport:"mcp_http"},{endpoint:"https://known.example/mcp",
+    allowedMcpEndpoints:"https://known.example/mcp/other"}).verdict,"DENY");
+});
+test("approved MCP endpoint must be a valid credential-free HTTPS URL",()=>{
+  for(const endpoint of ["https://", "https://user:secret@known.example/mcp",
+    "https://known.example/mcp#fragment", "https://known.example/mcp\n",
+    "https://known.example\\@evil.example/mcp"]) {
+    assert.equal(run({transport:"mcp_http"},{endpoint,allowedMcpEndpoints:[endpoint]}).verdict,"DENY");
+  }
+});
+

@@ -1,0 +1,42 @@
+{
+  "archive": "amuse-main.zip",
+  "archiveSha256": "849f5ea2463afd80175dff6eb3ca137cd24c9a7655ba2224bb55ee087ebdcec7",
+  "status": "reference_only_not_runtime_integrated",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "39bd942f023adaed9e3cdb7bbf2ec5e6a4816fa48490b0db3f90e9957903829c",
+      "bytes": 5711
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "d414eb3c2e45d291c5073395992e33f00274a45968d530733ca68f3e17819672",
+      "bytes": 6671
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    {
+      "path": "THIRD_PARTY_LICENSES.md",
+      "sha256": "313f0b424966ce75474637491c9094961a19d435a980ea8ed1752d7ff8d72a88",
+      "bytes": 22969
+    },
+    {
+      "path": "apps/server/src/lib/vault.ts",
+      "sha256": "b8b1a94c45d2d16fbff2113d874bb8587f09511c765e294083179c40c8823190",
+      "bytes": 9468
+    },
+    {
+      "path": "apps/server/src/agent/sentinel.ts",
+      "sha256": "1a4ee822e65558da4fe31470cc832a70f14ba1ed875dd87a772b6f33699954e2",
+      "bytes": 18263
+    },
+    {
+      "path": "apps/web/src/components/ApprovalCard.tsx",
+      "sha256": "ccbb33f66e0136ce0b8e649d5bd58173d18c5294eebafe357fa1d19dc15f4ceb",
+      "bytes": 2905
+    }
+  ]
+}
