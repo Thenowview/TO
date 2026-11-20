@@ -419,7 +419,7 @@ internal sealed class LocalAgentEngine
             string path=Path.Combine(OutputFolder(job),step.Input);
             if(!File.Exists(path)||new FileInfo(path).Length>32768)
                 throw new ArgumentException("Note missing or too large");
-            return new{fileName=step.Input,content=File.ReadAllText(path,Encoding.UTF8)};
+            return new{fileName=step.Input,content=ReadNoteBounded(path)};
         }
         if(step.Tool=="list_notes")
         {
@@ -680,6 +680,22 @@ internal sealed class LocalAgentEngine
         public string Summary {get;set;}="";
         public List<AgentStep> Steps {get;set;}=new();
     }
+    internal static string ReadNoteBounded(string path)
+    {
+        // Bound bytes from the open handle, even if the file grew after metadata inspection.
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        byte[] bytes = new byte[32769];
+        int count = 0;
+        while (count < bytes.Length)
+        {
+            int read = stream.Read(bytes, count, bytes.Length - count);
+            if (read == 0) break;
+            count += read;
+        }
+        if (count > 32768) throw new ArgumentException("Note too large");
+        return new UTF8Encoding(false, true).GetString(bytes, 0, count);
+    }
+
     internal sealed class AgentStep
     {
         public string AgentId {get;set;}="planner";
