@@ -63,12 +63,12 @@ and removal of the superseded portable app remain blocked as previously recorded
 ## Summary
 - Assigned: **78** / 150 source requirements (provisional ownership)
 - Verified: **0 confirmed from this extraction** (not a measured failure rate)
-- Measured register statuses: **71 NOT_ASSESSED**, **7 IN_PROGRESS**, **0 VERIFIED** across the 78 assigned rows; no acceptance percentage is inferred.
+- Measured register statuses: **70 NOT_ASSESSED**, **7 IN_PROGRESS**, **1 VERIFIED** across the 78 assigned rows; no acceptance percentage is inferred.
 - Last source inventory: **2026-11-18**
 
 ## Full assigned checklist
 
-- [ ] **OWN-01** — Confirm the three repository identities, guidance and canonical ownership. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
+- [x] **OWN-01** — Confirm the three repository identities, guidance and canonical ownership. · **VERIFIED** · Source: [Theepmo-ref2.md#OWN-01](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence (2026-11-21 Riyadh): confirmed the three repository identities, their `GIZE-CHECK.md` entry points, declared ownership and active canonical trackers: [2029TEFE/TEFE guidance](https://github.com/2029TEFE/TEFE/blob/main/docs/GIZE-OWNER-INSTRUCTIONS.md) and [#75](https://github.com/2029TEFE/TEFE/issues/75); [2029TEBE/TEBE guidance](https://github.com/2029TEBE/TEBE/blob/main/docs/GIZE-OWNER-INSTRUCTIONS.md) and [#642](https://github.com/2029TEBE/TEBE/issues/642); [faisalwrokksa-hub/TO guidance](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/GIZE-OWNER-INSTRUCTIONS.md) and [#71](https://github.com/faisalwrokksa-hub/TO/issues/71). TEFE owns public frontend; TEBE owns authenticated web/API; OT owns Windows/offline/artifacts and cross-repository coordination. Governance documentation requirement; runtime tests and deployment evidence are inapplicable.
 - [ ] **OWN-03** — Record launch scope, supported platforms, features and customer-facing promises without silently narrowing these requirements. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-03](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **OWN-04** — Preserve customer data, controls, legacy artifact references and unique branch work. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-04](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
 - [ ] **OWN-05** — Record cost decisions, release authorization boundary and final main-only cleanup conditions. · **NOT_ASSESSED** · Source: [Theepmo-ref2.md#OWN-05](https://github.com/faisalwrokksa-hub/TO/blob/main/docs/gize-sources/Theepmo-ref2.md) · Evidence: pending
