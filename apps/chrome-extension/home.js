@@ -685,6 +685,8 @@ function validatedAoCatalog(policy) {
 
 async function showAgentJob() {
   const o=selectedOrder(),jobId=app.agentJobId;
+  app.agentReviewSnapshot=null;
+  $("agentApprove").disabled=true;
   if(!o||!jobId)return;
   const r=await rpc("agent_get",{taskId:o.taskId,jobId});
   // Display-only risk disclosure. The native host, not the extension, owns authorization.
@@ -715,8 +717,13 @@ async function showAgentJob() {
     "RECENT EXECUTION EVENTS:\n"+(r.events||[]).slice(-10)
       .map(e=>e.createdUtc+" | "+e.eventType+" | "+e.evidence).join("\n")
   ];
+  // Discard a stale response if the user switched orders/jobs while it was loading.
+  if(selectedOrder()?.taskId!==o.taskId || app.agentJobId!==jobId)return;
   $("agentDetails").textContent=details.join("\n\n");
-  $("agentApprove").disabled=r.status!=="awaiting_approval";
+  app.agentReviewSnapshot=TheOrgReviewedPlan.snapshot(o.taskId,jobId,r);
+  $("agentApprove").disabled=!app.agentReviewSnapshot;
+  if(r.status==="awaiting_approval"&&!app.agentReviewSnapshot)
+    $("agentDetails").textContent+="\n\nReview binding unavailable. Update the Windows host and refresh before approval.";
   $("agentRunNext").disabled=r.status!=="queued";
   $("agentRunSafeBatch").disabled=r.status!=="queued" ||
     !["write_note","read_note","list_notes","system_info"].includes(r.plan?.steps?.[r.stepIndex]?.tool);
@@ -780,7 +787,9 @@ function registerLocalAgentEvents() {
     $(id).addEventListener("click",run(async()=>{
       const o=selectedOrder(),jobId=app.agentJobId;
       if(!o||!jobId)throw new Error("Select an agent job first");
-      const response=await rpc(command,{taskId:o.taskId,jobId,...extras});
+      const reviewedExtras=command==="agent_approve"
+        ? TheOrgReviewedPlan.approvalArgs(app.agentReviewSnapshot,o.taskId,jobId) : extras;
+      const response=await rpc(command,{taskId:o.taskId,jobId,...reviewedExtras});
       toast(command==="agent_run_next" ?
         "Tool step requested. Examine evidence and output before continuing." :
         command==="agent_run_safe_batch" ?
@@ -803,3 +812,4 @@ function registerLocalAgentEvents() {
   try { await refreshOrders(); }
   catch(error){toast("Local work orders unavailable: "+error.message,true);}
 })();
+

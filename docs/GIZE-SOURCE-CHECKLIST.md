@@ -1,5 +1,18 @@
 # GIZE TO — Source-linked Progress Register
 
+## Reviewed-plan approval binding — 2026-11-20 UTC
+
+Owner: "bulk fix, auto approval". The first Amuse intake/policy batch is merged
+in OT #110, TEBE #712 and TEFE #115. This follow-up implements a selected reviewed
+action pattern in the existing Chrome/native runtime: `agent_get` fingerprint,
+exact-snapshot approval, stale-response UI guard and scoped field forwarding.
+See `docs/REVIEWED-PLAN-APPROVAL.md`. Local JavaScript validation: 38 tests pass.
+Native self-test and real framed smoke fixtures cover missing/stale snapshots;
+compiled results and physical Chrome acceptance must be recorded for this head.
+No requirement is newly VERIFIED; PC-05 and TASK-09 receive partial implementation
+evidence only. Encryption identifiers/key custody are unchanged. Trusted signing
+and removal of the superseded portable app remain blocked as previously recorded.
+
 **Command:** `gize ot`  
 **Canonical issue:** https://github.com/faisalwrokksa-hub/TO/issues/71
 
@@ -388,4 +401,5 @@ Test da95532fa08d6b4e21e518b2557911bc78da1435 replaces a real completed syntheti
 Owner instruction: "fix in bulk" after requesting relevant source files pushed across repositories, latest-build PC acceptance and removal of the superseded installed app. Selected uploaded source is now readable and hash-pinned in the OT companion candidate. OT authorization flags, allowlist types and MCP URL syntax are hardened; 19 targeted policy tests pass. See `docs/vendor/amuse/GIZE-ADOPTION.md`.
 
 Scope remains IMPLEMENTED_UNVERIFIED / partial integration. No source ID is newly VERIFIED. Amuse runtime/credential broker wiring, exact-build physical Chrome/Windows acceptance, signing and release remain outstanding. The older TheOrg Workspace 2 observations are excluded from current-build acceptance. The prior claim of no open OT PRs was stale at this audit. Follow the linked candidate PR and canonical issue for exact SHA/CI and subsequent device evidence.
+
 

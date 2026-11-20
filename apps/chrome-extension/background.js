@@ -36,7 +36,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "agent_review":
       case "agent_cancel":
       case "agent_recover": return await manager.agentCommand(
-        message.taskId,message.jobId,message.command,{approved:message.approved===true});
+        message.taskId,message.jobId,message.command,{
+          approved:message.approved===true,reviewFingerprint:message.reviewFingerprint});
       case "get_order": return await manager.getNativeOrder(message.taskId);
       case "open_supervisor_tab": return {ok:true,...await manager.openSupervisorTab(message.taskId,message.providerId)};
       case "approve_plan": return {ok:true,...await manager.approvePlan(message.taskId)};
@@ -87,3 +88,4 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   })().then(sendResponse).catch(e=>sendResponse({ok:false,error:String(e?.message||e)}));
   return true;
 });
+

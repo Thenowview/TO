@@ -160,7 +160,7 @@ internal sealed class LocalAgentEngine
         return new{ok=true,jobId=job.Id,job.Company,orderId=job.Order,
             job.Instruction,job.Mode,job.Model,job.Status,job.StepIndex,
             job.Plan,job.QaJson,events=events.AsEnumerable().Reverse().ToArray(),
-            approvedHosts=job.Hosts};
+            approvedHosts=job.Hosts,reviewFingerprint=ApprovalFingerprint(job)};
     }
     internal object List(JsonElement request)
     {
@@ -177,6 +177,10 @@ internal sealed class LocalAgentEngine
         var job=Find(request);
         if(job.Status!="awaiting_approval") throw new InvalidOperationException("Only a reviewed proposal may be approved");
         if(!Flag(request,"approved")) throw new ArgumentException("Approval requires explicit owner action");
+        // The reviewer must echo the exact snapshot displayed by agent_get.
+        // A fingerprint identifies content and scope; it is not an authorization token.
+        if(!string.Equals(Text(request,"reviewFingerprint"),ApprovalFingerprint(job),StringComparison.Ordinal))
+            throw new InvalidOperationException("Reviewed plan changed or snapshot missing; refresh and review again");
         using var db=Open();
         Exec(db,"BEGIN IMMEDIATE;");
         try
@@ -729,3 +733,4 @@ internal sealed class LocalAgentEngine
         public string ExpectedOutput {get;set;}="";
     }
 }
+
