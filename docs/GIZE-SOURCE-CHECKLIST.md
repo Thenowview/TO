@@ -484,3 +484,10 @@ Test 6487471e5ebff9f73b5ec48c6061f07cdcf6dc21 injects SQLite trigger ABORT on ca
 
 ## TASK-04/TASK-09 — cancellation retry audit, 2026-11-22
 Candidate test 45ee19b89e8c5d3e0e3a29a4727b1de84278c2c5 retries cancellation through a fresh Controller and requires cancelled state plus exactly one committed owner_cancelled audit event. Extends the integrated rollback fault test; no runtime behavior changed. Exact-head CI pending. Physical Chrome/Windows, signing/key custody and customer acceptance remain unavailable; NO_GO retained. No requirement promoted to VERIFIED.
+
+
+## PC Assist execution candidate — 2026-11-21T23:08Z
+
+Owner clarified that THEEPMO PC Assist is GIZE Desktop Tools plus its Chrome extension, and requested actual full-task/PC execution. Browser slice: apps/chrome-extension/browser-workflow.js and browser-workflow-ui.js add reviewed single-origin read/fill/click/assertion execution, plan fingerprints, work-order-scoped durable receipts, permission checks, stop and no automatic replay. 64 local Node checks passed, including 17 new workflow tests in tests/browser-workflow.test.cjs. Full evidence, explicit optional-permission delta and remaining gaps: docs/PC-ASSIST-BROWSER-WORKFLOWS.md.
+
+PC-03/04/05/07 and TASK-01/02/03/04: PARTIAL IMPLEMENTATION EVIDENCE ONLY. Existing requirement statuses remain; none newly VERIFIED. Real installed Chrome execution, Windows application interaction, natural-language/adaptive task completion, localization and a fair Codex/Agent One benchmark are not established. Candidate GitHub CI/PR/SHA to be linked from canonical issue #71 after publication. No deployment or extension permission grant occurred.

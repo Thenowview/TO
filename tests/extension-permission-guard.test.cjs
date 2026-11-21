@@ -17,10 +17,10 @@ test("GIZE Supervisor retains a closed extension permission allowlist", () => {
   assert.ok(manifest.permissions.every(permission => !broadPermissions.has(permission)));
 });
 
-test("GIZE Supervisor does not request wildcard hosts or remote executable scripts", () => {
+test("GIZE Supervisor grants no install-time host access and offers only optional site-scoped scripting", () => {
   assert.deepEqual(manifest.host_permissions || [], [], "host access requires explicit review");
-  assert.deepEqual(manifest.optional_host_permissions || [], [], "optional host access requires explicit review");
-  assert.deepEqual(manifest.optional_permissions || [], [], "optional permission expansion requires explicit review");
+  assert.deepEqual(manifest.optional_host_permissions, ["https://*/*"], "Only user-granted HTTPS sites may be requested at runtime");
+  assert.deepEqual(manifest.optional_permissions, ["scripting"], "No debugger, capture, cookie or history access");
   assert.deepEqual(manifest.content_scripts || [], [], "injected content scripts require explicit review");
   assert.equal(manifest.background?.service_worker, "background.js");
   assert.equal(manifest.background?.type ?? "classic", "classic");
@@ -40,3 +40,4 @@ test("GIZE Supervisor does not expose extension resources or browser page overri
   assert.equal(manifest.chrome_url_overrides, undefined,
     "browser page overrides require explicit security review");
 });
+

@@ -30,12 +30,14 @@ jobs:
           node --check apps/chrome-extension/background.js
           node --check apps/chrome-extension/home.js
           node --check apps/chrome-extension/reviewed-plan.js
+          node --check apps/chrome-extension/browser-workflow.js
+          node --check apps/chrome-extension/browser-workflow-ui.js
       - name: Test Supervisor handoff and artifact gates with simulated Chrome
         run: node --test tests/task-manager.test.cjs tests/reviewed-plan.test.cjs
       - name: Audit Supervisor UI to background contracts
         run: node --test tests/ui-contract.test.cjs tests/connection-health.test.cjs
       - name: Enforce Chrome privilege and browser-integration security regressions
-        run: node --test tests/extension-privilege-boundary.test.cjs tests/extension-browser-integration-guard.test.cjs
+        run: node --test tests/extension-privilege-boundary.test.cjs tests/extension-browser-integration-guard.test.cjs tests/extension-permission-guard.test.cjs tests/browser-workflow.test.cjs
       - name: Audit fail-closed production release gates
         run: |
           node --test tests/release-gates.test.cjs
@@ -207,6 +209,7 @@ jobs:
           path: out/bridge/
           if-no-files-found: error
           retention-days: 30
+
 
 
 

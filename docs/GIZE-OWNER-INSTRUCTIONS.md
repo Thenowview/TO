@@ -36,3 +36,10 @@ This Markdown is a persistent protocol. The check is run only when invoked by a 
 ## CHANGE-20261119-BULK-NATIVE
 
 Owner: "fix in bulk, auto approval = 1". Execute reversible OT fixes in the existing PR #82, including PC-05/PC-07 native plan schema, approval binding and completion replay protection. Routine implementation authorized; required GitHub checks/reviews and customer release gates remain. See PR #82 and issue #71 for exact candidate SHA/CI; no independent acceptance inferred.
+
+
+## CHANGE-20261122-PC-ASSIST-EXECUTION
+
+Owner clarifications: "not complating the full autmation tasks, also doesn't access the pc and prfeorm tasks"; "I'm refering to the epmo's pc assist and its chrome extnation"; "yes its brand is GIZE desktop tools." Owner direction: "fix it to preform better then codex and one agent"; "Bulk fix, auto approval".
+
+Scope: implement actual PC Assist execution and verify task outcomes. First candidate adds bounded, explicitly reviewed browser actions and durable evidence, with user-granted per-origin scripting. Related source IDs PC-03/PC-04/PC-05/PC-07 and TASK-01/02/03/04 receive partial evidence only. See docs/PC-ASSIST-BROWSER-WORKFLOWS.md. General Windows UI control, natural-language/adaptive execution and comparative performance remain incomplete. No source requirement is promoted to VERIFIED; no installed permissions or production deployment changed. Routine implementation, checks and eligible merges remain authorized by the owner.
