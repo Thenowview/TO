@@ -944,6 +944,26 @@ internal static class SelfTest
                     "Rejected integrity review cannot approve completed job");
             }
             finally { File.WriteAllBytes(savedNote, originalReviewNote); }
+            string reviewLinkTarget = Path.Combine(root, "synthetic-review-link-target.md");
+            File.WriteAllBytes(reviewLinkTarget, originalReviewNote);
+            File.Delete(savedNote);
+            try
+            {
+                File.CreateSymbolicLink(savedNote, reviewLinkTarget);
+                var linkedReview = Call(new Controller(root), new {command="agent_review",companyId="demo",jobId});
+                Check(!linkedReview.GetProperty("ok").GetBoolean(),
+                    "Public review rejects linked output even when bytes match recorded digest");
+                var afterLinkedReview = Call(c, new {command="agent_get",companyId="demo",jobId});
+                Check(afterLinkedReview.GetProperty("status").GetString() == "completed_pending_review",
+                    "Linked output rejection cannot approve job");
+            }
+            finally
+            {
+                File.Delete(savedNote);
+                File.WriteAllBytes(savedNote, originalReviewNote);
+                File.Delete(reviewLinkTarget);
+            }
+
             var qa=Call(c,new {command="agent_review",companyId="demo",jobId});
             Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
                 !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
