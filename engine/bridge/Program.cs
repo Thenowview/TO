@@ -1298,6 +1298,21 @@ internal static class SelfTest
             try { LocalAgentEngine.HashOutputBounded(hashFixture); }
             catch (ArgumentException) { oversizedHashDenied = true; }
             Check(oversizedHashDenied, "Oversized replacement output cannot be hashed unbounded");
+            string lockedOutput = Path.Combine(root, "locked-output.md");
+            File.WriteAllText(lockedOutput, "synthetic locked output");
+            using(var exclusiveOutput = new FileStream(lockedOutput, FileMode.Open,
+                FileAccess.ReadWrite, FileShare.None))
+            {
+                bool lockedReadDenied = false, lockedHashDenied = false;
+                try { LocalAgentEngine.ReadNoteBounded(lockedOutput); }
+                catch (IOException) { lockedReadDenied = true; }
+                try { LocalAgentEngine.HashOutputBounded(lockedOutput); }
+                catch (IOException) { lockedHashDenied = true; }
+                Check(lockedReadDenied && lockedHashDenied,
+                    "Exclusive writer prevents note reads and integrity hashing");
+            }
+            Check(LocalAgentEngine.ReadNoteBounded(lockedOutput) == "synthetic locked output",
+                "Released output lock permits ordinary read");
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
