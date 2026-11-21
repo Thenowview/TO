@@ -4,13 +4,19 @@ param([Parameter(Mandatory=$true)][string]$ExecutablePath)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $probe = Join-Path $PSScriptRoot '..\portable\Test-BridgeConnection.ps1'
-& $probe -ExecutablePath $ExecutablePath
 $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('TheOrgHealth-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $fixtureRoot)
 $fixtureSource = Join-Path $fixtureRoot 'Fixture.cs'
 $fixtureExe = Join-Path $fixtureRoot 'Fixture.exe'
 $oldMode = [Environment]::GetEnvironmentVariable('OT_HEALTH_FIXTURE_MODE','Process')
+$originalEncoding = [Console]::InputEncoding
 try {
+  # Regression: Framework Process must not prepend the console UTF-8 BOM to frames.
+  [Console]::InputEncoding = New-Object Text.UTF8Encoding($true)
+  & $probe -ExecutablePath $ExecutablePath
+  if ([Console]::InputEncoding.GetPreamble().Length -ne 3) {
+    throw 'Health probe did not restore the caller console input encoding.'
+  }
 @'
 using System;
 using System.IO;
@@ -61,6 +67,7 @@ class Fixture {
   if (-not $rejected) { throw 'Health probe accepted missing executable.' }
   Write-Host 'PASS Windows portable installation health regression checks.'
 } finally {
+  [Console]::InputEncoding = $originalEncoding
   [Environment]::SetEnvironmentVariable('OT_HEALTH_FIXTURE_MODE',$oldMode,'Process')
   # Only the two fixture files this test created; no recursive user-data deletion.
   foreach ($file in @($fixtureExe,$fixtureSource)) {

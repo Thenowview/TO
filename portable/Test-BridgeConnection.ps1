@@ -38,7 +38,21 @@ function Read-ExactBytes([IO.Stream]$Stream, [byte[]]$Buffer) {
   }
 }
 try {
-  $started = $process.Start()
+  # .NET Framework's Process uses Console.InputEncoding and can emit a BOM
+  # before binary stdin. Core supports a per-process encoding override instead.
+  $noBom = New-Object Text.UTF8Encoding($false)
+  $encodingProperty = $process.StartInfo.PSObject.Properties['StandardInputEncoding']
+  $consoleEncoding = [Console]::InputEncoding
+  try {
+    if ($null -ne $encodingProperty) {
+      $process.StartInfo.StandardInputEncoding = $noBom
+    } else {
+      [Console]::InputEncoding = $noBom
+    }
+    $started = $process.Start()
+  } finally {
+    if ($null -eq $encodingProperty) { [Console]::InputEncoding = $consoleEncoding }
+  }
   if (-not $started) { throw 'Could not start the native host.' }
   $request = [Text.Encoding]::UTF8.GetBytes('{"command":"ping"}')
   $length = [BitConverter]::GetBytes([int]$request.Length)
