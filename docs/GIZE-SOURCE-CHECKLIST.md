@@ -480,3 +480,7 @@ Cancellation previously updated by ID after a stale status read and could rewrit
 
 ## TASK-04/TASK-09 — cancellation audit rollback fault, 2026-11-21
 Test 6487471e5ebff9f73b5ec48c6061f07cdcf6dc21 injects SQLite trigger ABORT on cancellation audit insert, requires fresh Controller state remain awaiting_approval, removes trigger finally, then existing cancellation test continues. Current main7ad121cc already implements transactional cancellation; reused rather than duplicated. Exact-head Windows CI pending. No full requirement or physical acceptance promoted; NO_GO retained.
+
+
+## TASK-04/TASK-09 — cancellation retry audit, 2026-11-22
+Candidate test 45ee19b89e8c5d3e0e3a29a4727b1de84278c2c5 retries cancellation through a fresh Controller and requires cancelled state plus exactly one committed owner_cancelled audit event. Extends the integrated rollback fault test; no runtime behavior changed. Exact-head CI pending. Physical Chrome/Windows, signing/key custody and customer acceptance remain unavailable; NO_GO retained. No requirement promoted to VERIFIED.
