@@ -684,6 +684,26 @@ internal sealed class LocalAgentEngine
         public string Summary {get;set;}="";
         public List<AgentStep> Steps {get;set;}=new();
     }
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFinalPathNameByHandleW(
+        Microsoft.Win32.SafeHandles.SafeFileHandle handle, StringBuilder path, uint length, uint flags);
+
+    internal static void RequireOpenedPath(FileStream stream, string expectedPath)
+    {
+        if (!OperatingSystem.IsWindows()) return; // Existing component checks still apply on other hosts.
+        var resolved = new StringBuilder(32768);
+        uint length = GetFinalPathNameByHandleW(stream.SafeFileHandle, resolved, (uint)resolved.Capacity, 0);
+        if (length == 0 || length >= resolved.Capacity)
+            throw new IOException("Cannot establish opened output path");
+        string actual = resolved.ToString();
+        if (actual.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+            actual = @"\\" + actual.Substring(8);
+        else if (actual.StartsWith(@"\\?\", StringComparison.Ordinal))
+            actual = actual.Substring(4);
+        if (!string.Equals(Path.GetFullPath(expectedPath), actual, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("Opened output path differs from requested path");
+    }
+
     internal static string HashOutputBounded(string path)
     {
         // Reject existing link/reparse components before opening. This is defense in depth,
@@ -697,6 +717,7 @@ internal sealed class LocalAgentEngine
         }
 
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        RequireOpenedPath(stream, path);
         byte[] bytes = new byte[32769];
         int count = 0;
         while (count < bytes.Length)
@@ -722,6 +743,7 @@ internal sealed class LocalAgentEngine
         }
         // Bound bytes from the open handle, even if the file grew after metadata inspection.
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        RequireOpenedPath(stream, path);
         byte[] bytes = new byte[32769];
         int count = 0;
         while (count < bytes.Length)
