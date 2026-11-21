@@ -64,7 +64,9 @@
     async native(payload) {
       const reply = await this.api.runtime.sendNativeMessage(HOST, payload);
       if (!reply || reply.ok !== true) {
-        throw new Error(reply && reply.error ? reply.error : "Windows controller unavailable");
+        const detail = reply && typeof reply.detail === "string" ? reply.detail : "";
+        const error = reply && typeof reply.error === "string" ? reply.error : "Windows controller unavailable";
+        throw new Error(detail ? error + ": " + detail : error);
       }
       return reply;
     }
@@ -943,4 +945,5 @@
 
   globalThis.TheOrgTaskManager = TaskManager;
 })();
+
 

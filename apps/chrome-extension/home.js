@@ -28,7 +28,20 @@ function toast(message, isError = false) {
   setTimeout(() => { if (div.textContent === message) div.className = "toast"; }, 6000);
 }
 async function rpc(command, args = {}) {
-  const result = await chrome.runtime.sendMessage({command, ...args});
+  // A health probe must not leave the interface waiting indefinitely. Do not
+  // time out mutating requests: a timeout cannot cancel work in the controller.
+  let timer;
+  const request = chrome.runtime.sendMessage({command, ...args});
+  const result = command === "ping"
+    ? await Promise.race([
+        request,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error(
+            "Controller connection check timed out after 15 seconds. Run the portable bridge repair and check again."
+          )), 15000);
+        })
+      ]).finally(() => clearTimeout(timer))
+    : await request;
   if (!result || result.ok !== true)
     throw new Error(result && result.error ? result.error : "GIZE AI controller did not respond");
   return result;
@@ -46,13 +59,23 @@ function selectedOrder() {
 }
 
 async function checkEngine() {
+  const button = $("recheck");
+  button.disabled = true;
+  $("engineStatus").textContent = "Checking local controller...";
+  $("engineStatus").className = "connection pending";
   try {
     await rpc("ping");
     $("engineStatus").textContent = "Local controller connected";
     $("engineStatus").className = "connection connected";
-  } catch {
+    $("engineStatus").removeAttribute("title");
+  } catch (error) {
+    const detail = error && error.message ? error.message : String(error);
     $("engineStatus").textContent = "Controller unavailable";
     $("engineStatus").className = "connection pending";
+    $("engineStatus").title = detail;
+    toast("Controller connection failed: " + detail, true);
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -803,7 +826,8 @@ function registerLocalAgentEvents() {
 (async function init(){
   registerEvents();
   registerLocalAgentEvents();
-  await checkEngine();
+  // Native health checking must not block the provider directory or saved orders.
+  void checkEngine();
   try {
     const r=await rpc("providers");
     app.providers=r.providers||{};
@@ -812,4 +836,5 @@ function registerLocalAgentEvents() {
   try { await refreshOrders(); }
   catch(error){toast("Local work orders unavailable: "+error.message,true);}
 })();
+
 
