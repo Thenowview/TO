@@ -1321,6 +1321,15 @@ internal static class SelfTest
                 try { LocalAgentEngine.RequireOpenedPath(openedOutput, lockedOutput + ".different"); }
                 catch (IOException) { mismatchedHandleDenied = true; }
                 Check(mismatchedHandleDenied, "Opened handle cannot satisfy a different expected path");
+                // NUL is a Windows device handle, not a resolvable disk output path.
+                using(var deviceHandle = new FileStream("NUL", FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    bool unresolvableHandleDenied = false;
+                    try { LocalAgentEngine.RequireOpenedPath(deviceHandle, lockedOutput); }
+                    catch (IOException) { unresolvableHandleDenied = true; }
+                    Check(unresolvableHandleDenied, "Unresolvable Windows device handle cannot satisfy output custody");
+                }
+
                 // Model a redirected open after pre-open inspection: validate the real handle.
                 string redirectedPath = Path.Combine(root, "redirected-open.md");
                 File.CreateSymbolicLink(redirectedPath, lockedOutput);
