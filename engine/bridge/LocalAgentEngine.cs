@@ -689,12 +689,19 @@ internal sealed class LocalAgentEngine
         Microsoft.Win32.SafeHandles.SafeFileHandle handle, StringBuilder path, uint length, uint flags);
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct NativeFileTime
+    {
+        public uint LowDateTime;
+        public uint HighDateTime;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     private struct ByHandleFileInformation
     {
         public uint FileAttributes;
-        public long CreationTime;
-        public long LastAccessTime;
-        public long LastWriteTime;
+        public NativeFileTime CreationTime;
+        public NativeFileTime LastAccessTime;
+        public NativeFileTime LastWriteTime;
         public uint VolumeSerialNumber;
         public uint FileSizeHigh;
         public uint FileSizeLow;
@@ -703,7 +710,7 @@ internal sealed class LocalAgentEngine
         public uint FileIndexLow;
     }
 
-    private readonly record struct OpenedOutputIdentity(
+    internal readonly record struct OpenedOutputIdentity(
         uint VolumeSerialNumber, uint FileIndexHigh, uint FileIndexLow, uint NumberOfLinks);
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
