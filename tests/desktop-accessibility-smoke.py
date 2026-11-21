@@ -20,28 +20,28 @@ exe = Path(sys.argv[1]).resolve()
 company = "uia_ci_" + uuid.uuid4().hex[:12]
 title = "GIZE synthetic accessibility " + uuid.uuid4().hex
 script = r"""
-Add-Type -AssemblyName System.Windows.Forms
-$form = New-Object System.Windows.Forms.Form
-$form.Text = '__TITLE__'
-$form.Width = 520; $form.Height = 240
-$edit = New-Object System.Windows.Forms.TextBox
-$edit.Name = 'FixtureInput'; $edit.AccessibleName = 'Fixture input'
-$edit.Location = New-Object System.Drawing.Point(20,20); $edit.Width = 440
-$private = New-Object System.Windows.Forms.TextBox
-$private.AccessibleName = 'Private fixture'; $private.UseSystemPasswordChar = $true
-$private.Location = New-Object System.Drawing.Point(20,55); $private.Width = 440
-$button = New-Object System.Windows.Forms.Button
-$button.Text = 'Apply synthetic value'; $button.AccessibleName = 'Apply synthetic value'
-$button.Location = New-Object System.Drawing.Point(20,95); $button.Width = 220
-$status = New-Object System.Windows.Forms.Label
-$status.Text = 'Awaiting synthetic input'; $status.AutoSize = $true
-$status.Location = New-Object System.Drawing.Point(20,145)
+Add-Type -AssemblyName PresentationFramework
+[xml]$markup = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="__TITLE__" Width="520" Height="260">
+ <StackPanel Margin="20">
+  <TextBox x:Name="FixtureInput" AutomationProperties.Name="Fixture input" Margin="0,0,0,12"/>
+  <PasswordBox x:Name="PrivateInput" AutomationProperties.Name="Private fixture" Margin="0,0,0,12"/>
+  <Button x:Name="ApplyButton" Content="Apply synthetic value" AutomationProperties.Name="Apply synthetic value" Margin="0,0,0,12"/>
+  <TextBlock x:Name="StatusText" Text="Awaiting synthetic input"/>
+ </StackPanel>
+</Window>
+'@
+$xmlReader = New-Object System.Xml.XmlNodeReader($markup)
+$form = [Windows.Markup.XamlReader]::Load($xmlReader)
+$edit = $form.FindName('FixtureInput')
+$button = $form.FindName('ApplyButton')
+$status = $form.FindName('StatusText')
 $button.Add_Click({
   if ($edit.Text -ceq 'Synthetic input verified') { $status.Text = 'Synthetic saved' }
   else { $status.Text = 'Unexpected synthetic input' }
 })
-$form.Controls.AddRange(@($edit,$private,$button,$status))
-$form.TopMost = $true
+$form.Topmost = $true
 [void]$form.ShowDialog()
 """.replace("__TITLE__", title)
 
