@@ -470,3 +470,9 @@ Test 47a9fc28ecd71083a2202f8d2b1530daec9ed8f9 opens Windows NUL read-only and re
 
 ## EVD-02/EVD-03 — deterministic parent substitution, 2026-11-21
 Test 67ebeec0b678b86192d78534e0494d5e0a78eebb observes an ordinary parent, moves it and replaces it with a directory symlink before opening; opened-handle verifier must reject with zero bytes consumed. This deterministically models the inspection/open boundary, not exhaustive thread scheduling or hardlink identity protection. Baseline41825aaa postmerge checks SUCCESS. Exact-head Windows CI pending; original source statuses unchanged and customer NO_GO retained for signing/key custody, physical Chrome, inference/tenant, independent security/legal and release evidence.
+
+
+## TASK-04/TASK-09 — cancellation terminal-state guard, 2026-11-21
+Cancellation previously updated by ID after a stale status read and could rewrite completed work. Candidate conditional update permits only same-company awaiting_approval/queued status matching the observed snapshot; concurrent claim or terminal state rejects. Public Controller negative test requires completed_pending_review remain unchanged. Exact-head Windows CI pending; cancellation audit atomicity and exhaustive race coverage remain separate. No source ID promoted; NO_GO retained.
+
+- Follow-up: exact-head CI 44935097180 failed the status assertion because the test ran after review changed the state. Test reordered in 6d0fdc5; cancellation and audit event now share an immediate transaction with status/company/step-index compare-and-update in 495a7f5. Fresh exact-head CI and race acceptance pending; no VERIFIED promotion.
