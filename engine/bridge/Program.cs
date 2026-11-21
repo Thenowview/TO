@@ -969,15 +969,15 @@ internal static class SelfTest
                 File.Delete(reviewLinkTarget);
             }
 
-            var qa=Call(c,new {command="agent_review",companyId="demo",jobId});
-            Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
-                !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
-                "independent checksum QA does not certify content quality");
             var completedCancel = Call(new Controller(root), new {command="agent_cancel",companyId="demo",jobId});
             Check(!completedCancel.GetProperty("ok").GetBoolean(), "Completed job cannot be rewritten by cancellation");
             var afterCompletedCancel = Call(c, new {command="agent_get",companyId="demo",jobId});
             Check(afterCompletedCancel.GetProperty("status").GetString() == "completed_pending_review",
                 "Rejected cancellation preserves completed pending-review status");
+            var qa=Call(c,new {command="agent_review",companyId="demo",jobId});
+            Check(qa.GetProperty("qa").GetProperty("verdict").GetString()=="human_review_required"&&
+                !qa.GetProperty("qa").GetProperty("semanticQualityApproved").GetBoolean(),
+                "independent checksum QA does not certify content quality");
             // One-click safe batch cannot bypass approval or launch external applications.
             var batchPlan=Call(c,new {
                 command="agent_create",companyId="demo",orderId=id,
