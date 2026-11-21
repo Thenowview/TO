@@ -39,3 +39,27 @@ Remaining before acceptance:
 - Existing local-agent catalog remains separate; its Notepad tool is still launch only.
 No 10/10 readiness, signing, deployment, production acceptance or competitor
 superiority is claimed.
+
+## Follow-up: reviewed local-model plans and runtime acceptance harness
+
+The candidate now supports optional local-Ollama planning from the stored owner work
+order and a fresh observation. Output is restricted to 1–12 closed accessibility
+actions using observed controls in one pinned window. The owner reviews the exact
+plan fingerprint before execution. Per-window locks prevent concurrent plans from
+controlling the same window. Per-step durable receipts survive failures; stop takes
+effect before the next action. Interrupted or dispatched work is not replayed.
+
+Invoke result text must newly appear after dispatch. Pre-existing results are rejected.
+Local validation: 68 Node checks pass, plus worker/Python syntax checks. All four
+workflows passed for the earlier compile-fixed 8f770fb91a498d5e4f342c36d29ece5f87d39e12.
+The newer planning, cancellation and synthetic-app test changes need fresh CI.
+
+tests/desktop-accessibility-smoke.py drives a disposable WinForms fixture in Windows
+CI: actual window/control observation, password exclusion, input/readback,
+invoke/result assertion, fresh-process receipts, replay rejection and process
+identity checks. No runtime pass is claimed before its candidate CI result.
+
+Owner-PC installation, real local-model inference, adaptive replanning, multi-window
+save/reopen workflows, full localization and competitive benchmarks remain open.
+No production acceptance, 10/10 score or VERIFIED source ID is inferred.
+

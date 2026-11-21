@@ -6,9 +6,17 @@ const html = fs.readFileSync(path.join(root, "home.html"), "utf8");
 const background = fs.readFileSync(path.join(root, "background.js"), "utf8");
 test("all desktop controls exist and command routes stay inside the Supervisor", () => {
   for (const match of ui.matchAll(/el\("([^"]+)"\)/g)) assert.ok(html.includes('id="' + match[1] + '"'), match[1]);
-  for (const command of ["desktop_windows", "desktop_observe", "desktop_preview", "desktop_execute", "desktop_receipt", "desktop_history"])
+  for (const command of ["desktop_windows", "desktop_observe", "desktop_preview", "desktop_execute", "desktop_receipt", "desktop_history", "desktop_draft_plan"])
     assert.ok(background.includes('case "' + command + '":'), command);
   assert.doesNotMatch(ui, /innerHTML|eval\(/);
+});
+test("desktop planning sends the stored owner instruction instead of caller-supplied text", async () => {
+  const f = context();
+  await f.send({command: "desktop_draft_plan", taskId: "a", instruction: "Untrusted replacement", model: "local-model", window: {}},
+    {id: "extension-id", url: "chrome-extension://extension-id/home.html"});
+  assert.equal(f.nativeCalls.length, 1);
+  assert.equal(f.nativeCalls[0].companyId, "demo");
+  assert.notEqual(f.nativeCalls[0].instruction, "Untrusted replacement");
 });
 function context() {
   let listener, nativeCalls = [];

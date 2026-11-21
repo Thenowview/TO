@@ -143,7 +143,7 @@ internal sealed class Controller
                         "agent_create", "agent_get", "agent_list", "agent_approve", "agent_run_next", "agent_run_safe_batch",
                         "agent_complete_browser", "agent_review", "agent_cancel", "agent_recover",
                         "agent_memory_put", "agent_memory_list", "agent_tools",
-                        "desktop_windows", "desktop_observe", "desktop_preview", "desktop_execute", "desktop_receipt", "desktop_history" },
+                        "desktop_windows", "desktop_observe", "desktop_preview", "desktop_execute", "desktop_receipt", "desktop_history", "desktop_draft_plan", "desktop_stop" },
                     maxArtifactImportBytes = 256000,
                     importedArtifactsRequireContentQa = true,
                     liveAiProvider = false,
@@ -485,6 +485,7 @@ internal static class SelfTest
         try
         {
             var c = new Controller(root);
+
             using (var desktopValid = JsonDocument.Parse("""
               {"operation":"set_value","window":{"handle":123,"processId":456,"processStartedUtc":"2026-11-21T00:00:00.0000000Z","title":"Synthetic fixture"},"target":{"runtimeId":[42,1],"name":"Fixture input","controlType":"ControlType.Edit"},"value":"Synthetic text"}
               """))
@@ -1557,4 +1558,5 @@ internal static class SelfTest
         if (!condition) throw new Exception("Failed check: " + label);
     }
 }
+
 

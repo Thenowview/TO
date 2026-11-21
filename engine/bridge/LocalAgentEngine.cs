@@ -483,7 +483,7 @@ internal sealed class LocalAgentEngine
         return plan;
     }
     internal const int MaxModelResponseBytes = 512 * 1024;
-    private static string Ask(string model,string system,string user)
+    internal static string Ask(string model,string system,string user)
     {
         // Local model traffic must never inherit a proxy or follow a redirect off loopback.
         using var http = new HttpClient(new HttpClientHandler {
@@ -830,4 +830,5 @@ internal sealed class LocalAgentEngine
         public string ExpectedOutput {get;set;}="";
     }
 }
+
 

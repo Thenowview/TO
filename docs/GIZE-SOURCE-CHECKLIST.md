@@ -482,17 +482,20 @@ Cancellation previously updated by ID after a stale status read and could rewrit
 Test 6487471e5ebff9f73b5ec48c6061f07cdcf6dc21 injects SQLite trigger ABORT on cancellation audit insert, requires fresh Controller state remain awaiting_approval, removes trigger finally, then existing cancellation test continues. Current main7ad121cc already implements transactional cancellation; reused rather than duplicated. Exact-head Windows CI pending. No full requirement or physical acceptance promoted; NO_GO retained.
 
 
-## TASK-04/TASK-09 — cancellation retry audit, 2026-11-22
-Candidate test 45ee19b89e8c5d3e0e3a29a4727b1de84278c2c5 retries cancellation through a fresh Controller and requires cancelled state plus exactly one committed owner_cancelled audit event. Extends the integrated rollback fault test; no runtime behavior changed. Exact-head CI pending. Physical Chrome/Windows, signing/key custody and customer acceptance remain unavailable; NO_GO retained. No requirement promoted to VERIFIED.
-
-
 ## PC Assist execution candidate — 2026-11-21T23:08Z
 
 Owner clarified that THEEPMO PC Assist is GIZE Desktop Tools plus its Chrome extension, and requested actual full-task/PC execution. Browser slice: apps/chrome-extension/browser-workflow.js and browser-workflow-ui.js add reviewed single-origin read/fill/click/assertion execution, plan fingerprints, work-order-scoped durable receipts, permission checks, stop and no automatic replay. 64 local Node checks passed, including 17 new workflow tests in tests/browser-workflow.test.cjs. Full evidence, explicit optional-permission delta and remaining gaps: docs/PC-ASSIST-BROWSER-WORKFLOWS.md.
 
 PC-03/04/05/07 and TASK-01/02/03/04: PARTIAL IMPLEMENTATION EVIDENCE ONLY. Existing requirement statuses remain; none newly VERIFIED. Real installed Chrome execution, Windows application interaction, natural-language/adaptive task completion, localization and a fair Codex/Agent One benchmark are not established. Candidate GitHub CI/PR/SHA to be linked from canonical issue #71 after publication. No deployment or extension permission grant occurred.
 
+## Windows task-plan/cancellation follow-up
 
-## Windows PC Assist accessibility — draft source evidence
+PC-03/04/05/07 and TASK-01/02/03/04: additional partial candidate evidence for
+optional local-model proposals from observed controls, bounded reviewed same-window
+plans, per-window locks, durable step receipts and stop-before-next-action.
+68 local Node checks pass; worker/Python syntax passes. Four workflows passed at
+8f770fb91a498d5e4f342c36d29ece5f87d39e12 before these newer changes. Fresh candidate CI
+and tests/desktop-accessibility-smoke.py must establish runtime acceptance.
+No owner-PC/model inference acceptance or VERIFIED promotion. See
+docs/PC-ASSIST-WINDOWS-ACCESSIBILITY.md and canonical issue #71.
 
-PC-03/04/05/07, TASK-01/02/03: WindowsDesktopAssist.cs and embedded DesktopAutomation.ps1 introduce selected-window observation, ValuePattern input and InvokePattern actions with exact proposal fingerprints, atomic claims and receipts. Supervisor UI wired; 67 local Node checks and PowerShell/Python syntax checks pass. Native compile/schema runtime checks pending candidate CI. No real Windows action, installed Chrome connection or complete goal is verified. See docs/PC-ASSIST-WINDOWS-ACCESSIBILITY.md. Status remains partial/unverified; no source ID is newly VERIFIED.

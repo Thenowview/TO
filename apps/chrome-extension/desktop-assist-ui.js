@@ -11,6 +11,12 @@
   };
   const show = value => { el("desktopAssistResult").textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2); };
   const invalidate = () => { proposal = null; el("desktopAssistRun").disabled = true; };
+  function busy(value) {
+    for (const id of ["desktopAssistWindows", "desktopAssistWindow", "desktopAssistObserve", "desktopAssistControl",
+      "desktopAssistOperation", "desktopAssistValue", "desktopAssistExpected", "desktopAssistPreview", "desktopAssistDraft",
+      "desktopAssistModel", "browserWorkflowOrder", "browserWorkflowRefresh"]) el(id).disabled = value;
+    el("desktopAssistStop").disabled = !value;
+  }
   function options(select, values, label) {
     select.replaceChildren();
     values.forEach((value, index) => {
@@ -43,7 +49,22 @@
       show({window: result.window, controls: result.controls, valuesRead: false});
     } catch (e) { show(e.message); }
   });
+  el("desktopAssistDraft").addEventListener("click", async () => {
+    const scope = el("browserWorkflowOrder").value;
+    try {
+      invalidate(); const window = windows[Number(el("desktopAssistWindow").value)];
+      if (!window) throw new Error("Choose an application window first");
+      show("Observing the selected application and drafting steps from your work order with the local model. No action is executing.");
+      const draft = await send("desktop_draft_plan", {window, model: el("desktopAssistModel").value.trim(), taskId: scope});
+      if (scope !== el("browserWorkflowOrder").value) throw new Error("Work order changed while planning; draft again in the selected workspace");
+      proposal = {...await send("desktop_preview", {action: draft.action, taskId: scope}), taskId: scope};
+      show({review: proposal.action, fingerprint: proposal.fingerprint,
+        notice: "Review every proposed application action. Approve and run executes only this exact plan."});
+      el("desktopAssistRun").disabled = false;
+    } catch (e) { show(e.message); }
+  });
   el("desktopAssistPreview").addEventListener("click", async () => {
+    const scope = el("browserWorkflowOrder").value;
     try {
       invalidate(); const control = controls[Number(el("desktopAssistControl").value)];
       if (!observedWindow || !control) throw new Error("Inspect the application and choose a control first");
@@ -54,7 +75,9 @@
         target: {runtimeId: control.runtimeId, name: control.name, controlType: control.controlType}};
       if (operation === "set_value") action.value = el("desktopAssistValue").value;
       else action.expectedText = el("desktopAssistExpected").value;
-      proposal = {...await send("desktop_preview", {action}), taskId: el("browserWorkflowOrder").value};
+      const prepared = await send("desktop_preview", {action, taskId: scope});
+      if (scope !== el("browserWorkflowOrder").value) throw new Error("Work order changed during review; inspect and review again");
+      proposal = {...prepared, taskId: scope};
       show({review: proposal.action, fingerprint: proposal.fingerprint,
         notice: "Review the exact application, control and input. Approve and run performs this action on your PC."});
       el("desktopAssistRun").disabled = false;
@@ -63,6 +86,7 @@
   el("desktopAssistRun").addEventListener("click", async () => {
     if (!proposal) return;
     const action = proposal; activeAction = action; invalidate();
+    busy(true);
     try {
       show("Executing the reviewed action. If interrupted, inspect the application and receipt before creating a new action.");
       const reply = await chrome.runtime.sendMessage({command: "desktop_execute", taskId: action.taskId,
@@ -70,6 +94,12 @@
       if (!reply?.ok) throw new Error(reply?.error || "Desktop action unavailable");
       show(reply); clearObservation();
     } catch (e) { show(e.message + ". The action may already have occurred; do not automatically retry."); }
+    finally { busy(false); }
+  });
+  el("desktopAssistStop").addEventListener("click", async () => {
+    if (!activeAction) return;
+    try { show(await send("desktop_stop", {taskId: activeAction.taskId, actionId: activeAction.actionId})); }
+    catch (e) { show(e.message); }
   });
   el("desktopAssistReceipt").addEventListener("click", async () => {
     try {

@@ -161,6 +161,8 @@
       <button id="desktopAssistWindows" type="button" class="secondary">Find application windows</button>
       <label for="desktopAssistWindow">Application window</label><select id="desktopAssistWindow"></select>
       <button id="desktopAssistObserve" type="button" class="secondary">Inspect selected window</button>
+      <label for="desktopAssistModel">Installed local model (optional planning)</label><input id="desktopAssistModel" value="qwen3:4b" maxlength="80">
+      <button id="desktopAssistDraft" type="button" class="secondary">Draft task steps from my work order</button>
       <label for="desktopAssistControl">Application control</label><select id="desktopAssistControl"></select>
       <label for="desktopAssistOperation">Action</label>
       <select id="desktopAssistOperation"><option value="set_value">Enter text</option><option value="invoke">Press a button</option></select>
@@ -169,6 +171,7 @@
       <div class="toolbar">
         <button id="desktopAssistPreview" type="button" class="secondary">Review Windows action</button>
         <button id="desktopAssistRun" type="button" class="primary" disabled>Approve and run action</button>
+        <button id="desktopAssistStop" type="button" class="secondary" disabled>Stop before next action</button>
         <button id="desktopAssistReceipt" type="button" class="secondary">Show action history</button>
       </div>
       <pre id="desktopAssistResult" role="status" aria-live="polite">No Windows action has run. Password fields, unsupported controls and changed windows are blocked.</pre>

@@ -37,7 +37,7 @@ try {
         runtimeId = @($element.GetRuntimeId())
         name = $name.Substring(0, [Math]::Min(240, $name.Length))
         controlType = $c.ControlType.ProgrammaticName
-        automationId = [string]$c.AutomationId
+        automationId = ([string]$c.AutomationId).Substring(0, [Math]::Min(120, ([string]$c.AutomationId).Length))
         enabled = $c.IsEnabled
         canInvoke = $canInvoke
         canSetValue = $canSet -and -not $value.Current.IsReadOnly
@@ -99,6 +99,9 @@ try {
     if (-not $target.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
       throw 'Control does not support InvokePattern'
     }
+    if (@(Safe-Snapshot $window | Where-Object { $_.name -ceq [string]$request.expectedText }).Count -gt 0) {
+      throw 'Expected result already existed before the action; review a distinct result expectation'
+    }
     $pattern.Invoke()
     $deadline = [DateTime]::UtcNow.AddSeconds(5)
     do {
@@ -108,7 +111,7 @@ try {
       Start-Sleep -Milliseconds 150
     } while ([DateTime]::UtcNow -lt $deadline)
     if (-not $found) { throw 'Action dispatched but expected visible text was not observed; do not replay' }
-    @{ok = $true; verified = 'expected_accessible_text_present'; controls = $snapshot} | ConvertTo-Json -Depth 10 -Compress
+    @{ok = $true; verified = 'expected_accessible_text_present'; expectedText = [string]$request.expectedText} | ConvertTo-Json -Depth 10 -Compress
     exit 0
   }
   throw 'Unsupported desktop operation'
