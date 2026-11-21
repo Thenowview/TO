@@ -84,6 +84,8 @@ jobs:
       - name: Test actual Native Messaging stdio framing and tenant isolation
         shell: pwsh
         run: |
+          # The host uses Windows known folders, regardless of environment overrides.
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'TheOrg-Smoke-Env-Redirect'
           python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
           python tests/ao-native-agent-smoke.py out/bridge/TheOrg.Bridge.exe
       - name: Fetch pinned official Chrome for Testing for dedicated TheOrg workspace
