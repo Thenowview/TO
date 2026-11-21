@@ -9,6 +9,8 @@
   <script src="ui-locale.js" defer></script>
   <script src="reviewed-plan.js" defer></script>
   <script src="home.js" defer></script>
+  <script src="browser-workflow.js" defer></script>
+  <script src="browser-workflow-ui.js" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -20,6 +22,7 @@
       <a class="nav-link" href="#services"><span class="nav-icon">▦</span> <span data-i18n-key="Local Services">Local Services</span></a>
       <a class="nav-link" href="#providers"><span class="nav-icon">✧</span> <span data-i18n-key="AI Providers">AI Providers</span></a>
       <a class="nav-link" href="#work"><span class="nav-icon">⎇</span> <span data-i18n-key="Specialist Agents">Specialist Agents</span></a>
+      <a class="nav-link" href="#browserWorkflows"><span class="nav-icon">↗</span> Browser workflows</a>
       <a class="nav-link" href="#audit"><span class="nav-icon">✓</span> <span data-i18n-key="Audit & Deliveries">Audit & Deliveries</span></a>
     </nav>
     <div class="rail-footer">
@@ -118,6 +121,36 @@
           </div>
         </div>
       </div>
+    </section>
+
+
+    <section id="browserWorkflows" class="section-block" aria-labelledby="browserWorkflowHeading">
+      <div class="section-head"><div><span class="section-kicker">PC ASSIST / BROWSER WORKFLOWS PREVIEW</span><h2 id="browserWorkflowHeading">Run a reviewed browser task</h2></div></div>
+      <p>Open a site, read visible text, fill ordinary text fields, click a reviewed button and check the result. Workflows run in a new tab on one approved HTTPS site. Windows app control remains unavailable in this preview.</p>
+      <p>Use ordinary task data only. Enter passwords, payment details and verification codes manually. Review every click before running; it may submit or change information on the site.</p>
+      <label for="browserWorkflowOrder">Work order</label>
+      <select id="browserWorkflowOrder" aria-label="Browser workflow work order"></select>
+      <button id="browserWorkflowRefresh" type="button" class="secondary">Load work orders</button>
+      <details><summary>Workflow format and limits</summary>
+        <p>Use 1–20 steps. Each selector must match exactly one visible element. Every click requires its exact visible label in expectedText, followed by a wait_text step that checks the resulting page. No scripts, cross-site redirects, iframes or automatic retries of clicks are supported.</p>
+        <p>Completion means these assertions passed; it does not certify the overall business result. A task interrupted during an action requires review and is never replayed automatically.</p>
+      </details>
+      <label for="browserWorkflowPlan">Exact steps to review (JSON)</label>
+      <textarea id="browserWorkflowPlan" rows="12" spellcheck="false">{
+  "title": "Read the page heading",
+  "url": "https://example.com/",
+  "steps": [
+    {"action": "read", "selector": "h1"}
+  ]
+}</textarea>
+      <div class="toolbar">
+        <button id="browserWorkflowReview" type="button" class="secondary">Review workflow</button>
+        <button id="browserWorkflowGrant" type="button" class="secondary" disabled>Grant access to this site</button>
+        <button id="browserWorkflowRun" type="button" class="primary" disabled>Approve and run workflow</button>
+        <button id="browserWorkflowStop" type="button" class="secondary" disabled>Stop before next action</button>
+        <button id="browserWorkflowReceipts" type="button" class="secondary">Show execution receipts</button>
+      </div>
+      <pre id="browserWorkflowResult" role="status" aria-live="polite">No browser workflow has run.</pre>
     </section>
 
     <section id="localAgentRuntime" class="section-block" aria-labelledby="localAgentHeading">
@@ -226,3 +259,4 @@
 </dialog>
 </body>
 </html>
+

@@ -480,3 +480,10 @@ Cancellation previously updated by ID after a stale status read and could rewrit
 
 ## TASK-04/TASK-09 — cancellation audit rollback fault, 2026-11-21
 Test 6487471e5ebff9f73b5ec48c6061f07cdcf6dc21 injects SQLite trigger ABORT on cancellation audit insert, requires fresh Controller state remain awaiting_approval, removes trigger finally, then existing cancellation test continues. Current main7ad121cc already implements transactional cancellation; reused rather than duplicated. Exact-head Windows CI pending. No full requirement or physical acceptance promoted; NO_GO retained.
+
+
+## PC Assist execution candidate — 2026-11-21T23:08Z
+
+Owner clarified that THEEPMO PC Assist is GIZE Desktop Tools plus its Chrome extension, and requested actual full-task/PC execution. Browser slice: apps/chrome-extension/browser-workflow.js and browser-workflow-ui.js add reviewed single-origin read/fill/click/assertion execution, plan fingerprints, work-order-scoped durable receipts, permission checks, stop and no automatic replay. 64 local Node checks passed, including 17 new workflow tests in tests/browser-workflow.test.cjs. Full evidence, explicit optional-permission delta and remaining gaps: docs/PC-ASSIST-BROWSER-WORKFLOWS.md.
+
+PC-03/04/05/07 and TASK-01/02/03/04: PARTIAL IMPLEMENTATION EVIDENCE ONLY. Existing requirement statuses remain; none newly VERIFIED. Real installed Chrome execution, Windows application interaction, natural-language/adaptive task completion, localization and a fair Codex/Agent One benchmark are not established. Candidate GitHub CI/PR/SHA to be linked from canonical issue #71 after publication. No deployment or extension permission grant occurred.

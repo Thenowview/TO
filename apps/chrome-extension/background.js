@@ -1,5 +1,6 @@
 /* TheOrg MV3 background — extension-owned messages only, no content scripts or site scraping. */
-importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js");
+importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js", "browser-workflow.js");
+const browserWorkflows = new globalThis.GizeBrowserWorkflow.BrowserWorkflowRunner(chrome);
 const manager = new globalThis.TheOrgTaskManager(chrome);
 const planner = globalThis.TheOrgPlanner;
 
@@ -14,6 +15,28 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
      typeof message.command!=="string") return false;
   (async()=>{
     switch(message.command){
+      case "browser_workflow_create":
+      case "browser_workflow_get":
+      case "browser_workflow_list":
+      case "browser_workflow_run":
+      case "browser_workflow_stop": {
+        // Only the packaged Supervisor may authorize workflow actions.
+        if(sender.url !== chrome.runtime.getURL("home.html"))
+          throw new Error("Browser workflows require the Supervisor page");
+        const order = (await manager.orders())[message.taskId];
+        if(!order || order.phase === "archived") throw new Error("Active work order missing");
+        if(message.command === "browser_workflow_create")
+          return {ok:true,workflow:await browserWorkflows.create(message.taskId,message.plan)};
+        if(message.command === "browser_workflow_list")
+          return {ok:true,workflows:await browserWorkflows.list(message.taskId)};
+        if(message.command === "browser_workflow_get")
+          return {ok:true,workflow:await browserWorkflows.get(message.taskId,message.workflowId)};
+        if(message.command === "browser_workflow_stop") {
+          await browserWorkflows.get(message.taskId,message.workflowId);
+          return {ok:true,...browserWorkflows.stop(message.taskId,message.workflowId)};
+        }
+        return {ok:true,workflow:await browserWorkflows.run(message.taskId,message.workflowId,message.fingerprint)};
+      }
       case "ping": return await manager.checkEngine();
       case "ao_capabilities": return {ok:true,...await manager.aoCapabilities()};
       case "providers": return {ok:true,providers:manager.providers()};
@@ -90,4 +113,5 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   })().then(sendResponse).catch(e=>sendResponse({ok:false,error:String(e?.message||e)}));
   return true;
 });
+
 

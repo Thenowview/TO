@@ -129,3 +129,6 @@ html[dir="rtl"] .ui-locale-control [lang="en"],html[dir="rtl"] [data-i18n-key][l
 .optional-controls[open] summary{margin-bottom:12px}
 .optional-controls summary:focus-visible{outline:2px solid var(--accent,#a78bfa);outline-offset:4px}
 @media(max-width:760px){.quick-types{grid-template-columns:1fr}}
+
+#browserWorkflowPlan { width: 100%; box-sizing: border-box; font-family: monospace; }
+#browserWorkflowResult { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 28rem; overflow: auto; }
