@@ -1204,6 +1204,19 @@ internal static class SelfTest
             }
             var cancel=Call(c,new {command="agent_cancel",companyId="demo",jobId=cancelledId});
             Check(cancel.GetProperty("status").GetString()=="cancelled","agent cancellation");
+            var retryCancel=Call(new Controller(root),new {command="agent_cancel",companyId="demo",jobId=cancelledId});
+            Check(retryCancel.GetProperty("status").GetString()=="cancelled","Cancellation retry preserves terminal state");
+            using(var retryDb = new Microsoft.Data.Sqlite.SqliteConnection(
+                new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder{
+                    DataSource=Path.Combine(root,"agent-jobs.sqlite")}.ToString()))
+            {
+                retryDb.Open();
+                using var retryAudit=retryDb.CreateCommand();
+                retryAudit.CommandText="SELECT COUNT(*) FROM agent_events WHERE job_id=$job AND event_type='owner_cancelled';";
+                retryAudit.Parameters.AddWithValue("$job",cancelledId);
+                Check(Convert.ToInt64(retryAudit.ExecuteScalar())==1,
+                    "Cancellation retry emits exactly one committed audit event");
+            }
             var neverRun=Call(c,new {command="agent_run_next",companyId="demo",jobId=cancelledId});
             Check(!neverRun.GetProperty("ok").GetBoolean(),"cancelled jobs cannot run");
 
