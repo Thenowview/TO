@@ -491,7 +491,7 @@ internal static class SelfTest
             {
                 WindowsDesktopAssist.ValidateAction(desktopValid.RootElement);
                 Check(true, "Desktop structured action validation accepts a bounded synthetic proposal without UI execution");
-                foreach (string invalid in new[] {
+                foreach (string desktopInvalid in new[] {
                     desktopValid.RootElement.GetRawText().Replace("set_value", "shell"),
                     desktopValid.RootElement.GetRawText().Replace("\"handle\":123", "\"handle\":0"),
                     desktopValid.RootElement.GetRawText().Replace("\"runtimeId\":[42,1]", "\"runtimeId\":[]"),
@@ -499,7 +499,7 @@ internal static class SelfTest
                     desktopValid.RootElement.GetRawText().Replace("\"value\":\"Synthetic text\"", "\"value\":\"Synthetic text\",\"command\":\"cmd.exe\"")
                 })
                 {
-                    using var badDesktop = JsonDocument.Parse(invalid);
+                    using var badDesktop = JsonDocument.Parse(desktopInvalid);
                     bool rejected = false;
                     try { WindowsDesktopAssist.ValidateAction(badDesktop.RootElement); }
                     catch (ArgumentException) { rejected = true; }
