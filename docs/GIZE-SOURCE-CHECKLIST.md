@@ -462,3 +462,7 @@ Runtime8766ebb5dbd8676f1719b85f3de6c23454dc244a checks GetFinalPathNameByHandleW
 
 ## EVD-02/EVD-03 — redirected opened-handle regression, 2026-11-21
 Test d551df75862fc7ade621097058f0b9e7b393d8df opens a real synthetic Windows symbolic link directly, then requires handle final-path validation to reject the requested link path with stream position still zero. Models redirected opening after prior inspection; not a scheduled concurrent parent-swap or hardlink identity proof. Baseline6344735c62274e2170198a19a695b9bebd9de074 postmerge checks SUCCESS. Exact-head Windows CI pending; source statuses unchanged, NO_GO signing/hardware/model/tenant/independent and release evidence retained. Native error fixture remains next.
+
+
+## EVD-02/EVD-03 — non-disk opened-handle rejection, 2026-11-21
+Test 47a9fc28ecd71083a2202f8d2b1530daec9ed8f9 opens Windows NUL read-only and requires RequireOpenedPath IOException rejection when a normal output path is expected. Exact-head CI must establish actual native behavior; no test skip. This checks denial of a non-disk handle, not a specific injected Win32 error code or concurrent parent swap. Baseline2e014211 postmerge checks SUCCESS; original source statuses/NO_GO retained. Physical/signing/independent acceptance remains open.
