@@ -80,7 +80,9 @@ try:
     observed = native({"command": "desktop_observe", **scope, "window": selected})
     assert observed["ok"] and observed["valuesRead"] is False, observed
     assert not any(c["name"] == "Private fixture" for c in observed["controls"]), "Password control leaked into observation"
-    edit = next(c for c in observed["controls"] if c["name"] == "Fixture input" and c["canSetValue"])
+    edit = next((c for c in observed["controls"] if c["canSetValue"] and
+                 (c["name"] == "Fixture input" or c["automationId"] == "FixtureInput")), None)
+    assert edit, "Synthetic editable control unavailable: " + json.dumps(observed, ensure_ascii=False)
 
     def target(control):
         return {key: control[key] for key in ("runtimeId", "name", "controlType")}
