@@ -150,7 +150,7 @@ test("browser workflow UI bindings exist and all commands are routed", () => {
   const bg = fs.readFileSync(path.join(root, "background.js"), "utf8");
   for (const match of ui.matchAll(/byId\("([^"]+)"\)/g)) assert.ok(html.includes('id="' + match[1] + '"'), match[1]);
   for (const match of ui.matchAll(/send\("(browser_workflow_[a-z]+)"/g)) assert.ok(bg.includes('case "' + match[1] + '":'), match[1]);
-  assert.match(bg, /sender\.url !== chrome\.runtime\.getURL\("home\.html"\)/);
+  assert.ok(bg.includes('sender.url.split(/[?#]/)[0] !== chrome.runtime.getURL("home.html")'));
   assert.match(ui, /chrome\.permissions\.request\(GizeBrowserWorkflow\.permissions\(reviewed\.plan\)\)/);
   assert.doesNotMatch(ui, /innerHTML|eval\(/);
 });

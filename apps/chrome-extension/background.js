@@ -21,7 +21,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "browser_workflow_run":
       case "browser_workflow_stop": {
         // Only the packaged Supervisor may authorize workflow actions.
-        if(sender.url !== chrome.runtime.getURL("home.html"))
+        if(typeof sender.url !== "string" || sender.url.split(/[?#]/)[0] !== chrome.runtime.getURL("home.html"))
           throw new Error("Browser workflows require the Supervisor page");
         const order = (await manager.orders())[message.taskId];
         if(!order || order.phase === "archived") throw new Error("Active work order missing");
