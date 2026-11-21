@@ -1180,6 +1180,28 @@ internal static class SelfTest
             var cancelledPlan=Call(c,new {command="agent_create",companyId="demo",orderId=id,
                 instruction="Create another short synthetic note.",mode="demo",model="qwen3:4b",approvedHosts=""});
             string cancelledId=cancelledPlan.GetProperty("jobId").GetString()!;
+            using(var auditFaultDb = new Microsoft.Data.Sqlite.SqliteConnection(
+                new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder{
+                    DataSource=Path.Combine(root,"agent-jobs.sqlite")}.ToString()))
+            {
+                auditFaultDb.Open();
+                using var auditFault = auditFaultDb.CreateCommand();
+                auditFault.CommandText = "CREATE TRIGGER fail_cancel_audit BEFORE INSERT ON agent_events WHEN NEW.event_type='owner_cancelled' BEGIN SELECT RAISE(ABORT,'synthetic audit fault'); END;";
+                auditFault.ExecuteNonQuery();
+                try
+                {
+                    try { Call(c,new {command="agent_cancel",companyId="demo",jobId=cancelledId}); }
+                    catch (Microsoft.Data.Sqlite.SqliteException) { }
+                    var rolledBackCancel=Call(new Controller(root),new {command="agent_get",companyId="demo",jobId=cancelledId});
+                    Check(rolledBackCancel.GetProperty("status").GetString()=="awaiting_approval",
+                        "Cancellation audit failure rolls back state transition");
+                }
+                finally
+                {
+                    auditFault.CommandText="DROP TRIGGER fail_cancel_audit;";
+                    auditFault.ExecuteNonQuery();
+                }
+            }
             var cancel=Call(c,new {command="agent_cancel",companyId="demo",jobId=cancelledId});
             Check(cancel.GetProperty("status").GetString()=="cancelled","agent cancellation");
             var neverRun=Call(c,new {command="agent_run_next",companyId="demo",jobId=cancelledId});
