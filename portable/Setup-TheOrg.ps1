@@ -25,7 +25,8 @@ function Get-InstalledChrome {
   throw 'Google Chrome is not installed or could not be found. Install regular Google Chrome first.'
 }
 
-foreach ($required in @($bridge, $manifestPath, $register, (Join-Path $root 'Open-TheOrg.ps1'))) {
+foreach ($required in @($bridge, $manifestPath, $register, (Join-Path $root 'Open-TheOrg.ps1'),
+    (Join-Path $root 'Test-BridgeConnection.ps1'), (Join-Path $root 'Verify-Portable.ps1'))) {
   if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
     throw "Portable package is incomplete: $required"
   }
@@ -39,6 +40,11 @@ if ($ValidateOnly) {
   exit 0
 }
 
+Write-Host 'Verifying the portable package and compiled local controller...'
+& (Join-Path $root 'Verify-Portable.ps1')
+& (Join-Path $root 'Test-BridgeConnection.ps1') -ExecutablePath $bridge
+# Adversarial filesystem regression tests remain mandatory in Windows CI.
+# Installation does not require granting symbolic-link creation privileges.
 $chrome = Get-InstalledChrome
 Write-Host ''
 Write-Host 'TheOrg portable: use your existing Google Chrome.' -ForegroundColor Cyan
@@ -53,9 +59,6 @@ $id = (Read-Host 'Paste the extension ID (a-p letters only)').Trim().ToLowerInva
 if ($id -cnotmatch '^[a-p]{32}$') {
   throw 'Invalid extension ID. No native messaging registration was changed.'
 }
-Write-Host 'Checking the compiled local controller...'
-& $bridge --self-test
-if ($LASTEXITCODE -ne 0) { throw 'Local bridge self-tests failed; registration cancelled.' }
 & $register -ExtensionId $id -ExecutablePath $bridge
 [IO.File]::WriteAllText($idPath, "$id" + [Environment]::NewLine, [Text.Encoding]::ASCII)
 

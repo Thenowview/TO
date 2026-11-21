@@ -12,12 +12,11 @@ This is an unsigned *developer preview*, not approved for production or sensitiv
 
 ## First time — about four clicks
 1. Unzip the complete portable package (do not run scripts from inside the ZIP).
-2. In the extracted folder, optionally open PowerShell and run:
-   powershell -NoProfile -ExecutionPolicy Bypass -File ".\Verify-Portable.ps1"
+2. Optionally double-click **VERIFY-PACKAGE.cmd** for a separate integrity report. Setup also verifies the complete package before opening Chrome.
 3. Double-click **RUN-SETUP.cmd**.
 4. It opens your EXISTING Chrome at chrome://extensions. Turn on **Developer mode**, click **Load unpacked**, and select **chrome-extension** inside this extracted folder.
 5. Copy Chrome's 32-letter Extension ID (a through p only), paste it into the waiting console, and press Enter.
-6. The script checks the local bridge, registers one precise Chrome extension origin, saves the extension ID, makes a desktop shortcut **TheOrg - Chrome**, and opens TheOrg.
+6. After the package integrity and bounded native-host health checks pass, the script registers one precise Chrome extension origin, saves the extension ID, makes a desktop shortcut **TheOrg - Chrome**, and opens TheOrg.
 
 On later days, double-click the desktop shortcut **TheOrg - Chrome** or the included **OPEN-THEORG.cmd**.
 
@@ -46,6 +45,7 @@ ollama pull qwen3:4b
 Start Ollama, choose planning mode **Ollama** with model \`qwen3:4b\`, and approve the generated plan before executing local tools.
 
 ## Troubleshooting
+- Setup's health check validates a framed native ping, exact bridge identity/protocol, clean exit and a bounded response/time limit. It creates no symbolic links and grants no Windows privileges. Full adversarial security regression tests still run in Windows CI; the standalone `--self-test` diagnostic can require symbolic-link creation rights. A setup health pass does not establish full security or Chrome acceptance.
 - If **RUN-SETUP.cmd** says Chrome not found, verify Chrome is installed and launchable.
 - If the extension isn't visible, verify it's loaded in the **same Chrome profile**, via chrome://extensions.
 - If connection fails, rerun RUN-SETUP.cmd and paste the real extension ID.

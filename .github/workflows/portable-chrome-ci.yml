@@ -34,6 +34,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'TheOrg bridge self tests failed' }
           python tests/native-messaging-smoke.py out/portable-bridge/TheOrg.Bridge.exe
           if ($LASTEXITCODE -ne 0) { throw 'Native Messaging smoke test failed' }
+      - name: Test installation health without symbolic-link privileges
+        shell: powershell
+        run: '& .\tests\windows-portable-health.ps1 -ExecutablePath .\out\portable-bridge\TheOrg.Bridge.exe'
       - name: Assemble portable no-new-browser package and integrity report
         shell: pwsh
         run: |
