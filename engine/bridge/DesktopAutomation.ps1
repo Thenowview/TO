@@ -6,6 +6,10 @@ $ProgressPreference = 'SilentlyContinue'
 try {
   Add-Type -AssemblyName UIAutomationClient
   Add-Type -AssemblyName UIAutomationTypes
+  # Console hosts may expose legacy WinForms controls as generic panes unless the
+  # Microsoft client-side proxies are registered in this worker process.
+  $proxyAssembly = [Reflection.Assembly]::Load('UIAutomationClientsideProviders, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35')
+  [System.Windows.Automation.ClientSettings]::RegisterClientSideProviderAssembly($proxyAssembly.GetName())
   $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
   $root = [System.Windows.Automation.AutomationElement]::RootElement
   $children = [System.Windows.Automation.TreeScope]::Children
