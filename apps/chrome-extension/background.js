@@ -15,6 +15,26 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
      typeof message.command!=="string") return false;
   (async()=>{
     switch(message.command){
+      case "desktop_windows":
+      case "desktop_observe":
+      case "desktop_preview":
+      case "desktop_execute":
+      case "desktop_receipt":
+      case "desktop_history": {
+        if(typeof sender.url !== "string" || sender.url.split(/[?#]/)[0] !== chrome.runtime.getURL("home.html"))
+          throw new Error("Desktop actions require the Supervisor page");
+        const order = (await manager.orders())[message.taskId];
+        if(!order || order.phase === "archived") throw new Error("Active work order missing");
+        const request = {command:message.command,companyId:order.companyId,orderId:message.taskId};
+        if(message.command === "desktop_observe") request.window=message.window;
+        if(message.command === "desktop_preview") request.action=message.action;
+        if(message.command === "desktop_execute") {
+          request.approved=message.approved===true;
+          request.fingerprint=message.fingerprint;
+        }
+        if(message.command === "desktop_execute" || message.command === "desktop_receipt") request.actionId=message.actionId;
+        return await manager.native(request);
+      }
       case "browser_workflow_create":
       case "browser_workflow_get":
       case "browser_workflow_list":

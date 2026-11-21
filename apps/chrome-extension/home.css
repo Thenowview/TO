@@ -132,3 +132,5 @@ html[dir="rtl"] .ui-locale-control [lang="en"],html[dir="rtl"] [data-i18n-key][l
 
 #browserWorkflowPlan { width: 100%; box-sizing: border-box; font-family: monospace; }
 #browserWorkflowResult { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 28rem; overflow: auto; }
+#desktopAssistResult { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 28rem; overflow: auto; }
+#desktopAssistValue { width: 100%; box-sizing: border-box; }

@@ -11,6 +11,7 @@
   <script src="home.js" defer></script>
   <script src="browser-workflow.js" defer></script>
   <script src="browser-workflow-ui.js" defer></script>
+  <script src="desktop-assist-ui.js" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -153,6 +154,25 @@
       <pre id="browserWorkflowResult" role="status" aria-live="polite">No browser workflow has run.</pre>
     </section>
 
+
+    <section id="desktopAssist" class="section-block" aria-labelledby="desktopAssistHeading">
+      <div class="section-head"><div><span class="section-kicker">PC ASSIST / WINDOWS PREVIEW</span><h2 id="desktopAssistHeading">Work in a selected Windows app</h2></div></div>
+      <p>Choose a work order in Browser workflows above. Inspect an open application, select its text field or button, review the action and run it on this PC. Only supported Windows accessibility controls are available.</p>
+      <button id="desktopAssistWindows" type="button" class="secondary">Find application windows</button>
+      <label for="desktopAssistWindow">Application window</label><select id="desktopAssistWindow"></select>
+      <button id="desktopAssistObserve" type="button" class="secondary">Inspect selected window</button>
+      <label for="desktopAssistControl">Application control</label><select id="desktopAssistControl"></select>
+      <label for="desktopAssistOperation">Action</label>
+      <select id="desktopAssistOperation"><option value="set_value">Enter text</option><option value="invoke">Press a button</option></select>
+      <label for="desktopAssistValue">Text to enter</label><textarea id="desktopAssistValue" maxlength="4000" rows="3"></textarea>
+      <label for="desktopAssistExpected">Exact visible result after pressing a button</label><input id="desktopAssistExpected" maxlength="240">
+      <div class="toolbar">
+        <button id="desktopAssistPreview" type="button" class="secondary">Review Windows action</button>
+        <button id="desktopAssistRun" type="button" class="primary" disabled>Approve and run action</button>
+        <button id="desktopAssistReceipt" type="button" class="secondary">Show action history</button>
+      </div>
+      <pre id="desktopAssistResult" role="status" aria-live="polite">No Windows action has run. Password fields, unsupported controls and changed windows are blocked.</pre>
+    </section>
     <section id="localAgentRuntime" class="section-block" aria-labelledby="localAgentHeading">
       <div class="section-head"><div><span class="section-kicker">05 / LOCAL AGENTS PREVIEW</span><h2 id="localAgentHeading">Execute reviewed instructions on this PC</h2></div></div>
       <div class="panel detail-panel">

@@ -95,6 +95,7 @@ internal sealed class Controller
     private readonly ArtifactStore _artifactStore;
     private readonly ArtifactTransfers _transfers;
     private readonly LocalAgentEngine _agents;
+    private readonly WindowsDesktopAssist _desktop;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -109,6 +110,7 @@ internal sealed class Controller
         _artifactStore = new ArtifactStore(_root);
         _transfers = new ArtifactTransfers(_root, _artifactStore);
         _agents = new LocalAgentEngine(_root);
+        _desktop = new WindowsDesktopAssist(_root);
     }
 
     internal object Execute(JsonElement request)
@@ -140,7 +142,8 @@ internal sealed class Controller
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk",
                         "agent_create", "agent_get", "agent_list", "agent_approve", "agent_run_next", "agent_run_safe_batch",
                         "agent_complete_browser", "agent_review", "agent_cancel", "agent_recover",
-                        "agent_memory_put", "agent_memory_list", "agent_tools" },
+                        "agent_memory_put", "agent_memory_list", "agent_tools",
+                        "desktop_windows", "desktop_observe", "desktop_preview", "desktop_execute", "desktop_receipt", "desktop_history" },
                     maxArtifactImportBytes = 256000,
                     importedArtifactsRequireContentQa = true,
                     liveAiProvider = false,
@@ -149,7 +152,9 @@ internal sealed class Controller
                     localOllamaOptional = true,
                     sqliteAgentQueue = true,
                     browserNavigationOnly = true,
-                    desktopOperation = "notepad-launch-only",
+                    desktopOperation = "reviewed-window-accessibility-preview",
+                    legacyLocalAgentDesktopOperation = "notepad-launch-only",
+                    desktopAccessibilityPreview = true,
                     offlineFiles = true
                 },
                 "ao_capabilities" => new
@@ -177,6 +182,7 @@ internal sealed class Controller
                 "complete_artifact_upload" => CompleteArtifactUpload(request),
                 "cancel_artifact_upload" => CancelArtifactUpload(request),
                 "read_artifact_chunk" => ReadArtifactChunk(request),
+                _ when command.StartsWith("desktop_", StringComparison.Ordinal) => _desktop.Execute(request),
                 _ when command.StartsWith("agent_", StringComparison.Ordinal) => _agents.Execute(request),
                 _ => Fail("unsupported_command")
             };
@@ -479,6 +485,28 @@ internal static class SelfTest
         try
         {
             var c = new Controller(root);
+            using (var desktopValid = JsonDocument.Parse("""
+              {"operation":"set_value","window":{"handle":123,"processId":456,"processStartedUtc":"2026-11-21T00:00:00.0000000Z","title":"Synthetic fixture"},"target":{"runtimeId":[42,1],"name":"Fixture input","controlType":"ControlType.Edit"},"value":"Synthetic text"}
+              """))
+            {
+                WindowsDesktopAssist.ValidateAction(desktopValid.RootElement);
+                Check(true, "Desktop structured action validation accepts a bounded synthetic proposal without UI execution");
+                foreach (string invalid in new[] {
+                    desktopValid.RootElement.GetRawText().Replace("set_value", "shell"),
+                    desktopValid.RootElement.GetRawText().Replace("\"handle\":123", "\"handle\":0"),
+                    desktopValid.RootElement.GetRawText().Replace("\"runtimeId\":[42,1]", "\"runtimeId\":[]"),
+                    desktopValid.RootElement.GetRawText().Replace("\"controlType\":\"ControlType.Edit\"", "\"controlType\":\"shell\""),
+                    desktopValid.RootElement.GetRawText().Replace("\"value\":\"Synthetic text\"", "\"value\":\"Synthetic text\",\"command\":\"cmd.exe\"")
+                })
+                {
+                    using var badDesktop = JsonDocument.Parse(invalid);
+                    bool rejected = false;
+                    try { WindowsDesktopAssist.ValidateAction(badDesktop.RootElement); }
+                    catch (ArgumentException) { rejected = true; }
+                    Check(rejected, "Desktop schema rejects command injection, invalid scope and unsupported identities");
+                }
+            }
+
             var pong = Call(c, new { command = "ping" });
             Check(pong.GetProperty("ok").GetBoolean(), "ping");
 
