@@ -289,12 +289,18 @@ internal sealed class LocalAgentEngine
         if(job.Status=="running")throw new InvalidOperationException("Active step unknown; use recover and review");
         if(job.Status=="cancelled")return new{ok=true,status="cancelled"};
         using var db=Open();
-        int changed=Exec(db,@"UPDATE agent_jobs SET status='cancelled',updated_utc=$utc
-            WHERE id=$id AND company=$company AND status=$status
-            AND status IN ('awaiting_approval','queued')",
-            ("$id",job.Id),("$company",job.Company),("$status",job.Status),("$utc",Now()));
-        if(changed!=1)throw new InvalidOperationException("Job cannot be cancelled in its current state");
-        Event(db,job.Id,job.StepIndex,"owner_cancelled","No further execution");
+        Exec(db,"BEGIN IMMEDIATE;");
+        try
+        {
+            int changed=Exec(db,@"UPDATE agent_jobs SET status='cancelled',updated_utc=$utc
+                WHERE id=$id AND company=$company AND status=$status AND step_index=$idx
+                AND status IN ('awaiting_approval','queued')",
+                ("$id",job.Id),("$company",job.Company),("$status",job.Status),("$idx",job.StepIndex),("$utc",Now()));
+            if(changed!=1)throw new InvalidOperationException("Job cannot be cancelled in its current state");
+            Event(db,job.Id,job.StepIndex,"owner_cancelled","No further execution");
+            Exec(db,"COMMIT;");
+        }
+        catch {Exec(db,"ROLLBACK;");throw;}
         return new{ok=true,status="cancelled"};
     }
     internal object Recover(JsonElement request)
