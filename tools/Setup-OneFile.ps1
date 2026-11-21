@@ -14,6 +14,7 @@ try {
   $extensionManifest = Join-Path $extensionPath 'manifest.json'
   $extensionId = 'odfnjlkfakmfiiaeoinpcpmomfeejnij'
   foreach ($file in @($bridge, $extensionManifest, (Join-Path $root 'Open-TheOrg.ps1'),
+                    (Join-Path $root 'Test-BridgeConnection.ps1'),
                     (Join-Path $root 'TheOrg-OneFile-START.html'))) {
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
       throw "Installation is incomplete: $file"
@@ -35,8 +36,9 @@ try {
   if ($computed -cne $extensionId) { throw "Extension ID mismatch: $computed" }
   if ($ValidateOnly) { Write-Host 'PASS TheOrg one-file installer layout and extension identity'; exit 0 }
 
-  & $bridge --self-test *> $null
-  if ($LASTEXITCODE -ne 0) { throw "Local controller self-test failed ($LASTEXITCODE)" }
+  # Installation checks stdio health without requiring symbolic-link privileges.
+  # The complete adversarial self-test remains mandatory in Windows CI.
+  & (Join-Path $root 'Test-BridgeConnection.ps1') -ExecutablePath $bridge
 
   $hostName = 'com.theorg.bridge'
   $hostDir = Join-Path $env:LOCALAPPDATA 'TheOrg\NativeMessaging'
@@ -70,3 +72,4 @@ try {
   [Console]::Error.WriteLine('TheOrg setup error: ' + $_.Exception.Message)
   exit 1
 }
+

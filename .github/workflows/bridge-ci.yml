@@ -33,7 +33,7 @@ jobs:
       - name: Test Supervisor handoff and artifact gates with simulated Chrome
         run: node --test tests/task-manager.test.cjs tests/reviewed-plan.test.cjs
       - name: Audit Supervisor UI to background contracts
-        run: node --test tests/ui-contract.test.cjs
+        run: node --test tests/ui-contract.test.cjs tests/connection-health.test.cjs
       - name: Enforce Chrome privilege and browser-integration security regressions
         run: node --test tests/extension-privilege-boundary.test.cjs tests/extension-browser-integration-guard.test.cjs
       - name: Audit fail-closed production release gates
@@ -207,6 +207,7 @@ jobs:
           path: out/bridge/
           if-no-files-found: error
           retention-days: 30
+
 
 
 

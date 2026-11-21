@@ -24,6 +24,7 @@ Section "Install TheOrg" SecMain
   SetShellVarContext current
   SetOutPath "$INSTDIR"
   File /oname=Setup-OneFile.ps1 "..\tools\Setup-OneFile.ps1"
+  File /oname=Test-BridgeConnection.ps1 "..\portable\Test-BridgeConnection.ps1"
   File /oname=Connect-OneFile.ps1 "..\tools\Connect-OneFile.ps1"
   File /oname=Cleanup-OneFile.ps1 "..\tools\Cleanup-OneFile.ps1"
   File /oname=TheOrg-OneFile-START.html "..\tools\TheOrg-OneFile-START.html"
@@ -89,6 +90,7 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\TheOrg"
 
   Delete "$INSTDIR\Setup-OneFile.ps1"
+  Delete "$INSTDIR\Test-BridgeConnection.ps1"
   Delete "$INSTDIR\Connect-OneFile.ps1"
   Delete "$INSTDIR\Cleanup-OneFile.ps1"
   Delete "$INSTDIR\TheOrg-OneFile-START.html"
@@ -107,3 +109,4 @@ Section "Uninstall"
   RMDir "$INSTDIR"
   DetailPrint "Original workspaces and exported local files have been preserved."
 SectionEnd
+

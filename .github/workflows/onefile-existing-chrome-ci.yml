@@ -30,7 +30,7 @@ jobs:
         run: |
           node --check apps/chrome-extension/background.js
           node --check apps/chrome-extension/home.js
-          node --test tests/ui-contract.test.cjs tests/task-manager.test.cjs
+          node --test tests/ui-contract.test.cjs tests/task-manager.test.cjs tests/connection-health.test.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Supervisor tests failed' }
 
       - name: Publish self-contained Windows local controller
@@ -54,6 +54,7 @@ jobs:
         run: |
           $root=(Resolve-Path 'out/onefile').Path
           Copy-Item -LiteralPath 'tools/Setup-OneFile.ps1' -Destination (Join-Path $root 'Setup-OneFile.ps1')
+          Copy-Item -LiteralPath 'portable/Test-BridgeConnection.ps1' -Destination (Join-Path $root 'Test-BridgeConnection.ps1')
           Copy-Item -LiteralPath 'tools/Cleanup-OneFile.ps1' -Destination (Join-Path $root 'Cleanup-OneFile.ps1')
           Copy-Item -LiteralPath 'tools/TheOrg-OneFile-START.html' -Destination (Join-Path $root 'TheOrg-OneFile-START.html')
           Copy-Item -LiteralPath 'portable/Open-TheOrg.ps1' -Destination (Join-Path $root 'Open-TheOrg.ps1')
@@ -151,3 +152,40 @@ jobs:
           path: out/onefile/TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe
           if-no-files-found: error
           retention-days: 30
+
+  publish-developer-preview:
+    needs: onefile-windows
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Download the installer that passed Windows acceptance
+        uses: actions/download-artifact@v4
+        with:
+          name: TheOrg-OneFile-ExistingChrome-Win-x64
+          path: release
+      - name: Publish a durable unsigned developer prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cd release
+          INSTALLER='TheOrg-OneFile-ExistingChrome-Win-x64-unsigned.exe'
+          test -s "$INSTALLER"
+          sha256sum "$INSTALLER" > SHA256SUMS.txt
+          printf 'Source commit: %s\n\nUnsigned developer preview. Production remains NO_GO.\nUses existing Google Chrome; approve Load unpacked once.\nLocal Ollama planning is optional. AI website chats are manual handoffs.\n' "$SOURCE_SHA" > RELEASE-NOTES.txt
+          RELEASE_TAG="desktop-preview-$SOURCE_SHA"
+          # Commit-specific tags keep an earlier downloadable build available.
+          # Do not overwrite an existing release or move its tag during retries.
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release already exists: $RELEASE_TAG"
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --prerelease \
+            --title "GIZE AI Windows developer preview ($SOURCE_SHA)" \
+            --notes-file RELEASE-NOTES.txt "$INSTALLER" SHA256SUMS.txt
+
