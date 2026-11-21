@@ -446,3 +446,7 @@ Scope remains IMPLEMENTED_UNVERIFIED / partial integration. No source ID is newl
 
 ## EVD-02/EVD-03 — integrity path link denial, 2026-11-21
 Runtime d0ab60c04c33d7e6c65ab0ef09e2764aa8f1dd62 applies existing file/parent reparse-component rejection to bounded integrity hashing, matching note reads. Negative fixture4942d831c42cbfcd047cb53209d9af2bda65c880 requires denial of a real symbolic output link. Exact-head Windows CI pending. Pre-open checks do not close concurrent parent replacement; physical/signing/independent acceptance remains unavailable. No full source status promoted, customer NO_GO retained. Next: CI and guarded merge, then handle-bound custody work.
+
+
+## EVD-02/EVD-03 — public review linked-output regression, 2026-11-21
+Test cb96418ce839e762192ea4aff03b1be5cedb8676 replaces a completed synthetic output with a symbolic link to identical bytes, requires public agent_review rejection and unchanged pending-review state, then restores fixtures. Baseline643f476f851a63b1282f1f2f892bdeb2dde56378 postmerge checks SUCCESS. Exact-head Windows CI pending; no privilege skip or physical acceptance. Concurrent parent replacement remains unresolved. Original statuses unchanged; customer NO_GO signing/key custody, physical Chrome, inference/tenant integration, independent security/legal and release target/rollback/readback retained.
