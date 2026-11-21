@@ -282,6 +282,7 @@ async function showSelected() {
   $("reviewResult").textContent = r
     ? (r.verdict||"pending").replaceAll("_"," ")+": "+(r.reason||"")
     : "No independent task verification recorded.";
+  $("acceptCompletion").disabled=!r?.completionReady || order.phase==="completed_owner_accepted";
   await renderTaskQueueThenDeliveries(order.taskId);
 }
 
@@ -524,7 +525,8 @@ function registerEvents() {
   });
   for(const btn of document.querySelectorAll("[data-service]")){
     btn.addEventListener("click",()=>{
-      $("ownerInstruction").value=btn.dataset.service;
+      // A category is a hint, not a complete task. Preserve an existing draft.
+      $("ownerInstruction").placeholder=btn.dataset.service;
       $("ownerInstruction").focus();
       window.scrollTo({top:0,behavior:"smooth"});
     });
@@ -538,8 +540,10 @@ function registerEvents() {
   $("openPlanner").addEventListener("click",()=>action(async()=>{
     const o=selectedOrder();
     if(!o)throw new Error("Create a work order first");
+    const prepared=await rpc("get_plan_prompt",{instruction:o.instruction||o.title});
+    await navigator.clipboard.writeText(prepared.prompt);
     await rpc("open_supervisor_tab",{taskId:o.taskId,providerId:$("plannerProvider").value});
-    toast("Supervisor adviser opened. Paste the planning prompt manually.");
+    toast("Planning prompt copied and adviser opened. Paste into its message box and review before sending.");
   }));
   $("interpretPlan").addEventListener("click",()=>action(async()=>{
     const o=selectedOrder();
@@ -561,6 +565,17 @@ function registerEvents() {
     const r=await rpc("review",{taskId:o.taskId});
     toast(r.verdict.replaceAll("_"," ")+": "+r.reason);
     await refreshOrders(o.taskId);
+  }));
+  $("acceptCompletion").addEventListener("click",()=>action(async()=>{
+    const order=selectedOrder();
+    if(!order?.review?.completionReady)throw new Error("Check results and resolve blockers first");
+    const evidence=$("completionEvidence").value.trim();
+    if(evidence.length<30)throw new Error("Describe the delivered file and checks in at least 30 characters");
+    if(!window.confirm("Accept this reviewed delivery and finish the order? This records your acceptance, not independent certification."))return;
+    await rpc("accept_completion",{taskId:order.taskId,snapshot:order.review.completionSnapshot,evidence});
+    $("completionEvidence").value="";
+    toast("Delivery accepted. Order finished by owner acceptance.");
+    await refreshOrders(order.taskId);
   }));
   $("copyAuditorPrompt").addEventListener("click",()=>action(async()=>{
     const order=selectedOrder();

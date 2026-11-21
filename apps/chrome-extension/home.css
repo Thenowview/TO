@@ -121,3 +121,11 @@ textarea::placeholder,input::placeholder{color:#667e9e}.composer-bottom{display:
 html[dir="rtl"] .ui-locale-control,html[dir="rtl"] .navigation,html[dir="rtl"] #navigation{direction:rtl}
 html[dir="rtl"] .ui-locale-control [lang="en"],html[dir="rtl"] [data-i18n-key][lang="en"]{direction:ltr;unicode-bidi:isolate}
 @media(max-width:480px){.ui-locale-control{width:100%}.ui-locale-control select{min-width:0;flex:1}.ui-locale-control small{width:100%}}
+
+/* Three task choices; optional controls stay available without dominating the flow. */
+.quick-types{grid-template-columns:repeat(3,minmax(0,1fr))}
+.optional-controls{border:1px solid var(--line);border-radius:10px;padding:14px;margin-block:14px}
+.optional-controls summary{cursor:pointer;font-weight:600;padding:4px}
+.optional-controls[open] summary{margin-bottom:12px}
+.optional-controls summary:focus-visible{outline:2px solid var(--accent,#a78bfa);outline-offset:4px}
+@media(max-width:760px){.quick-types{grid-template-columns:1fr}}
