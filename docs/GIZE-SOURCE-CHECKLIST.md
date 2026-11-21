@@ -474,3 +474,5 @@ Test 67ebeec0b678b86192d78534e0494d5e0a78eebb observes an ordinary parent, moves
 
 ## TASK-04/TASK-09 — cancellation terminal-state guard, 2026-11-21
 Cancellation previously updated by ID after a stale status read and could rewrite completed work. Candidate conditional update permits only same-company awaiting_approval/queued status matching the observed snapshot; concurrent claim or terminal state rejects. Public Controller negative test requires completed_pending_review remain unchanged. Exact-head Windows CI pending; cancellation audit atomicity and exhaustive race coverage remain separate. No source ID promoted; NO_GO retained.
+
+- Follow-up: exact-head CI 44935097180 failed the status assertion because the test ran after review changed the state. Test reordered in 6d0fdc5; cancellation and audit event now share an immediate transaction with status/company/step-index compare-and-update in 495a7f5. Fresh exact-head CI and race acceptance pending; no VERIFIED promotion.
