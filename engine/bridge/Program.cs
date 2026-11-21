@@ -468,6 +468,11 @@ internal sealed class Artifact
 
 internal static class SelfTest
 {
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode,
+        SetLastError = true, EntryPoint = "CreateHardLinkW")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool CreateHardLink(string newFileName, string existingFileName, IntPtr securityAttributes);
+
     internal static int Run()
     {
         string root = Path.Combine(Path.GetTempPath(), "TheOrgBridgeTest-" + Guid.NewGuid().ToString("N"));
@@ -1365,6 +1370,43 @@ internal static class SelfTest
                     Check(redirectedStream.Position == 0, "Rejected redirected handle consumed no content");
                 }
                 finally { File.Delete(redirectedPath); }
+
+                // Hard links bypass reparse-point checks. Require one stable file identity
+                // with exactly one link before and after consuming output bytes.
+                string hardLinkSource = Path.Combine(root, "hard-link-source.md");
+                string hardLinkAlias = Path.Combine(root, "hard-link-alias.md");
+                File.WriteAllText(hardLinkSource, "synthetic hard-linked output");
+                if (!CreateHardLink(hardLinkAlias, hardLinkSource, IntPtr.Zero))
+                    throw new IOException("Could not create Windows hard-link fixture",
+                        new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error()));
+                try
+                {
+                    bool hardLinkedReadDenied = false;
+                    try { LocalAgentEngine.ReadNoteBounded(hardLinkSource); }
+                    catch (IOException) { hardLinkedReadDenied = true; }
+                    bool hardLinkedHashDenied = false;
+                    try { LocalAgentEngine.HashOutputBounded(hardLinkSource); }
+                    catch (IOException) { hardLinkedHashDenied = true; }
+                    Check(hardLinkedReadDenied && hardLinkedHashDenied,
+                        "Hard-linked output is rejected for note reads and integrity hashing");
+                    using var hardLinkHandle = new FileStream(hardLinkSource, FileMode.Open,
+                        FileAccess.Read, FileShare.Read);
+                    bool directLinkCountDenied = false;
+                    try { LocalAgentEngine.RequireSingleLink(hardLinkHandle); }
+                    catch (IOException) { directLinkCountDenied = true; }
+                    Check(directLinkCountDenied, "Opened-file link count rejects multiple names");
+                }
+                finally { File.Delete(hardLinkAlias); }
+                Check(LocalAgentEngine.ReadNoteBounded(hardLinkSource) == "synthetic hard-linked output",
+                    "Single-link output remains readable after alias removal");
+
+                using(var deviceHandle = new FileStream("NUL", FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    bool metadataFailureDenied = false;
+                    try { LocalAgentEngine.RequireSingleLink(deviceHandle); }
+                    catch (IOException) { metadataFailureDenied = true; }
+                    Check(metadataFailureDenied, "Unavailable Windows file identity metadata fails closed");
+                }
 
             }
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
