@@ -1321,6 +1321,21 @@ internal static class SelfTest
                 try { LocalAgentEngine.RequireOpenedPath(openedOutput, lockedOutput + ".different"); }
                 catch (IOException) { mismatchedHandleDenied = true; }
                 Check(mismatchedHandleDenied, "Opened handle cannot satisfy a different expected path");
+                // Model a redirected open after pre-open inspection: validate the real handle.
+                string redirectedPath = Path.Combine(root, "redirected-open.md");
+                File.CreateSymbolicLink(redirectedPath, lockedOutput);
+                try
+                {
+                    using var redirectedStream = new FileStream(redirectedPath, FileMode.Open,
+                        FileAccess.Read, FileShare.Read);
+                    bool redirectedOpenDenied = false;
+                    try { LocalAgentEngine.RequireOpenedPath(redirectedStream, redirectedPath); }
+                    catch (IOException) { redirectedOpenDenied = true; }
+                    Check(redirectedOpenDenied, "Opened redirected handle rejected before consuming bytes");
+                    Check(redirectedStream.Position == 0, "Rejected redirected handle consumed no content");
+                }
+                finally { File.Delete(redirectedPath); }
+
             }
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;

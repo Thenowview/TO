@@ -458,3 +458,7 @@ Synthetic exclusive FileShare.None writer fixture requires bounded read/hash IO 
 
 ## EVD-02/EVD-03 — Windows opened-path verification, 2026-11-21
 Runtime8766ebb5dbd8676f1719b85f3de6c23454dc244a checks GetFinalPathNameByHandleW after opening and before reading/hash; failure or expected-path mismatch rejects. Test4b4dae0e000347a28d6e81b32835ce57c1d05e81 requires real Windows matching-path success and mismatch denial. Exact-head CI pending. This is path verification, not complete file identity/hardlink custody or exhaustive parent-swap proof; other hosts retain existing pre-open checks. Native-error and deterministic swapped-parent fixtures remain outstanding. No full requirement promoted; NO_GO signing/hardware/model/tenant/independent acceptance and release evidence retained.
+
+
+## EVD-02/EVD-03 — redirected opened-handle regression, 2026-11-21
+Test d551df75862fc7ade621097058f0b9e7b393d8df opens a real synthetic Windows symbolic link directly, then requires handle final-path validation to reject the requested link path with stream position still zero. Models redirected opening after prior inspection; not a scheduled concurrent parent-swap or hardlink identity proof. Baseline6344735c62274e2170198a19a695b9bebd9de074 postmerge checks SUCCESS. Exact-head Windows CI pending; source statuses unchanged, NO_GO signing/hardware/model/tenant/independent and release evidence retained. Native error fixture remains next.
