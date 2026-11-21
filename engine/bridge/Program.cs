@@ -1321,6 +1321,27 @@ internal static class SelfTest
                 try { LocalAgentEngine.RequireOpenedPath(openedOutput, lockedOutput + ".different"); }
                 catch (IOException) { mismatchedHandleDenied = true; }
                 Check(mismatchedHandleDenied, "Opened handle cannot satisfy a different expected path");
+                string inspectedParent = Path.Combine(root, "inspected-parent");
+                string movedParent = Path.Combine(root, "moved-parent");
+                Directory.CreateDirectory(inspectedParent);
+                File.WriteAllText(Path.Combine(inspectedParent, "note.md"), "synthetic parent substitution");
+                Check((File.GetAttributes(inspectedParent) & FileAttributes.ReparsePoint) == 0,
+                    "Parent initially ordinary before substitution");
+                Directory.Move(inspectedParent, movedParent);
+                Directory.CreateSymbolicLink(inspectedParent, movedParent);
+                try
+                {
+                    string substitutedPath = Path.Combine(inspectedParent, "note.md");
+                    using var substitutedStream = new FileStream(substitutedPath, FileMode.Open,
+                        FileAccess.Read, FileShare.Read);
+                    bool substitutedParentDenied = false;
+                    try { LocalAgentEngine.RequireOpenedPath(substitutedStream, substitutedPath); }
+                    catch (IOException) { substitutedParentDenied = true; }
+                    Check(substitutedParentDenied && substitutedStream.Position == 0,
+                        "Parent substituted after inspection rejected before content read");
+                }
+                finally { Directory.Delete(inspectedParent); }
+
                 // NUL is a Windows device handle, not a resolvable disk output path.
                 using(var deviceHandle = new FileStream("NUL", FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 {

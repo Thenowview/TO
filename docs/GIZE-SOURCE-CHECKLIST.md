@@ -466,3 +466,7 @@ Test d551df75862fc7ade621097058f0b9e7b393d8df opens a real synthetic Windows sym
 
 ## EVD-02/EVD-03 — non-disk opened-handle rejection, 2026-11-21
 Test 47a9fc28ecd71083a2202f8d2b1530daec9ed8f9 opens Windows NUL read-only and requires RequireOpenedPath IOException rejection when a normal output path is expected. Exact-head CI must establish actual native behavior; no test skip. This checks denial of a non-disk handle, not a specific injected Win32 error code or concurrent parent swap. Baseline2e014211 postmerge checks SUCCESS; original source statuses/NO_GO retained. Physical/signing/independent acceptance remains open.
+
+
+## EVD-02/EVD-03 — deterministic parent substitution, 2026-11-21
+Test 67ebeec0b678b86192d78534e0494d5e0a78eebb observes an ordinary parent, moves it and replaces it with a directory symlink before opening; opened-handle verifier must reject with zero bytes consumed. This deterministically models the inspection/open boundary, not exhaustive thread scheduling or hardlink identity protection. Baseline41825aaa postmerge checks SUCCESS. Exact-head Windows CI pending; original source statuses unchanged and customer NO_GO retained for signing/key custody, physical Chrome, inference/tenant, independent security/legal and release evidence.
