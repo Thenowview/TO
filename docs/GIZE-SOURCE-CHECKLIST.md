@@ -442,3 +442,7 @@ Scope remains IMPLEMENTED_UNVERIFIED / partial integration. No source ID is newl
 
 
 
+
+
+## EVD-02/EVD-03 — integrity path link denial, 2026-11-21
+Runtime d0ab60c04c33d7e6c65ab0ef09e2764aa8f1dd62 applies existing file/parent reparse-component rejection to bounded integrity hashing, matching note reads. Negative fixture4942d831c42cbfcd047cb53209d9af2bda65c880 requires denial of a real symbolic output link. Exact-head Windows CI pending. Pre-open checks do not close concurrent parent replacement; physical/signing/independent acceptance remains unavailable. No full source status promoted, customer NO_GO retained. Next: CI and guarded merge, then handle-bound custody work.

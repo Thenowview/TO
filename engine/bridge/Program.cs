@@ -1244,6 +1244,10 @@ internal static class SelfTest
             try { LocalAgentEngine.ReadNoteBounded(linkedNote); }
             catch (ArgumentException) { linkedNoteDenied = true; }
             Check(linkedNoteDenied, "Existing symbolic note link denied");
+            bool linkedHashDenied = false;
+            try { LocalAgentEngine.HashOutputBounded(linkedNote); }
+            catch (ArgumentException) { linkedHashDenied = true; }
+            Check(linkedHashDenied, "Integrity hashing rejects existing symbolic file link");
             File.Delete(linkedNote);
             // A regular leaf underneath a linked parent must also be denied.
             string noteParent = Path.Combine(root, "real-note-parent");
