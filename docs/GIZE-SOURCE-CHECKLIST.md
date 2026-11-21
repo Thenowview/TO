@@ -454,3 +454,7 @@ Test cb96418ce839e762192ea4aff03b1be5cedb8676 replaces a completed synthetic out
 
 ## WIN-04 / EVD-02 — locked-output regression, 2026-11-21
 Synthetic exclusive FileShare.None writer fixture requires bounded read/hash IO rejection while held, then ordinary read success after release. This is a narrow active-writer subcheck, not migration/physical acceptance or concurrent parent-replacement custody. Baseline a1d68f616460897097e53bcd5219c18ae0539d87 postmerge checks SUCCESS. Exact-head Windows CI pending; original source statuses unchanged and customer NO_GO retained. Next: Windows result and handle-bound custody investigation.
+
+
+## EVD-02/EVD-03 — Windows opened-path verification, 2026-11-21
+Runtime8766ebb5dbd8676f1719b85f3de6c23454dc244a checks GetFinalPathNameByHandleW after opening and before reading/hash; failure or expected-path mismatch rejects. Test4b4dae0e000347a28d6e81b32835ce57c1d05e81 requires real Windows matching-path success and mismatch denial. Exact-head CI pending. This is path verification, not complete file identity/hardlink custody or exhaustive parent-swap proof; other hosts retain existing pre-open checks. Native-error and deterministic swapped-parent fixtures remain outstanding. No full requirement promoted; NO_GO signing/hardware/model/tenant/independent acceptance and release evidence retained.

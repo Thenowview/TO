@@ -1313,6 +1313,15 @@ internal static class SelfTest
             }
             Check(LocalAgentEngine.ReadNoteBounded(lockedOutput) == "synthetic locked output",
                 "Released output lock permits ordinary read");
+            if (OperatingSystem.IsWindows())
+            {
+                using var openedOutput = new FileStream(lockedOutput, FileMode.Open, FileAccess.Read, FileShare.Read);
+                LocalAgentEngine.RequireOpenedPath(openedOutput, lockedOutput);
+                bool mismatchedHandleDenied = false;
+                try { LocalAgentEngine.RequireOpenedPath(openedOutput, lockedOutput + ".different"); }
+                catch (IOException) { mismatchedHandleDenied = true; }
+                Check(mismatchedHandleDenied, "Opened handle cannot satisfy a different expected path");
+            }
             Console.WriteLine("PASS: native controller, artifact versioning, isolation and integrity self-tests");
             return 0;
         }
