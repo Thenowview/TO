@@ -7,13 +7,16 @@ No external AI provider, Chrome account, or production file is touched.
 import base64
 import hashlib
 import json
-import os
 from pathlib import Path
 import shutil
 import struct
 import subprocess
 import sys
 import uuid
+
+# Python safe-path mode may omit this script's directory from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from windows_smoke_paths import bridge_workspace
 
 EXE = Path(sys.argv[1]).resolve()
 assert EXE.is_file(), f"Native host not found: {EXE}"
@@ -55,7 +58,7 @@ def native(*messages):
         raise AssertionError(f"Response count {len(result)} does not match request count {len(messages)}")
     return result
 
-root = Path(os.environ["LOCALAPPDATA"]) / "TheOrg" / "workspace" / "companies" / company
+root = bridge_workspace() / "companies" / company
 try:
     results = native(
         {"command": "ping"},
