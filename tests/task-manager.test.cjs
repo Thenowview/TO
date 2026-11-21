@@ -99,6 +99,7 @@ function fakeChrome(options = {}) {
         case "agent_complete_browser":
           return {ok:true,status:"navigation_recorded",verifiedPageContents:false};
         case "list_artifacts":return {ok:true,artifacts:imports};
+        case "verify_artifact":return {ok:true,artifact:imports.find(a=>a.artifactId===request.artifactId)};
         case "get_order":return {ok:true,order:{artifacts:options.noDemo ? [] :
           [{fileName:"plan.md",sha256:"C".repeat(64)}]}};
         default:return {ok:false,error:"unsupported_command"};
@@ -654,4 +655,95 @@ test("AO native registration restricts each Windows host to one syntactically va
   assert.ok(!manifest.permissions.includes("debugger"));
   assert.ok(!Object.hasOwn(manifest,"host_permissions"),
     "AO discovery must not add broad host access");
+});
+
+
+async function readyDelivery(){
+  const fake=fakeChrome({noDemo:true});
+  const man=new context.TheOrgTaskManager(fake.api);
+  const created=await man.createOrder("demo",validInstruction);
+  await man.saveSupervisorPlan(created.taskId,rawPlan);
+  await man.approvePlan(created.taskId);
+  await man.importArtifact(created.taskId,"research1","report.md","YWJj","manual","test-only");
+  await man.handoffAndClose(created.taskId,"research1","Delivered report.md with cited sources and a reviewed summary.","submitted");
+  Object.assign(fake.imports[0],{integrityValid:true,formatValid:true,intakeStatus:"structure_verified_content_qa_pending"});
+  await man.recordQaFinding(created.taskId,"research1",0,"pass","I opened report.md and checked its source references and contents.");
+  return {fake,man,id:created.taskId};
+}
+const acceptanceEvidence="I opened report.md, checked the sources, and accept the delivered report.";
+
+test("verified delivery finishes through explicit owner acceptance and remains finished on recheck",async()=>{
+  const {fake,man,id}=await readyDelivery();
+  const review=await man.supervisorReview(id);
+  assert.equal(review.completionReady,true);
+  assert.equal((await man.orders())[id].phase,"awaiting_supervisor_review");
+  const accepted=await man.acceptCompletion(id,review.completionSnapshot,acceptanceEvidence);
+  assert.equal(accepted.phase,"completed_owner_accepted");
+  assert.equal(accepted.independentlyCertified,false);
+  assert.ok(fake.nativeRequests.some(r=>r.command==="verify_artifact"));
+  assert.equal((await man.supervisorReview(id)).verdict,"owner_accepted_completion");
+  assert.equal((await man.orders())[id].phase,"completed_owner_accepted");
+  const packet=await man.getQaPacket(id);
+  assert.equal(packet.ownerAcceptance.identityVerified,false);
+  assert.equal(packet.ownerAcceptance.independentlyCertified,false);
+});
+
+test("owner acceptance rejects missing files, failed QA and insufficient evidence",async()=>{
+  const {fake,man,id}=await readyDelivery();
+  const reviewed=await man.supervisorReview(id);
+  await assert.rejects(()=>man.acceptCompletion(id,reviewed.completionSnapshot,"OK"),/evidence/);
+  fake.imports.length=0;
+  assert.equal((await man.supervisorReview(id)).completionReady,false);
+  await assert.rejects(()=>man.acceptCompletion(id,reviewed.completionSnapshot,acceptanceEvidence),/not ready/);
+  const other=await readyDelivery();
+  await other.man.recordQaFinding(other.id,"research1",0,"fail","The source citations are missing and the result needs correction.");
+  assert.equal((await other.man.supervisorReview(other.id)).completionReady,false);
+});
+
+test("owner acceptance rejects stale file and handoff snapshots",async()=>{
+  const {fake,man,id}=await readyDelivery();
+  const reviewed=await man.supervisorReview(id);
+  fake.imports[0].sha256="D".repeat(64);
+  await assert.rejects(()=>man.acceptCompletion(id,reviewed.completionSnapshot,acceptanceEvidence),/changed/);
+  const fresh=await man.supervisorReview(id);
+  await man.handoffAndClose(id,"research1","A revised report has been submitted; previous findings must be reviewed again.","submitted");
+  await assert.rejects(()=>man.acceptCompletion(id,fresh.completionSnapshot,acceptanceEvidence),/changed|not ready/);
+});
+
+test("owner acceptance rechecks artifact bytes and rejects verification failure",async()=>{
+  const {fake,man,id}=await readyDelivery();
+  const reviewed=await man.supervisorReview(id);
+  const send=fake.api.runtime.sendNativeMessage;
+  fake.api.runtime.sendNativeMessage=async(host,request)=>request.command==="verify_artifact"
+    ? {ok:true,artifact:{...fake.imports[0],integrityValid:false}} : send(host,request);
+  await assert.rejects(()=>man.acceptCompletion(id,reviewed.completionSnapshot,acceptanceEvidence),/re-verification/);
+  assert.notEqual((await man.orders())[id].phase,"completed_owner_accepted");
+});
+
+test("changing QA after acceptance reopens the order and retains acceptance history",async()=>{
+  const {man,id}=await readyDelivery();
+  const reviewed=await man.supervisorReview(id);
+  await man.acceptCompletion(id,reviewed.completionSnapshot,acceptanceEvidence);
+  await man.recordQaFinding(id,"research1",0,"fail","New evidence shows the cited source does not support the conclusion.");
+  const order=(await man.orders())[id];
+  assert.equal(order.phase,"awaiting_supervisor_review");
+  assert.equal(order.acceptance,undefined);
+  assert.equal(order.acceptanceHistory.length,1);
+  assert.equal((await man.supervisorReview(id)).verdict,"qa_revision_required");
+});
+
+test("review racing with a revised handoff cannot overwrite the new state",async()=>{
+  const {fake,man,id}=await readyDelivery();
+  const send=fake.api.runtime.sendNativeMessage;
+  let changed=false;
+  fake.api.runtime.sendNativeMessage=async(host,request)=>{
+    if(request.command==="list_artifacts"&&!changed){
+      changed=true;
+      const all=await man.orders();
+      all[id].agentReports.research1.summary="A concurrent revised handoff needs fresh review.";
+      await man.saveOrders(all);
+    }
+    return send(host,request);
+  };
+  await assert.rejects(()=>man.supervisorReview(id),/changed during review/);
 });

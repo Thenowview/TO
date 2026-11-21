@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GIZE AI — Supervisor Workspace",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first Windows Supervisor with reviewed optional Ollama agents and durable SQLite jobs (developer preview).",
   "permissions": [
     "storage",

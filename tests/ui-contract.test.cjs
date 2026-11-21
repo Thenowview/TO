@@ -114,3 +114,14 @@ test("AO catalog rejects duplicate, malformed, unauthorized and expanded descrip
  ]) {const p=valid();mutate(p);assert.equal(validate(p),null);}
  for(const p of [null,{},[],{toolDescriptors:"bad"}]) assert.equal(validate(p),null);
 });
+
+test("quick start has three task choices and optional provider controls",()=>{
+ assert.equal([...html.matchAll(/data-service="/g)].length,3);
+ assert.match(html,/<details id="providers"/);
+ assert.match(html,/Consult an AI adviser or edit the plan/);
+ assert.ok(ui.includes('$("ownerInstruction").placeholder=btn.dataset.service'));
+ assert.ok(!ui.includes('$("ownerInstruction").value=btn.dataset.service'));
+ assert.match(html,/id="acceptCompletion"[^>]*disabled/);
+ assert.ok(ui.includes('rpc("accept_completion"'));
+ assert.ok(ui.includes('navigator.clipboard.writeText(prepared.prompt)'));
+});

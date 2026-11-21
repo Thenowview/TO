@@ -54,6 +54,13 @@
     }
 
     async saveOrders(data) {
+      for(const order of Object.values(data)){
+        if(order.acceptance&&order.acceptance.basis!==this.completionBasis(order)){
+          order.acceptanceHistory=[...(order.acceptanceHistory||[]),order.acceptance];
+          delete order.acceptance;
+          if(order.phase==="completed_owner_accepted")order.phase="awaiting_supervisor_review";
+        }
+      }
       await this.api.storage.local.set({ [LOCAL_KEY]: data });
     }
 
@@ -800,6 +807,9 @@
         taskId,
         companyId: order.companyId,
         instruction: order.instruction,
+        phase:order.phase,
+        ownerAcceptance:order.acceptance ? {acceptedUtc:order.acceptance.acceptedUtc,
+          evidence:order.acceptance.evidence,identityVerified:false,independentlyCertified:false} : null,
         reviewedPlan: !!order.plan.reviewed,
         tasks: order.plan.tasks.map(task => ({
           agentId: task.id, role: task.role,
@@ -830,11 +840,70 @@
       return globalThis.TheOrgSkills.auditorPrompt(packet);
     }
 
+
+    completionBasis(order) {
+      return JSON.stringify({companyId:order.companyId,instruction:order.instruction,
+        plan:order.plan,reports:order.agentReports||{},findings:order.qaFindings||{},
+        sessions:order.agentSessions||{}});
+    }
+
+    latestCompletionFiles(files) {
+      const latest=new Map();
+      for(const item of files){
+        const key=item.agentId+"\0"+item.fileName;
+        if(!latest.has(key)||(item.version||0)>(latest.get(key).version||0))latest.set(key,item);
+      }
+      return [...latest.values()].sort((a,b)=>String(a.artifactId).localeCompare(String(b.artifactId)));
+    }
+
+    completionSnapshot(order, files) {
+      return JSON.stringify({basis:this.completionBasis(order),files:this.latestCompletionFiles(files)
+        .map(a=>({id:a.artifactId,agentId:a.agentId,name:a.fileName,version:a.version,
+          sha256:a.sha256,integrityValid:a.integrityValid,formatValid:a.formatValid,
+          intakeStatus:a.intakeStatus}))});
+    }
+
+    async acceptCompletion(taskId, snapshot, evidence) {
+      if(!TASK_ID.test(taskId)||typeof snapshot!=="string"||!snapshot||
+         typeof evidence!=="string"||evidence.trim().length<30||evidence.length>4000)
+        throw new Error("Review the delivery and provide 30-4000 characters of owner acceptance evidence");
+      let review=await this.supervisorReview(taskId);
+      if(!review.completionReady||review.completionSnapshot!==snapshot)
+        throw new Error("Delivery changed or is not ready. Check results and blockers again");
+      const files=this.latestCompletionFiles(await this.listArtifacts(taskId));
+      for(const file of files){
+        const checked=await this.verifyArtifact(taskId,file.artifactId);
+        if(!checked.integrityValid||!checked.formatValid||checked.sha256!==file.sha256)
+          throw new Error("Delivered file failed re-verification. Review the corrected delivery");
+      }
+      review=await this.supervisorReview(taskId);
+      if(!review.completionReady||review.completionSnapshot!==snapshot)
+        throw new Error("Delivery changed during verification. Review the latest files");
+      return this.serialize(async()=>{
+        const all=await this.orders(),order=all[taskId];
+        if(!order||order.review?.completionSnapshot!==snapshot||
+           this.completionSnapshot(order,files)!==snapshot)
+          throw new Error("Order changed before acceptance. Check results again");
+        const owned=await this.owned();
+        if((owned[taskId]?.tabs||[]).some(t=>t.agentId!=="supervisor"))
+          throw new Error("Save and close specialist handoffs before accepting delivery");
+        order.acceptance={snapshot,basis:this.completionBasis(order),evidence:evidence.trim(),
+          acceptedUtc:new Date().toISOString(),acceptedBy:"local_owner_action",
+          identityVerified:false,independentlyCertified:false};
+        order.phase="completed_owner_accepted";
+        order.review={...order.review,verdict:"owner_accepted_completion",
+          reason:"Owner accepted the reviewed delivery. Identity and semantic correctness are not independently certified."};
+        await this.saveOrders(all);
+        return {taskId,phase:order.phase,verdict:order.review.verdict,independentlyCertified:false};
+      });
+    }
+
     async supervisorReview(taskId) {
       if (!TASK_ID.test(taskId)) throw new Error("Invalid task ID");
       const all = await this.orders();
       const order = all[taskId];
       if (!order) throw new Error("Work order not found");
+      const basis=this.completionBasis(order);
 
       const reports = Object.values(order.agentReports || {});
       let backend;
@@ -888,13 +957,22 @@
       const allManualCriteriaPassed = allManualCriteriaPresent &&
         planned.every(task => task.acceptanceCriteria.every((_, index) =>
           reviews[task.id][index].verdict === "pass"));
-      const verdict = !everyAgentReported ? "awaiting_agent_handoff" :
+      let verdict = !everyAgentReported ? "awaiting_agent_handoff" :
         !allSubmitted ? "agent_blocked_or_needs_help" :
         !demoMetadataConsistent || importedPending ? "blocked" :
         anyCriterionFailed ? "qa_revision_required" :
         allManualCriteriaPassed ? "manual_qa_recorded_owner_confirmation_pending" :
         "pending_independent_verification";
-      const reason = verdict === "manual_qa_recorded_owner_confirmation_pending"
+      const completionReady=!!order.plan?.reviewed && allSubmitted && allManualCriteriaPassed &&
+        demoMetadataConsistent && !importedPending && activeFiles.length>0 &&
+        activeFiles.every(a=>TASK_ID.test(a.artifactId)&&/^[a-fA-F0-9]{64}$/.test(a.sha256||"")&&
+          planned.some(t=>t.id===a.agentId));
+      const completionSnapshot=completionReady ? this.completionSnapshot(order,activeFiles) : null;
+      if(completionReady&&order.acceptance?.snapshot===completionSnapshot)
+        verdict="owner_accepted_completion";
+      const reason = verdict === "owner_accepted_completion"
+        ? "Owner accepted the reviewed delivery. Identity and semantic correctness are not independently certified."
+        : verdict === "manual_qa_recorded_owner_confirmation_pending"
         ? "Every criterion has a manually recorded pass; reviewer identity and substantive evidence are not independently authenticated. Owner confirmation remains required."
         : verdict === "qa_revision_required"
           ? "At least one acceptance criterion failed or requires more information; return the assignment to the responsible agent."
@@ -909,11 +987,15 @@
       await this.serialize(async () => {
         const latest = await this.orders();
         if (!latest[taskId]) return;
-        latest[taskId].review = { verdict, reason, checkedUtc: new Date().toISOString() };
-        latest[taskId].phase = "awaiting_supervisor_review";
+        if(this.completionBasis(latest[taskId])!==basis)
+          throw new Error("Order changed during review. Check results and blockers again");
+        latest[taskId].review = { verdict, reason, checkedUtc: new Date().toISOString(),
+          completionReady,completionSnapshot };
+        latest[taskId].phase = verdict==="owner_accepted_completion"
+          ? "completed_owner_accepted" : "awaiting_supervisor_review";
         await this.saveOrders(latest);
       });
-      return {taskId, verdict, reason,
+      return {taskId, verdict, reason,completionReady,completionSnapshot,
         demonstrationArtifacts: demonstrationArtifacts.length,
         importedArtifacts: importedArtifacts.length,
         pendingContentQa: importedArtifacts.length > 0};

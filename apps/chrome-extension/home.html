@@ -59,24 +59,19 @@
     </section>
 
     <section id="services" class="section-block" aria-labelledby="servicesHeading">
-      <div class="section-head"><div><span class="section-kicker">02 / CAPABILITIES</span><h2 id="servicesHeading">Explore local services</h2></div><p class="section-meta">Choose a service to start with a prepared instruction</p></div>
-      <div class="service-grid" id="serviceGrid">
-        <button class="service" data-service="Research and brief a topic with sources, uncertainty and an executive summary." type="button"><span class="service-icon violet">⌕</span><b>Research & Briefings</b><small>Gather, compare, explain</small></button>
-        <button class="service" data-service="Create a structured Word document with a clear outline and verification checklist." type="button"><span class="service-icon cyan">▤</span><b>Documents</b><small>Word, PDF, reports</small></button>
-        <button class="service" data-service="Prepare a data analysis plan, validate inputs and produce a clear spreadsheet report." type="button"><span class="service-icon blue">▥</span><b>Data & Analytics</b><small>Tables, charts, Excel</small></button>
-        <button class="service" data-service="Inspect a website using only authorized browsing, produce findings and citations." type="button"><span class="service-icon amber">◫</span><b>Browser Tasks</b><small>Approved sites & tools</small></button>
-        <button class="service" data-service="Design an implementation plan and test checklist for a software development request." type="button"><span class="service-icon green">⌘</span><b>Software Development</b><small>Plan, code, review</small></button>
-        <button class="service" data-service="Draft a business plan including risks, KPIs, stakeholders and execution milestones." type="button"><span class="service-icon rose">◇</span><b>Business Planning</b><small>Strategy and operations</small></button>
-        <button class="service" data-service="Prepare a cloud development plan, document proposed changes and request permission before any deployment." type="button"><span class="service-icon yellow">☁</span><b>Cloud & Infrastructure</b><small>Review-only by default</small></button>
-        <button class="service" data-service="Draft an email or calendar coordination plan. Do not send anything without explicit permission." type="button"><span class="service-icon mint">✉</span><b>Mail & Calendar</b><small>Connector required to send</small></button>
+      <div class="section-head"><div><span class="section-kicker">02 / CAPABILITIES</span><h2 id="servicesHeading">Choose a task type</h2></div><p class="section-meta">Or describe your task directly above</p></div>
+      <div class="service-grid quick-types" id="serviceGrid">
+        <button class="service" data-service="What topic should I research, and what questions should the brief answer?" type="button"><b>Research</b><small>Sources, comparison, executive summary</small></button>
+        <button class="service" data-service="What file do you need? Describe its contents, format and filename." type="button"><b>Create a file</b><small>Documents, checklists, spreadsheets</small></button>
+        <button class="service" data-service="What should I build or fix? Include the project, problem and expected result." type="button"><b>Code &amp; troubleshoot</b><small>Build, diagnose, test</small></button>
       </div>
     </section>
 
-    <section id="providers" class="section-block" aria-labelledby="providersHeading">
-      <div class="section-head"><div><span class="section-kicker">03 / INTELLIGENCE</span><h2 id="providersHeading">Select your AI adviser</h2></div><span class="hint-pill">Manual web handoff • no API keys required</span></div>
+    <details id="providers" class="section-block optional-controls">
+      <summary id="providersHeading">AI providers (optional)</summary>
       <p class="section-description">The Supervisor prepares an initial plan locally. You can optionally consult an AI adviser to refine it. Chat access, quotas and terms depend on your account; no AI provider is connected automatically. Cloudflare is a developer platform, not a chat service.</p>
       <div id="providerGrid" class="provider-grid"><span class="muted">Loading provider directory…</span></div>
-    </section>
+    </details>
 
     <section id="work" class="section-block" aria-labelledby="workHeading">
       <div class="section-head"><div><span class="section-kicker">04 / DELEGATION</span><h2 id="workHeading">Supervisor & specialist agents</h2></div><button type="button" class="tiny-btn" id="refreshOrders">Refresh orders</button></div>
@@ -92,12 +87,15 @@
               <div class="order-header"><div><span class="section-kicker">SUPERVISOR WORK ORDER</span><h3 id="activeOrderTitle"></h3><span id="activeOrderId" class="mono"></span></div><span id="orderPhase" class="phase">Pending</span></div>
               <div class="step-line"><span class="step-index">1</span><b>Supervisor proposes specialist orders</b><span class="step-helper">Locally drafted automatically • AI consultation optional</span></div>
               <div id="planSummary" class="review-result">Submit one instruction to generate an SOP-based local plan. The plan needs review before the agents start.</div>
+              <div class="action-row"><button id="approvePlan" class="primary" type="button">Approve task breakdown</button></div>
+              <details class="optional-controls"><summary>Consult an AI adviser or edit the plan</summary>
               <p class="form-note">Agent playbooks define how specialists work: procedure, output format, evidence checks and escalation rules. No AI website is contacted automatically.</p>
-              <div class="inline-controls"><label for="plannerProvider" class="sr-only">Planning provider</label><select id="plannerProvider"></select><button id="copyPlannerPrompt" type="button" class="secondary">Copy planning prompt</button><button id="openPlanner" type="button" class="secondary">Open planner chat ↗</button></div>
+              <div class="inline-controls"><label for="plannerProvider" class="sr-only">Planning provider</label><select id="plannerProvider"></select><button id="copyPlannerPrompt" type="button" class="secondary">Copy planning prompt</button><button id="openPlanner" type="button" class="secondary">Copy prompt &amp; open adviser</button></div>
               <label class="field-label" for="planResponse">Optional: replace the local plan with structured JSON from an AI adviser</label>
               <textarea id="planResponse" rows="5" placeholder='{"summary":"…","tasks":[{"id":"research1","role":"researcher","objective":"…","provider":"chatgpt","acceptanceCriteria":["…"],"dependencies":[]}]}…'></textarea>
-              <div class="action-row"><button id="interpretPlan" class="secondary" type="button">Interpret & save plan</button><button id="approvePlan" class="primary" type="button">Approve task breakdown</button></div>
+              <div class="action-row"><button id="interpretPlan" class="secondary" type="button">Interpret & save plan</button></div>
               <p class="form-note">AI text is untrusted until the Supervisor has interpreted it and you approve the proposed assignments. Do not paste confidential data into an external AI chat without authorization.</p>
+              </details>
               <div class="step-line"><span class="step-index">2</span><b>Specialist agent assignments</b><span class="step-helper">A separate Chrome task group</span></div>
               <div class="action-row">
                 <button id="dispatchNext" type="button" class="primary">Open next eligible agent <span aria-hidden="true">↗</span></button>
@@ -112,6 +110,10 @@
               <button id="exportAuditPacket" class="secondary" type="button">Export audit evidence packet (JSON)</button>
               <p class="form-note">QA findings are manually entered and the reviewer's identity is not independently authenticated. They cannot certify an AI agent's real-world performance.</p>
               <div id="reviewResult" class="review-result">No Supervisor review has been performed.</div>
+              <label class="field-label" for="completionEvidence">Owner acceptance: delivered filename and checks performed</label>
+              <textarea id="completionEvidence" rows="2" minlength="30" maxlength="4000" placeholder="I opened home-office-checklist.md and checked the requested checklist items."></textarea>
+              <button id="acceptCompletion" type="button" class="primary" disabled>Accept delivery &amp; finish</button>
+              <p class="form-note">Enabled after submitted handoffs, passing QA and a verified delivered file. Finishing records owner acceptance, not independent certification.</p>
             </div>
           </div>
         </div>

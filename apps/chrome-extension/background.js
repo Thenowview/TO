@@ -80,6 +80,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       case "get_qa_prompt":
         return {ok:true,prompt:await manager.qaAuditorPrompt(message.taskId)};
       case "review": return {ok:true,...await manager.supervisorReview(message.taskId)};
+      case "accept_completion": return {ok:true,...await manager.acceptCompletion(
+        message.taskId,message.snapshot,message.evidence)};
       case "save_supervisor_plan": return {ok:true,...await manager.saveSupervisorPlan(message.taskId,message.response)};
       case "get_plan_prompt": return {ok:true,prompt:planner.supervisorPrompt(message.instruction)};
       case "get_agent_prompt": return {ok:true,prompt:await manager.agentPrompt(message.taskId,message.agentId)};
