@@ -688,9 +688,55 @@ internal sealed class LocalAgentEngine
     private static extern uint GetFinalPathNameByHandleW(
         Microsoft.Win32.SafeHandles.SafeFileHandle handle, StringBuilder path, uint length, uint flags);
 
-    internal static void RequireOpenedPath(FileStream stream, string expectedPath)
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct ByHandleFileInformation
     {
-        if (!OperatingSystem.IsWindows()) return; // Existing component checks still apply on other hosts.
+        public uint FileAttributes;
+        public long CreationTime;
+        public long LastAccessTime;
+        public long LastWriteTime;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+
+    private readonly record struct OpenedOutputIdentity(
+        uint VolumeSerialNumber, uint FileIndexHigh, uint FileIndexLow, uint NumberOfLinks);
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool GetFileInformationByHandle(
+        Microsoft.Win32.SafeHandles.SafeFileHandle handle, out ByHandleFileInformation information);
+
+    private static OpenedOutputIdentity ReadOpenedOutputIdentity(FileStream stream)
+    {
+        if (!GetFileInformationByHandle(stream.SafeFileHandle, out var info))
+            throw new IOException("Cannot establish opened output file identity or link count",
+                new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error()));
+        if (info.NumberOfLinks != 1)
+            throw new IOException("Output files with multiple hard links are not permitted");
+        return new OpenedOutputIdentity(
+            info.VolumeSerialNumber, info.FileIndexHigh, info.FileIndexLow, info.NumberOfLinks);
+    }
+
+    internal static void RequireSameOpenedOutput(FileStream stream, OpenedOutputIdentity identity)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        if (ReadOpenedOutputIdentity(stream) != identity)
+            throw new IOException("Opened output file identity changed during review");
+    }
+
+    internal static void RequireSingleLink(FileStream stream)
+    {
+        if (OperatingSystem.IsWindows()) _ = ReadOpenedOutputIdentity(stream);
+    }
+
+    internal static OpenedOutputIdentity RequireOpenedPath(FileStream stream, string expectedPath)
+    {
+        if (!OperatingSystem.IsWindows()) return default; // Existing component checks still apply on other hosts.
         var resolved = new StringBuilder(32768);
         uint length = GetFinalPathNameByHandleW(stream.SafeFileHandle, resolved, (uint)resolved.Capacity, 0);
         if (length == 0 || length >= resolved.Capacity)
@@ -702,6 +748,7 @@ internal sealed class LocalAgentEngine
             actual = actual.Substring(4);
         if (!string.Equals(Path.GetFullPath(expectedPath), actual, StringComparison.OrdinalIgnoreCase))
             throw new IOException("Opened output path differs from requested path");
+        return ReadOpenedOutputIdentity(stream);
     }
 
     internal static string HashOutputBounded(string path)
@@ -717,7 +764,7 @@ internal sealed class LocalAgentEngine
         }
 
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        RequireOpenedPath(stream, path);
+        var identity = RequireOpenedPath(stream, path);
         byte[] bytes = new byte[32769];
         int count = 0;
         while (count < bytes.Length)
@@ -727,6 +774,7 @@ internal sealed class LocalAgentEngine
             count += read;
         }
         if (count > 32768) throw new ArgumentException("Output too large for integrity review");
+        RequireSameOpenedOutput(stream, identity);
         return Convert.ToHexString(SHA256.HashData(bytes.AsSpan(0, count)));
     }
 
@@ -743,7 +791,7 @@ internal sealed class LocalAgentEngine
         }
         // Bound bytes from the open handle, even if the file grew after metadata inspection.
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        RequireOpenedPath(stream, path);
+        var identity = RequireOpenedPath(stream, path);
         byte[] bytes = new byte[32769];
         int count = 0;
         while (count < bytes.Length)
@@ -753,6 +801,7 @@ internal sealed class LocalAgentEngine
             count += read;
         }
         if (count > 32768) throw new ArgumentException("Note too large");
+        RequireSameOpenedOutput(stream, identity);
         return new UTF8Encoding(false, true).GetString(bytes, 0, count);
     }
 
