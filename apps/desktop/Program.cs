@@ -8,10 +8,10 @@ namespace Gize.Desktop;
 
 internal static class Program
 {
-    [STAThread] private static void Main()
+    [STAThread] private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new WorkspaceWindow());
+        Application.Run(new WorkspaceWindow(args.SequenceEqual(new[] {"--smoke-test"})));
     }
 }
 
@@ -26,6 +26,7 @@ internal sealed class WorkspaceWindow : Form
     private readonly HashSet<string> _grants = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _nativeQueue = new(1, 1);
     private readonly Controller _controller;
+    private readonly bool _smoke;
     private readonly JsonSerializerOptions _json = new() {PropertyNamingPolicy = JsonNamingPolicy.CamelCase};
     private WebView2? _workspace;
     private string? _selectedJob;
@@ -37,8 +38,10 @@ internal sealed class WorkspaceWindow : Form
         internal required int Id; internal required Job Job; internal required TabPage Page; internal required WebView2 View;
         internal int Group = -1; internal bool Loaded;
     }
-    internal WorkspaceWindow()
+    internal WorkspaceWindow(bool smoke = false)
     {
+        _smoke = smoke;
+        if (smoke) _root = Path.Combine(Path.GetTempPath(), "GizeSyntheticWorkspace", Guid.NewGuid().ToString("N"));
         Text = "GIZE AI"; Width = 1380; Height = 900; MinimumSize = new Size(900, 600);
         StartPosition = FormStartPosition.CenterScreen; BackColor = Color.FromArgb(11, 17, 32);
         Directory.CreateDirectory(_root); _controller = new Controller(_root);
@@ -51,8 +54,50 @@ internal sealed class WorkspaceWindow : Form
         }
         var close = new ToolStripButton("Close tab"); close.Click += (_, _) => CloseSelected(); _toolbar.Items.Add(close);
         Controls.Add(_tabs); Controls.Add(_toolbar); _toolbar.Dock = DockStyle.Top;
-        Shown += async (_, _) => await Initialize();
+        Shown += async (_, _) => {await Initialize(); if (_smoke) await Smoke();};
         FormClosed += (_, _) => {_controller.Dispose(); foreach (var tab in _browser.Values) tab.View.Dispose(); _workspace?.Dispose();};
+    }
+    private async Task Smoke()
+    {
+        try
+        {
+            if (_workspace?.CoreWebView2 == null) throw new InvalidOperationException("workspace_not_initialized");
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (await _workspace.CoreWebView2.ExecuteScriptAsync("Boolean(globalThis.GizeDesktopSurface && document.getElementById('chatRefresh'))") != "true")
+            {
+                if (DateTime.UtcNow > deadline) throw new InvalidOperationException("packaged_workspace_not_ready");
+                await Task.Delay(100);
+            }
+            var created = JsonSerializer.SerializeToElement(await AppCommand(JsonSerializer.SerializeToElement(new {
+                command = "create_order", companyId = "synthetic", instruction = "Synthetic standalone job"})), _json);
+            string id = String(created, "taskId");
+            if (!Id.IsMatch(id)) throw new InvalidOperationException("standalone_job_creation_failed");
+            await _workspace.CoreWebView2.ExecuteScriptAsync("document.getElementById('chatRefresh').click()");
+            while (await _workspace.CoreWebView2.ExecuteScriptAsync("document.getElementById('chatJobCount').textContent") != "\"1\"")
+            {
+                if (DateTime.UtcNow > deadline) throw new InvalidOperationException("job_sidebar_not_rendered");
+                await Task.Delay(100);
+            }
+            var first = await CreateTab(RequireJob(id), "https://example.com/", false);
+            var secondJob = JsonSerializer.SerializeToElement(await AppCommand(JsonSerializer.SerializeToElement(new {
+                command = "create_order", companyId = "synthetic", instruction = "Separate synthetic job"})), _json);
+            var second = await CreateTab(RequireJob(String(secondJob, "taskId")), "https://example.com/", false);
+            if (first.View.CoreWebView2.Environment.UserDataFolder == second.View.CoreWebView2.Environment.UserDataFolder ||
+                first.View.CoreWebView2.Settings.IsWebMessageEnabled || second.View.CoreWebView2.Settings.IsWebMessageEnabled)
+                throw new InvalidOperationException("provider_profile_or_bridge_isolation_failed");
+            bool rejected = false;
+            try {RequireTab(first.Job, second.Id);} catch (ArgumentException) {rejected = true;}
+            if (!rejected) throw new InvalidOperationException("cross_job_tab_access");
+            File.WriteAllText("desktop-smoke-result.json", JsonSerializer.Serialize(new {ok = true,
+                packagedWorkspace = true, nativeJobCreation = true, sidebarRendered = true, isolatedProfiles = true,
+                providerBridgeDisabled = true, extensionRequired = false, synthetic = true}, _json));
+        }
+        catch (Exception error)
+        {
+            Environment.ExitCode = 1;
+            File.WriteAllText("desktop-smoke-result.json", JsonSerializer.Serialize(new {ok = false, error = error.ToString()}, _json));
+        }
+        Close();
     }
     private async Task Initialize()
     {

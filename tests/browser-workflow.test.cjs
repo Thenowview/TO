@@ -38,6 +38,16 @@ test("no tab or action runs before exact-plan approval and runtime permission", 
   f.deny(); await assert.rejects(f.runner.run(task, record.id, record.fingerprint), /Grant/);
   assert.equal(f.creates(), 0); assert.equal(f.calls(), 0);
 });
+
+test("standalone adapter binds every tab, grant and script operation to the recorded job", async () => {
+  const f = fixture(), scopes = [];
+  const runner = new BrowserWorkflowRunner({storage: f.api.storage, forTask(id) {scopes.push(id); return f.api;}});
+  const record = await runner.create(task, plan());
+  const result = await runner.run(task, record.id, record.fingerprint);
+  assert.equal(result.status, "completed_assertions_passed");
+  assert.ok(scopes.length >= 5); assert.ok(scopes.every(id => id === task));
+  await assert.rejects(runner.run("b".repeat(32), record.id, record.fingerprint), /does not belong/);
+});
 test("approved steps run in sequence with persisted receipts and no native bridge dependency", async () => {
   const f = fixture(), record = await f.runner.create(task, plan([
     {action: "fill", selector: "#name", value: "Synthetic test"},
