@@ -519,3 +519,7 @@ Existing Credential Manager candidate now has standalone Windows Smoke assertion
 
 ### SECURE-MEMORY strict scope validation — 2026-11-22
 Runtime b5d7b8c2163cfffea69cfbea7667b355e9f071db replaces .NET dollar anchors with absolute end-of-string anchors for company/job credential scope identifiers. Windows Smoke rejects trailing-newline IDs, HTTP, custom port and URL userinfo. Prior4f5ef30 passed seven checks including company isolation/revocation; fresh candidate CI pending. No full security/physical acceptance, NO_GO retained.
+
+
+### SECURE-MEMORY synthetic replacement lifecycle — 2026-11-22
+Standalone Windows Smoke now replaces the scoped synthetic saved login and requires both updated username/password on readback before existing deletion/absence checks. Prior892ceebb passed seven checks including strict-scope negatives; fresh exact-head CI pending. No real credentials, wrong-user/lock/broker or independent hardware acceptance inferred. NO_GO retained.
