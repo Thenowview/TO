@@ -153,6 +153,18 @@ internal sealed class WorkspaceWindow : Form
                 catch (ArgumentException) {deniedScope = true;}
                 if (!deniedScope) throw new InvalidOperationException("invalid_credential_scope_accepted");
             }
+            foreach (var malformed in new[] {
+                (Size: 0u, Blob: new IntPtr(1), User: "synthetic"),
+                (Size: 3u, Blob: new IntPtr(1), User: "synthetic"),
+                (Size: 4002u, Blob: new IntPtr(1), User: "synthetic"),
+                (Size: 2u, Blob: IntPtr.Zero, User: "synthetic"),
+                (Size: 2u, Blob: new IntPtr(1), User: "")})
+            {
+                bool rejectedRecord = false;
+                try {JobCredentialVault.ValidateRecord(malformed.Size, malformed.Blob, malformed.User);}
+                catch (InvalidOperationException) {rejectedRecord = true;}
+                if (!rejectedRecord) throw new InvalidOperationException("malformed_vault_record_accepted");
+            }
             var vaultSite = new Uri("https://example.com/");
             try
             {
