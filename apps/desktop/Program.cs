@@ -147,10 +147,14 @@ internal sealed class WorkspaceWindow : Form
                 JobCredentialVault.Save("synthetic", id, vaultSite, "synthetic-user", "synthetic-password");
                 if (JobCredentialVault.Load("synthetic", id, vaultSite)?.Password != "synthetic-password" ||
                     JobCredentialVault.Load("synthetic", new string('b', 32), vaultSite) != null ||
+                    JobCredentialVault.Load("other-company", id, vaultSite) != null ||
                     JobCredentialVault.Load("synthetic", id, new Uri("https://example.org/")) != null)
                     throw new InvalidOperationException("credential_vault_scope_failed");
             }
             finally {JobCredentialVault.Remove("synthetic", id, vaultSite);}
+            if (JobCredentialVault.Load("synthetic", id, vaultSite) != null)
+                throw new InvalidOperationException("credential_vault_revocation_failed");
+            JobCredentialVault.Remove("synthetic", id, vaultSite); // Repeated deletion is safe.
             var first = await CreateTab(RequireJob(id), "https://example.com/", false);
             var secondJob = JsonSerializer.SerializeToElement(await AppCommand(JsonSerializer.SerializeToElement(new {
                 command = "create_order", companyId = "synthetic", instruction = "Separate synthetic job"})), _json);
