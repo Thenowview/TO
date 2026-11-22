@@ -535,3 +535,7 @@ Saved-login adapter now rejects disconnected, read-only, disabled, inert, hidden
 
 ### SECURE-MEMORY executable target guard regression — 2026-11-22
 Regression executes the production saved-login visibility predicate extracted from the packaged C# script with synthetic element/style fixtures: ordinary positive; disconnected/disabled/read-only/concealed/zero-rect and CSS hidden/collapse/none negatives. This is executable predicate coverage, not a real DOM/hostile-page or physical browser test. Prior16acbe062 passed seven checks; fresh CI pending. NO_GO retained.
+
+
+### SECURE-MEMORY actual WebView DOM candidate — 2026-11-22
+be240358fc97cefc4e416d06f6863385093de761 shares production AutofillVisibility with Windows launch Smoke. Smoke creates/removes synthetic DOM inputs in the packaged workspace and requires ordinary visible positive plus hidden/inert/aria-hidden ancestor, read-only, disabled, CSS hidden/collapse/none and disconnected negatives. No credentials or third-party page involved. Fresh Windows CI pending; this does not establish hostile-origin/provider or physical acceptance. NO_GO retained.
