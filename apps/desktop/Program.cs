@@ -92,7 +92,7 @@ internal sealed class WorkspaceWindow : Form
             var saved = JobCredentialVault.Load(tab.Job.Company, tab.Job.Id, site);
             if (saved == null) throw new ArgumentException("No saved login for this job and exact website");
             string data = JsonSerializer.Serialize(new {origin = site.GetLeftPart(UriPartial.Authority), username = saved.Value.Username, password = saved.Value.Password});
-            string script = "((data)=>{if(location.origin!==data.origin)return false;const visible=e=>{const s=getComputedStyle(e);return e.isConnected&&!e.disabled&&!e.readOnly&&!e.closest('[inert],[hidden],[aria-hidden=true]')&&s.visibility!=='hidden'&&s.visibility!=='collapse'&&s.display!=='none'&&e.getClientRects().length>0;};" +
+            string script = "((data)=>{if(location.origin!==data.origin)return false;" + AutofillVisibility +
                 "const p=[...document.querySelectorAll('input[type=password]')].filter(visible);" +
                 "const u=[...document.querySelectorAll('input[type=email],input[autocomplete=username]')].filter(visible);" +
                 "if(p.length!==1||u.length!==1)return false;const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;" +
@@ -110,6 +110,7 @@ internal sealed class WorkspaceWindow : Form
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {MessageBox.Show(this, error is ArgumentException ? error.Message : "Windows could not remove this saved login", "GIZE saved login");}
     }
+    private const string AutofillVisibility = "const visible=e=>{const s=getComputedStyle(e);return e.isConnected&&!e.disabled&&!e.readOnly&&!e.closest('[inert],[hidden],[aria-hidden=true]')&&s.visibility!=='hidden'&&s.visibility!=='collapse'&&s.display!=='none'&&e.getClientRects().length>0;};";
     private async Task Smoke()
     {
         try
@@ -165,6 +166,8 @@ internal sealed class WorkspaceWindow : Form
                 catch (InvalidOperationException) {rejectedRecord = true;}
                 if (!rejectedRecord) throw new InvalidOperationException("malformed_vault_record_accepted");
             }
+            if (await _workspace.CoreWebView2.ExecuteScriptAsync("(()=>{" + AutofillVisibility + "const box=document.createElement('div');document.body.append(box);try{const e=document.createElement('input');box.append(e);if(!visible(e))return false;for(const attr of ['hidden','inert','aria-hidden']){box.setAttribute(attr,'true');if(visible(e))return false;box.removeAttribute(attr);}e.readOnly=true;if(visible(e))return false;e.readOnly=false;e.disabled=true;if(visible(e))return false;e.disabled=false;for(const value of ['hidden','collapse']){e.style.visibility=value;if(visible(e))return false;}e.style.visibility='visible';e.style.display='none';if(visible(e))return false;e.style.display='block';e.remove();return !visible(e);}finally{box.remove();}})()") != "true")
+                throw new InvalidOperationException("autofill_dom_denial_failed");
             var vaultSite = new Uri("https://example.com/");
             try
             {
