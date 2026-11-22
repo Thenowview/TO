@@ -547,3 +547,7 @@ f1d10c5a959337baa91c4d382267beaa846f37dc defaults app-session credential access 
 
 ### SECURE-MEMORY Windows session lifecycle candidate — 2026-11-22
 Desktop subscribes Windows SystemEvents.SessionSwitch to revoke process-local vault consent on every session transition, locks on close and unsubscribes the static event. Smoke explicitly unlocks, invokes the production session-lock handler, requires locked state and then existing Load/Save denials. Fresh Windows CI pending. Synthetic event invocation does not verify real OS notification delivery or credential reauthentication; owner hardware/security acceptance and NO_GO unchanged.
+
+
+### SECURE-MEMORY bounded consent lease — 2026-11-23
+1a643884a8893cce4adb8188a060b7446779c918 limits each explicit unlock to five monotonic minutes; expiry/backward elapsed time locks and stays locked until new consent. Read/Save existing guards evaluate the lease. 07a36d31793a4ce3f7188b7ab9cdcd33d7aec268 tests initial lock, pre-boundary positive, exact expiry, sticky expiry and backward clock denial with deterministic fake ticks. Fresh Windows CI pending; maximum consent duration, not idle detection/OS reauthentication. NO_GO retained.

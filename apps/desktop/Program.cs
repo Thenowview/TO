@@ -195,6 +195,17 @@ internal sealed class WorkspaceWindow : Form
             catch (InvalidOperationException) {lockedSaveDenied = true;}
             if (!lockedLoadDenied || !lockedSaveDenied) throw new InvalidOperationException("locked_vault_access");
             JobCredentialVault.Unlock();
+            long leaseNow = 100;
+            var testLease = new JobCredentialVault.SessionLease(() => leaseNow);
+            if (!testLease.IsLocked) throw new InvalidOperationException("lease_not_initially_locked");
+            testLease.Unlock(); leaseNow += 299999;
+            if (testLease.IsLocked) throw new InvalidOperationException("lease_expired_early");
+            leaseNow++;
+            if (!testLease.IsLocked) throw new InvalidOperationException("lease_boundary_not_expired");
+            leaseNow = 100;
+            if (!testLease.IsLocked) throw new InvalidOperationException("expired_lease_reopened");
+            testLease.Unlock(); leaseNow--;
+            if (!testLease.IsLocked) throw new InvalidOperationException("backward_clock_not_denied");
             var vaultSite = new Uri("https://example.com/");
             try
             {
