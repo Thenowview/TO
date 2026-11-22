@@ -523,3 +523,7 @@ Runtime b5d7b8c2163cfffea69cfbea7667b355e9f071db replaces .NET dollar anchors wi
 
 ### SECURE-MEMORY synthetic replacement lifecycle — 2026-11-22
 Standalone Windows Smoke now replaces the scoped synthetic saved login and requires both updated username/password on readback before existing deletion/absence checks. Prior892ceebb passed seven checks including strict-scope negatives; fresh exact-head CI pending. No real credentials, wrong-user/lock/broker or independent hardware acceptance inferred. NO_GO retained.
+
+
+### SECURE-MEMORY malformed native record boundary — 2026-11-22
+523cfbca1189bffd526120c9d619dea4e81eb6b8 rejects empty/odd/oversized credential blobs, null blob pointers and empty/oversized usernames before secret marshaling. 9d609f6d31f61dbb8c39009ea70d862edd4b70d1 exercises malformed metadata negatives without dereferencing synthetic pointers. Priorcbfffc2 passed seven checks; fresh CI pending. OS vault tamper/wrong-user/lock and hardware acceptance remain separate, NO_GO retained.
