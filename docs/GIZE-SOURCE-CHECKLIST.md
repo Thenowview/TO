@@ -543,3 +543,7 @@ be240358fc97cefc4e416d06f6863385093de761 shares production AutofillVisibility wi
 
 ### SECURE-MEMORY session lock candidate — 2026-11-22
 f1d10c5a959337baa91c4d382267beaa846f37dc defaults app-session credential access to locked and rejects Load/Save while locked. Desktop11f84a62aeb4d84e1d0396d5c22d32bf356662f2 adds explicit native-toolbar unlock confirmation/relock and synthetic locked read/save denials. This is process-local user consent, not Windows reauthentication or protection against other processes; OS credential custody unchanged. Fresh Windows CI pending; idle/session-lock hooks and full broker/wrong-user/physical acceptance remain incomplete. NO_GO retained.
+
+
+### SECURE-MEMORY Windows session lifecycle candidate — 2026-11-22
+Desktop subscribes Windows SystemEvents.SessionSwitch to revoke process-local vault consent on every session transition, locks on close and unsubscribes the static event. Smoke explicitly unlocks, invokes the production session-lock handler, requires locked state and then existing Load/Save denials. Fresh Windows CI pending. Synthetic event invocation does not verify real OS notification delivery or credential reauthentication; owner hardware/security acceptance and NO_GO unchanged.
