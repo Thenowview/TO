@@ -143,3 +143,11 @@ test("workspace native-message source rejects custom ports and userinfo",()=>{
  assert.ok(guard.includes("uri.IsDefaultPort"),"same host on another port must not access bridge");
  assert.ok(guard.includes("string.IsNullOrEmpty(uri.UserInfo)"),"credential-bearing URL must not access bridge");
 });
+
+
+test("saved-login adapter rejects concealed inert and readonly targets",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ const fill=source.slice(source.indexOf("private async Task FillLogin()"));
+ for(const guard of ["!e.readOnly","!e.disabled","[inert],[hidden],[aria-hidden=true]","s.visibility!==\'hidden\'","s.visibility!==\'collapse\'","s.display!==\'none\'"])
+  assert.ok(fill.includes(guard),"Missing saved-login denial: "+guard);
+});
