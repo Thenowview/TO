@@ -29,6 +29,7 @@ async function walk(dir) {
     let content;try{content=await readFile(abs,'utf8');}catch{continue;}
     if(content.includes('\u0000')) continue;
     const file=path.relative(root,abs).replaceAll(path.sep,'/');
+    if(file==='scripts/audit-legacy-branding.mjs') continue; // Do not count the scanner's own patterns.
     for(const [index,line] of content.split(/\r?\n/).entries()){
       legacy.lastIndex=0;
       const tokens=[...new Set([...line.matchAll(legacy)].map(x=>x[0]))];
