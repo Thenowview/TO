@@ -92,7 +92,7 @@ internal sealed class WorkspaceWindow : Form
             var saved = JobCredentialVault.Load(tab.Job.Company, tab.Job.Id, site);
             if (saved == null) throw new ArgumentException("No saved login for this job and exact website");
             string data = JsonSerializer.Serialize(new {origin = site.GetLeftPart(UriPartial.Authority), username = saved.Value.Username, password = saved.Value.Password});
-            string script = "((data)=>{if(location.origin!==data.origin)return false;const visible=e=>e.getClientRects().length&&!e.disabled;" +
+            string script = "((data)=>{if(location.origin!==data.origin)return false;const visible=e=>{const s=getComputedStyle(e);return e.isConnected&&!e.disabled&&!e.readOnly&&!e.closest('[inert],[hidden],[aria-hidden=true]')&&s.visibility!=='hidden'&&s.visibility!=='collapse'&&s.display!=='none'&&e.getClientRects().length>0;};" +
                 "const p=[...document.querySelectorAll('input[type=password]')].filter(visible);" +
                 "const u=[...document.querySelectorAll('input[type=email],input[autocomplete=username]')].filter(visible);" +
                 "if(p.length!==1||u.length!==1)return false;const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;" +
