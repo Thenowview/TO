@@ -53,6 +53,15 @@ internal sealed class WorkspaceWindow : Form
             var button = new ToolStripButton(provider.Item1); button.Click += async (_, _) => await OpenSelected(provider.Item2); _toolbar.Items.Add(button);
         }
         var close = new ToolStripButton("Close tab"); close.Click += (_, _) => CloseSelected(); _toolbar.Items.Add(close);
+        var vaultLock = new ToolStripButton("Unlock saved logins");
+        vaultLock.Click += (_, _) => {
+            if (JobCredentialVault.IsLocked) {
+                if (MessageBox.Show(this, "Allow saved-login access for this GIZE app session? This is session consent, not Windows identity verification.",
+                    "GIZE saved logins", MessageBoxButtons.OKCancel) != DialogResult.OK) return;
+                JobCredentialVault.Unlock(); vaultLock.Text = "Lock saved logins";
+            } else {JobCredentialVault.Lock(); vaultLock.Text = "Unlock saved logins";}
+        };
+        _toolbar.Items.Add(vaultLock);
         var saveLogin = new ToolStripButton("Save login"); saveLogin.Click += (_, _) => SaveLogin(); _toolbar.Items.Add(saveLogin);
         var fillLogin = new ToolStripButton("Use saved login"); fillLogin.Click += async (_, _) => await FillLogin(); _toolbar.Items.Add(fillLogin);
         var forgetLogin = new ToolStripButton("Forget login"); forgetLogin.Click += (_, _) => ForgetLogin(); _toolbar.Items.Add(forgetLogin);
@@ -142,6 +151,7 @@ internal sealed class WorkspaceWindow : Form
                 if (DateTime.UtcNow > deadline) throw new InvalidOperationException("job_sidebar_not_rendered");
                 await Task.Delay(100);
             }
+            JobCredentialVault.Unlock(); // Synthetic scope tests explicitly enroll this test session.
             foreach (var scope in new[] {
                 (Company: "synthetic\n", Order: new string('a', 32), Site: "https://example.com/"),
                 (Company: "synthetic", Order: new string('a', 32) + "\n", Site: "https://example.com/"),
@@ -168,6 +178,14 @@ internal sealed class WorkspaceWindow : Form
             }
             if (await _workspace.CoreWebView2.ExecuteScriptAsync("(()=>{" + AutofillVisibility + "const box=document.createElement('div');document.body.append(box);try{const e=document.createElement('input');box.append(e);if(!visible(e))return false;for(const attr of ['hidden','inert','aria-hidden']){box.setAttribute(attr,'true');if(visible(e))return false;box.removeAttribute(attr);}e.readOnly=true;if(visible(e))return false;e.readOnly=false;e.disabled=true;if(visible(e))return false;e.disabled=false;for(const value of ['hidden','collapse']){e.style.visibility=value;if(visible(e))return false;}e.style.visibility='visible';e.style.display='none';if(visible(e))return false;e.style.display='block';e.remove();return !visible(e);}finally{box.remove();}})()") != "true")
                 throw new InvalidOperationException("autofill_dom_denial_failed");
+            JobCredentialVault.Lock();
+            bool lockedLoadDenied = false, lockedSaveDenied = false;
+            try {JobCredentialVault.Load("synthetic", new string('a',32), new Uri("https://example.com/"));}
+            catch (InvalidOperationException) {lockedLoadDenied = true;}
+            try {JobCredentialVault.Save("synthetic", new string('a',32), new Uri("https://example.com/"), "synthetic", "synthetic");}
+            catch (InvalidOperationException) {lockedSaveDenied = true;}
+            if (!lockedLoadDenied || !lockedSaveDenied) throw new InvalidOperationException("locked_vault_access");
+            JobCredentialVault.Unlock();
             var vaultSite = new Uri("https://example.com/");
             try
             {
