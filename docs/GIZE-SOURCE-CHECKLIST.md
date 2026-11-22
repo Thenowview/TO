@@ -515,3 +515,7 @@ Windows standalone Smoke now invokes production WorkspaceUrl for custom-port, us
 
 ### SECURE-MEMORY synthetic revocation/company boundary — 2026-11-22
 Existing Credential Manager candidate now has standalone Windows Smoke assertions that another company cannot load the synthetic saved login, deletion makes it unavailable, and repeated deletion succeeds. Reuses existing vault and cleanup, no live credentials. Fresh exact-head CI pending. Lock/wrong-user/tamper and scoped autofill broker acceptance remain incomplete; no independent acceptance or VERIFIED promotion. NO_GO retained.
+
+
+### SECURE-MEMORY strict scope validation — 2026-11-22
+Runtime b5d7b8c2163cfffea69cfbea7667b355e9f071db replaces .NET dollar anchors with absolute end-of-string anchors for company/job credential scope identifiers. Windows Smoke rejects trailing-newline IDs, HTTP, custom port and URL userinfo. Prior4f5ef30 passed seven checks including company isolation/revocation; fresh candidate CI pending. No full security/physical acceptance, NO_GO retained.
