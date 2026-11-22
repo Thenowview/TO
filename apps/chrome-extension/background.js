@@ -1,8 +1,9 @@
 /* TheOrg MV3 background — extension-owned messages only, no content scripts or site scraping. */
-importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js", "browser-workflow.js");
+importScripts("agent-playbooks.js", "supervisor-plan.js", "task-manager.js", "browser-workflow.js", "local-chat-client.js");
 const browserWorkflows = new globalThis.GizeBrowserWorkflow.BrowserWorkflowRunner(chrome);
 const manager = new globalThis.TheOrgTaskManager(chrome);
 const planner = globalThis.TheOrgPlanner;
+let localChat;
 
 chrome.action.onClicked.addListener(async () => {
   try { await chrome.tabs.create({url: chrome.runtime.getURL("home.html"),active:true}); }
@@ -15,6 +16,27 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
      typeof message.command!=="string") return false;
   (async()=>{
     switch(message.command){
+      case "chat_models":
+      case "chat_get":
+      case "chat_start":
+      case "chat_stop":
+      case "chat_memory_list":
+      case "chat_memory_put":
+      case "chat_recover": {
+        if(typeof sender.url !== "string" || sender.url.split(/[?#]/)[0] !== chrome.runtime.getURL("home.html"))
+          throw new Error("Chat requires the packaged GIZE workspace");
+        const request = {command:message.command};
+        if(message.command !== "chat_models") {
+          const order = (await manager.orders())[message.taskId];
+          if(!order || order.phase === "archived") throw new Error("Active work order missing");
+          request.companyId=order.companyId; request.orderId=message.taskId;
+          if(message.command === "chat_start") {request.text=message.text;request.model=message.model;request.nonce=message.nonce;request.instruction=order.instruction;}
+          if(message.command === "chat_stop" || message.command === "chat_recover") request.turnId=message.turnId;
+          if(message.command === "chat_memory_put") {request.key=message.key;request.content=message.content;request.source=message.source;}
+        }
+        localChat ||= new globalThis.GizeLocalChatClient(chrome);
+        return await localChat.request(request);
+      }
       case "desktop_windows":
       case "desktop_observe":
       case "desktop_preview":
@@ -44,6 +66,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
         return await manager.native({command:"desktop_draft_plan",companyId:order.companyId,orderId:message.taskId,
           instruction:order.instruction,model:message.model,window:message.window});
       }
+      case "browser_workflow_inspect":
+      case "browser_workflow_draft":
       case "browser_workflow_create":
       case "browser_workflow_get":
       case "browser_workflow_list":
@@ -54,8 +78,13 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
           throw new Error("Browser workflows require the Supervisor page");
         const order = (await manager.orders())[message.taskId];
         if(!order || order.phase === "archived") throw new Error("Active work order missing");
+        if(message.command === "browser_workflow_inspect")
+          return {ok:true,...await browserWorkflows.inspect(message.taskId,message.url)};
+        if(message.command === "browser_workflow_draft")
+          return await manager.native({command:"agent_browser_draft",companyId:order.companyId,orderId:message.taskId,
+            instruction:order.instruction,model:message.model,url:message.url,observation:message.observation});
         if(message.command === "browser_workflow_create")
-          return {ok:true,workflow:await browserWorkflows.create(message.taskId,message.plan)};
+          return {ok:true,workflow:await browserWorkflows.create(message.taskId,message.plan,message.sessionId)};
         if(message.command === "browser_workflow_list")
           return {ok:true,workflows:await browserWorkflows.list(message.taskId)};
         if(message.command === "browser_workflow_get")

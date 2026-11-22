@@ -1,0 +1,9 @@
+# GIZE standalone workspace candidate
+
+Owner direction: GIZE pending jobs are conversation threads; each job owns its local memory and browser sessions. Open browser tabs inside the app without requiring a Chrome extension. Local model chat requires no Codex or ChatGPT account. Optional third-party services retain their own accounts and terms.
+
+This branch adds a WebView2 Windows shell, conversation UI, loopback local chat streaming, per-job notes/history, and browser inspection/planning. The existing Chrome extension remains an optional separate surface. Provider pages receive no native message bridge. Website passwords are not stored in model memory, chat notes, or application JavaScript storage. The standalone toolbar saves and removes exact-site, per-job logins through the current Windows user's Credential Manager. The model and job notes cannot retrieve them. Use saved login fills one visible username/email and password pair without submitting; other forms require manual login. This does not bypass MFA, CAPTCHA, service restrictions or embedded-login refusal.
+
+Run `dotnet publish apps/desktop/Gize.Desktop.csproj -c Release -o out/desktop` and launch `Gize.Desktop.exe`. Requires Microsoft Edge WebView2 Runtime and a separately installed Ollama runtime with an installed model listening on 127.0.0.1:11434. CI packages an unsigned per-user preview installer and checksum, and checks its installed files. This is not a signed public release. No local model is bundled or downloaded automatically.
+
+Validation must distinguish compilation, synthetic local-runtime tests, actual app launch, provider authentication, owner-PC automation and accepted business outcomes. Provider logins may refuse embedded browsers; no bypass is implemented. General coding-agent parity, adaptive arbitrary PC workflows, provider answer collection and production installer/update acceptance remain open. Do not rate the app 10/10 based on source changes.

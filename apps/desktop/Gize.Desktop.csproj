@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms><EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <AssemblyName>Gize.Desktop</AssemblyName><RootNamespace>Gize.Desktop</RootNamespace>
+    <SelfContained>true</SelfContained><RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile><IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../engine/bridge/TheOrg.Bridge.csproj" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <Content Include="../chrome-extension/**/*" Link="assets/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

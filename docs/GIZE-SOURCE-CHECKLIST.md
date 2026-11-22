@@ -499,3 +499,51 @@ and tests/desktop-accessibility-smoke.py must establish runtime acceptance.
 No owner-PC/model inference acceptance or VERIFIED promotion. See
 docs/PC-ASSIST-WINDOWS-ACCESSIBILITY.md and canonical issue #71.
 
+
+
+## PC-05 / SECURE-MEMORY — embedded permission boundary, 2026-11-22
+Runtime 333eb33cc6e2b78541ac10c796bed7b4ff934090 explicitly denies unbrokered WebView2 permission requests on workspace and per-job browsers and disables general autofill/password autosave. Contract regression 7e407e8434b9476887aa4abaf51c884e3b70c82d requires all three controls on both surfaces. Static contract evidence only; fresh Windows compilation/launch CI and actual device denial acceptance pending. Existing standalone PR reused; no credential vault or VERIFIED acceptance inferred. NO_GO retained.
+
+
+### PC-05 workspace origin follow-up — 2026-11-22
+Candidate b75e5425fa2739ffb98cc6e019e98cd36bc69234 rejects custom ports and userinfo in privileged workspace navigation/message sources. Static negative contract f01452a471f2cee5e7b49535bfe3e9f24b25c78d guards both constraints. Prior f92482670df3f4831353b0caabbd28bc3fb2c607 passed seven actual checks; fresh candidate CI pending. Runtime adversarial WebView acceptance remains unavailable; no VERIFIED promotion, NO_GO retained.
+
+
+### PC-05 runtime boundary test follow-up — 2026-11-22
+Windows standalone Smoke now invokes production WorkspaceUrl for custom-port, userinfo, HTTP, wrong-host and wrong-path negatives plus ordinary positive. It reads actual initialized workspace and both job WebView profiles and fails if general autofill or password saving is enabled. Fresh candidate Windows launch CI pending; no user hardware or permission-prompt acceptance inferred. Prior head39a0575 passed seven checks; draft remains unmerged. NO_GO retained.
+
+
+### SECURE-MEMORY synthetic revocation/company boundary — 2026-11-22
+Existing Credential Manager candidate now has standalone Windows Smoke assertions that another company cannot load the synthetic saved login, deletion makes it unavailable, and repeated deletion succeeds. Reuses existing vault and cleanup, no live credentials. Fresh exact-head CI pending. Lock/wrong-user/tamper and scoped autofill broker acceptance remain incomplete; no independent acceptance or VERIFIED promotion. NO_GO retained.
+
+
+### SECURE-MEMORY strict scope validation — 2026-11-22
+Runtime b5d7b8c2163cfffea69cfbea7667b355e9f071db replaces .NET dollar anchors with absolute end-of-string anchors for company/job credential scope identifiers. Windows Smoke rejects trailing-newline IDs, HTTP, custom port and URL userinfo. Prior4f5ef30 passed seven checks including company isolation/revocation; fresh candidate CI pending. No full security/physical acceptance, NO_GO retained.
+
+
+### SECURE-MEMORY synthetic replacement lifecycle — 2026-11-22
+Standalone Windows Smoke now replaces the scoped synthetic saved login and requires both updated username/password on readback before existing deletion/absence checks. Prior892ceebb passed seven checks including strict-scope negatives; fresh exact-head CI pending. No real credentials, wrong-user/lock/broker or independent hardware acceptance inferred. NO_GO retained.
+
+
+### SECURE-MEMORY malformed native record boundary — 2026-11-22
+523cfbca1189bffd526120c9d619dea4e81eb6b8 rejects empty/odd/oversized credential blobs, null blob pointers and empty/oversized usernames before secret marshaling. 9d609f6d31f61dbb8c39009ea70d862edd4b70d1 exercises malformed metadata negatives without dereferencing synthetic pointers. Priorcbfffc2 passed seven checks; fresh CI pending. OS vault tamper/wrong-user/lock and hardware acceptance remain separate, NO_GO retained.
+
+
+### SECURE-MEMORY saved-login target denial — 2026-11-22
+Saved-login adapter now rejects disconnected, read-only, disabled, inert, hidden/aria-hidden and CSS invisible/collapsed targets before filling. Static contract regression guards these denial predicates. Fresh CI pending; actual hostile-page/physical acceptance remains unavailable. Prior0ec19e5 passed seven checks. NO_GO retained; no VERIFIED promotion.
+
+
+### SECURE-MEMORY executable target guard regression — 2026-11-22
+Regression executes the production saved-login visibility predicate extracted from the packaged C# script with synthetic element/style fixtures: ordinary positive; disconnected/disabled/read-only/concealed/zero-rect and CSS hidden/collapse/none negatives. This is executable predicate coverage, not a real DOM/hostile-page or physical browser test. Prior16acbe062 passed seven checks; fresh CI pending. NO_GO retained.
+
+
+### SECURE-MEMORY actual WebView DOM candidate — 2026-11-22
+be240358fc97cefc4e416d06f6863385093de761 shares production AutofillVisibility with Windows launch Smoke. Smoke creates/removes synthetic DOM inputs in the packaged workspace and requires ordinary visible positive plus hidden/inert/aria-hidden ancestor, read-only, disabled, CSS hidden/collapse/none and disconnected negatives. No credentials or third-party page involved. Fresh Windows CI pending; this does not establish hostile-origin/provider or physical acceptance. NO_GO retained.
+
+
+### SECURE-MEMORY session lock candidate — 2026-11-22
+f1d10c5a959337baa91c4d382267beaa846f37dc defaults app-session credential access to locked and rejects Load/Save while locked. Desktop11f84a62aeb4d84e1d0396d5c22d32bf356662f2 adds explicit native-toolbar unlock confirmation/relock and synthetic locked read/save denials. This is process-local user consent, not Windows reauthentication or protection against other processes; OS credential custody unchanged. Fresh Windows CI pending; idle/session-lock hooks and full broker/wrong-user/physical acceptance remain incomplete. NO_GO retained.
+
+
+### SECURE-MEMORY Windows session lifecycle candidate — 2026-11-22
+Desktop subscribes Windows SystemEvents.SessionSwitch to revoke process-local vault consent on every session transition, locks on close and unsubscribes the static event. Smoke explicitly unlocks, invokes the production session-lock handler, requires locked state and then existing Load/Save denials. Fresh Windows CI pending. Synthetic event invocation does not verify real OS notification delivery or credential reauthentication; owner hardware/security acceptance and NO_GO unchanged.

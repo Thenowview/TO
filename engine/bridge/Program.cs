@@ -24,7 +24,7 @@ internal static class Program
         var dataRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "TheOrg", "workspace");
-        var controller = new Controller(dataRoot);
+        using var controller = new Controller(dataRoot);
 
         using Stream input = Console.OpenStandardInput();
         using Stream output = Console.OpenStandardOutput();
@@ -45,7 +45,10 @@ internal static class Program
                 input.ReadExactly(payload);
                 using var request = JsonDocument.Parse(payload);
                 var response = controller.Execute(request.RootElement);
-                WriteResponse(output, response);
+                if (request.RootElement.TryGetProperty("clientRequestId", out var correlation) &&
+                    correlation.ValueKind == JsonValueKind.String && Regex.IsMatch(correlation.GetString() ?? "", "^[a-f0-9]{32}$"))
+                    WriteResponse(output, new {clientRequestId = correlation.GetString(), reply = response});
+                else WriteResponse(output, response);
             }
             catch (Exception ex)
             {
@@ -87,7 +90,7 @@ internal static class Program
     }
 }
 
-internal sealed class Controller
+internal sealed class Controller : IDisposable
 {
     private static readonly Regex SafeCompany = new("^[a-z0-9_-]{1,40}$", RegexOptions.Compiled);
     private static readonly Regex SafeOrder = new("^[a-f0-9]{32}$", RegexOptions.Compiled);
@@ -96,6 +99,7 @@ internal sealed class Controller
     private readonly ArtifactTransfers _transfers;
     private readonly LocalAgentEngine _agents;
     private readonly WindowsDesktopAssist _desktop;
+    private readonly LocalChatEngine _chat;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -111,6 +115,7 @@ internal sealed class Controller
         _transfers = new ArtifactTransfers(_root, _artifactStore);
         _agents = new LocalAgentEngine(_root);
         _desktop = new WindowsDesktopAssist(_root);
+        _chat = new LocalChatEngine(_root);
     }
 
     internal object Execute(JsonElement request)
@@ -142,7 +147,8 @@ internal sealed class Controller
                         "complete_artifact_upload", "cancel_artifact_upload", "read_artifact_chunk",
                         "agent_create", "agent_get", "agent_list", "agent_approve", "agent_run_next", "agent_run_safe_batch",
                         "agent_complete_browser", "agent_review", "agent_cancel", "agent_recover",
-                        "agent_memory_put", "agent_memory_list", "agent_tools",
+                        "chat_models", "chat_start", "chat_get", "chat_stop", "chat_recover", "chat_memory_put", "chat_memory_list",
+                        "agent_memory_put", "agent_memory_list", "agent_tools", "agent_browser_draft",
                         "desktop_windows", "desktop_observe", "desktop_preview", "desktop_execute", "desktop_receipt", "desktop_history", "desktop_draft_plan", "desktop_stop" },
                     maxArtifactImportBytes = 256000,
                     importedArtifactsRequireContentQa = true,
@@ -183,6 +189,7 @@ internal sealed class Controller
                 "cancel_artifact_upload" => CancelArtifactUpload(request),
                 "read_artifact_chunk" => ReadArtifactChunk(request),
                 _ when command.StartsWith("desktop_", StringComparison.Ordinal) => _desktop.Execute(request),
+                _ when command.StartsWith("chat_", StringComparison.Ordinal) => _chat.Execute(request),
                 _ when command.StartsWith("agent_", StringComparison.Ordinal) => _agents.Execute(request),
                 _ => Fail("unsupported_command")
             };
@@ -194,6 +201,8 @@ internal sealed class Controller
         catch (JsonException) { return Fail("invalid_stored_record"); }
     }
 
+
+    public void Dispose() => _chat.Dispose();
 
     private static void RequireUnambiguousJson(JsonElement value)
     {
@@ -508,6 +517,29 @@ internal static class SelfTest
                 }
             }
 
+            using (var browserObserved = JsonDocument.Parse("""
+              {"controls":[{"selector":"#query","name":"Query","canFill":true,"canClick":false},{"selector":"#submit","name":"Search","canFill":false,"canClick":true}]}
+              """))
+            using (var browserProposal = JsonDocument.Parse("""
+              {"title":"Search synthetic page","url":"https://example.com/","steps":[{"action":"fill","selector":"#query","value":"Synthetic query"},{"action":"click","selector":"#submit","expectedText":"Search"},{"action":"wait_text","selector":"body","expectedText":"Synthetic results"}]}
+              """))
+            {
+                BrowserAssistPlanner.Validate(browserProposal.RootElement, "https://example.com/", browserObserved.RootElement);
+                Check(true, "Browser planner validates observed selectors and click/result assertions without model or browser execution");
+                foreach (string browserInvalid in new[] {
+                    browserProposal.RootElement.GetRawText().Replace("#query", "#invented"),
+                    browserProposal.RootElement.GetRawText().Replace("https://example.com/", "https://unapproved.org/"),
+                    browserProposal.RootElement.GetRawText().Replace("\"fill\"", "\"shell\""),
+                    browserProposal.RootElement.GetRawText().Replace("\"expectedText\":\"Search\"", "\"expectedText\":\"Delete\"")
+                })
+                {
+                    using var badBrowser = JsonDocument.Parse(browserInvalid);
+                    bool browserRejected = false;
+                    try { BrowserAssistPlanner.Validate(badBrowser.RootElement, "https://example.com/", browserObserved.RootElement); }
+                    catch (ArgumentException) { browserRejected = true; }
+                    Check(browserRejected, "Browser model cannot invent tools, controls, site scope or click labels");
+                }
+            }
             var pong = Call(c, new { command = "ping" });
             Check(pong.GetProperty("ok").GetBoolean(), "ping");
 

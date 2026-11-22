@@ -38,6 +38,16 @@ test("no tab or action runs before exact-plan approval and runtime permission", 
   f.deny(); await assert.rejects(f.runner.run(task, record.id, record.fingerprint), /Grant/);
   assert.equal(f.creates(), 0); assert.equal(f.calls(), 0);
 });
+
+test("standalone adapter binds every tab, grant and script operation to the recorded job", async () => {
+  const f = fixture(), scopes = [];
+  const runner = new BrowserWorkflowRunner({storage: f.api.storage, forTask(id) {scopes.push(id); return f.api;}});
+  const record = await runner.create(task, plan());
+  const result = await runner.run(task, record.id, record.fingerprint);
+  assert.equal(result.status, "completed_assertions_passed");
+  assert.ok(scopes.length >= 5); assert.ok(scopes.every(id => id === task));
+  await assert.rejects(runner.run("b".repeat(32), record.id, record.fingerprint), /does not belong/);
+});
 test("approved steps run in sequence with persisted receipts and no native bridge dependency", async () => {
   const f = fixture(), record = await f.runner.create(task, plan([
     {action: "fill", selector: "#name", value: "Synthetic test"},
@@ -111,6 +121,54 @@ test("stop takes effect before the next action", async () => {
   f.runner.stop(task, record.id);
   const done = await f.runner.run(task, record.id, record.fingerprint);
   assert.equal(done.status, "stopped"); assert.equal(f.calls(), 0);
+});
+function inspectionFixture() {
+  const f = fixture(); let session = {};
+  f.api.storage.session = {get: async () => structuredClone(session), set: async value => {session = {...session, ...structuredClone(value)};}};
+  f.api.scripting.executeScript = async args => [{frameId: 0, result: args.func.name === "inspectPage" ?
+    {ok: true, url: "https://example.com/", title: "Synthetic site", controls: [], fieldValuesRead: false} :
+    {ok: true, verified: "visible_text_read"}}];
+  return f;
+}
+test("observed-page workflow reuses its own inspected tab instead of losing page state", async () => {
+  const f = inspectionFixture(), inspected = await f.runner.inspect(task, "https://example.com/");
+  const record = await f.runner.create(task, plan(), inspected.sessionId);
+  const done = await f.runner.run(task, record.id, record.fingerprint);
+  assert.equal(done.status, "completed_assertions_passed"); assert.equal(f.creates(), 1);
+});
+test("inspection requires permission and cannot bind an unrelated task or arbitrary tab", async () => {
+  const denied = inspectionFixture(); denied.deny();
+  await assert.rejects(denied.runner.inspect(task, "https://example.com/"), /Grant/);
+  assert.equal(denied.creates(), 0);
+  const f = inspectionFixture(), inspected = await f.runner.inspect(task, "https://example.com/");
+  await assert.rejects(f.runner.create("b".repeat(32), plan(), inspected.sessionId), /another task/);
+  await assert.rejects(f.runner.create(task, plan(), "c".repeat(32)), /expired/);
+});
+test("moved or expired inspected pages are not silently replaced or executed", async () => {
+  const f = inspectionFixture(), inspected = await f.runner.inspect(task, "https://example.com/");
+  const record = await f.runner.create(task, plan(), inspected.sessionId);
+  f.navigate("https://example.com/other-page");
+  assert.equal((await f.runner.run(task, record.id, record.fingerprint)).status, "blocked_review_required");
+  assert.equal(f.creates(), 1);
+  const restarted = inspectionFixture(), snapshot = await restarted.runner.inspect(task, "https://example.com/");
+  const pending = await restarted.runner.create(task, plan(), snapshot.sessionId);
+  restarted.api.storage.session = {get: async () => ({})};
+  assert.equal((await restarted.runner.run(task, pending.id, pending.fingerprint)).status, "blocked_review_required");
+  assert.equal(restarted.creates(), 1);
+});
+test("page inspection never reads input values into model observations", () => {
+  const {inspectPage} = require("../apps/chrome-extension/browser-workflow.js");
+  class Input {} class Button {} class Anchor {} class Textarea {}
+  const input = new Input(); Object.assign(input, {id: "query", type: "text", labels: [{innerText: "Query"}],
+    closest: () => null, getAttribute: () => null, getClientRects: () => [{}]});
+  Object.defineProperty(input, "value", {get() { throw new Error("Input values must not be read"); }});
+  const context = {location: {origin: "https://example.com", href: "https://example.com/"},
+    document: {title: "Synthetic", body: {innerText: "Visible page"}, querySelectorAll: () => [input]},
+    CSS: {escape: s => s}, getComputedStyle: () => ({display: "block", visibility: "visible"}),
+    HTMLInputElement: Input, HTMLButtonElement: Button, HTMLAnchorElement: Anchor, HTMLTextAreaElement: Textarea};
+  const result = vm.runInNewContext("(" + inspectPage.toString() + ")", context)({origin: "https://example.com"});
+  assert.equal(result.ok, true); assert.equal(result.fieldValuesRead, false);
+  assert.equal(result.controls[0].selector, "#query"); assert.equal(result.controls[0].canFill, true);
 });
 // Small deterministic DOM fixture exercises the serialized content function itself.
 // These are component checks, not physical Chrome acceptance.

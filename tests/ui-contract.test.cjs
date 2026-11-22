@@ -125,3 +125,47 @@ test("quick start has three task choices and optional provider controls",()=>{
  assert.ok(ui.includes('rpc("accept_completion"'));
  assert.ok(ui.includes('navigator.clipboard.writeText(prepared.prompt)'));
 });
+
+
+test("standalone workspace and job browsers deny unsolicited permissions and autofill",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ for(const host of ["_workspace","view"]){
+  assert.ok(source.includes(host+".CoreWebView2.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;"),host+" must deny unbrokered camera, microphone, location and other site permissions");
+  assert.ok(source.includes(host+".CoreWebView2.Profile.IsGeneralAutofillEnabled = false;"),host+" must not autofill personal form data");
+  assert.ok(source.includes(host+".CoreWebView2.Profile.IsPasswordAutosaveEnabled = false;"),host+" must not save passwords outside the scoped vault");
+ }
+});
+
+
+test("workspace native-message source rejects custom ports and userinfo",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ const guard=source.slice(source.indexOf("private static bool WorkspaceUrl"),source.indexOf("private async void BridgeMessage"));
+ assert.ok(guard.includes("uri.IsDefaultPort"),"same host on another port must not access bridge");
+ assert.ok(guard.includes("string.IsNullOrEmpty(uri.UserInfo)"),"credential-bearing URL must not access bridge");
+});
+
+
+test("saved-login adapter rejects concealed inert and readonly targets",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ const fill=source.slice(source.indexOf("private async Task FillLogin()"));
+ for(const guard of ["!e.readOnly","!e.disabled","[inert],[hidden],[aria-hidden=true]","s.visibility!==\'hidden\'","s.visibility!==\'collapse\'","s.display!==\'none\'"])
+  assert.ok(fill.includes(guard),"Missing saved-login denial: "+guard);
+});
+
+
+test("production saved-login visibility guard rejects unsafe targets",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ const fill=source.slice(source.indexOf("private async Task FillLogin()"));
+ const match=fill.match(/const visible=e=>\{([^}]+)\};/);
+ assert.ok(match,"Production visibility guard must be available");
+ const visible=new Function("e","getComputedStyle",match[1]);
+ const base=()=>({isConnected:true,disabled:false,readOnly:false,closest:()=>null,getClientRects:()=>[{}]});
+ const style={visibility:"visible",display:"block"};
+ assert.ok(visible(base(),()=>style));
+ for(const change of [{isConnected:false},{disabled:true},{readOnly:true},{closest:()=>({})},{getClientRects:()=>[]}]){
+  assert.equal(Boolean(visible({...base(),...change},()=>style)),false);
+ }
+ for(const change of [{visibility:"hidden"},{visibility:"collapse"},{display:"none"}]){
+  assert.equal(Boolean(visible(base(),()=>({...style,...change}))),false);
+ }
+});

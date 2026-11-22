@@ -102,8 +102,46 @@
     return fail("Unsupported action");
   }
 
+  // Read only: never exposes field values or executes page-provided instructions.
+  function inspectPage(input) {
+    if (location.origin !== input.origin) return {ok: false, reason: "Inspection left the approved site"};
+    const visible = el => !el.closest("[inert],[hidden],[aria-hidden='true']") &&
+      getComputedStyle(el).display !== "none" && getComputedStyle(el).visibility !== "hidden" && el.getClientRects().length > 0;
+    function selectorFor(el) {
+      if (el.id) {
+        const selector = "#" + CSS.escape(el.id);
+        if (selector.length <= 300 && document.querySelectorAll(selector).length === 1) return selector;
+      }
+      const parts = []; let current = el;
+      for (let depth = 0; current && current !== document.body && depth < 8; depth++, current = current.parentElement) {
+        const tag = current.tagName.toLowerCase();
+        const siblings = [...current.parentElement.children].filter(item => item.tagName === current.tagName);
+        parts.unshift(tag + ":nth-of-type(" + (siblings.indexOf(current) + 1) + ")");
+      }
+      if (current !== document.body) return null;
+      const selector = "body > " + parts.join(" > ");
+      return selector.length <= 300 && document.querySelectorAll(selector).length === 1 ? selector : null;
+    }
+    const controls = [];
+    for (const el of document.querySelectorAll("button,a,input,textarea,[role='button'],h1,h2")) {
+      if (controls.length === 60) break;
+      if (!visible(el) || el.closest("input[type='password'],[autocomplete='current-password'],[autocomplete='new-password'],[autocomplete='one-time-code'],[autocomplete^='cc-'],[data-private]")) continue;
+      const selector = selectorFor(el); if (!selector) continue;
+      const inputField = el instanceof HTMLInputElement;
+      const name = (el.innerText || el.getAttribute("aria-label") || el.labels?.[0]?.innerText || el.getAttribute("placeholder") || "").trim().slice(0, 120);
+      controls.push({selector, name,
+        canClick: (el instanceof HTMLButtonElement || el instanceof HTMLAnchorElement || el.getAttribute("role") === "button") && !el.disabled,
+        canFill: (el instanceof HTMLTextAreaElement || inputField && ["text", "search", "email", "url", "tel"].includes(el.type)) && !el.disabled && !el.readOnly});
+    }
+    const observation = {ok: true, title: document.title.slice(0, 160), url: location.href,
+      text: (document.body?.innerText || "").slice(0, 3000), controls, fieldValuesRead: false};
+    while (JSON.stringify(observation).length > 28000) observation.controls.pop();
+    return observation;
+  }
+
   class BrowserWorkflowRunner {
     constructor(api) { this.api = api; this.queue = Promise.resolve(); this.stopped = new Set(); }
+    scoped(taskId) { return this.api.forTask ? this.api.forTask(taskId) : this.api; }
     serial(fn) { const next = this.queue.then(fn, fn); this.queue = next.catch(() => {}); return next; }
     async records() { return (await this.api.storage.local.get(KEY))[KEY] || {}; }
     async save(record) {
@@ -121,10 +159,39 @@
       return Object.values(await this.records()).filter(record => record.taskId === taskId)
         .sort((a, b) => b.createdUtc.localeCompare(a.createdUtc)).slice(0, 50);
     }
-    create(taskId, input) {
+    inspect(taskId, requestedUrl) {
+      return this.serial(async () => {
+        if (!ID.test(taskId)) throw new Error("Choose a work order first");
+        const plan = validatePlan({title: "Inspect selected task page", url: requestedUrl, steps: [{action: "read", selector: "body"}]});
+        if (!await this.scoped(taskId).permissions.contains(permissions(plan))) throw new Error("Grant access to the selected site first");
+        const tab = await this.scoped(taskId).tabs.create({url: plan.url, active: true});
+        if (!Number.isInteger(tab.id) || tab.id <= 0) throw new Error("No inspection tab was created");
+        await this.waitLoaded({taskId, tabId: tab.id, plan});
+        const rows = await this.bounded(this.scoped(taskId).scripting.executeScript({target: {tabId: tab.id, frameIds: [0]},
+          world: "ISOLATED", func: inspectPage, args: [{origin: new URL(plan.url).origin}]}));
+        const observation = rows?.find(row => row.frameId === 0)?.result;
+        if (observation?.ok !== true) throw new Error(observation?.reason || "No page observation returned");
+        const id = crypto.randomUUID().replaceAll("-", "");
+        const key = "gizeBrowserInspectionsV1";
+        const records = (await this.api.storage.session.get(key))[key] || {};
+        records[id] = {id, taskId, tabId: tab.id, url: plan.url, observedUrl: observation.url};
+        await this.api.storage.session.set({[key]: records});
+        return {sessionId: id, observation};
+      });
+    }
+    async inspection(taskId, id, requestedUrl) {
+      if (!ID.test(id || "")) throw new Error("Invalid inspection identity");
+      const key = "gizeBrowserInspectionsV1";
+      const record = ((await this.api.storage.session.get(key))[key] || {})[id];
+      if (!record || record.taskId !== taskId || record.url !== requestedUrl)
+        throw new Error("Inspection expired or belongs to another task/page; inspect again");
+      return record;
+    }
+    create(taskId, input, sessionId) {
       return this.serial(async () => {
         if (!ID.test(taskId)) throw new Error("Create a work order first");
         const plan = validatePlan(input);
+        if (sessionId) await this.inspection(taskId, sessionId, plan.url);
         // A click dispatch is never proof of success: require a subsequent explicit observation.
         for (let i = 0; i < plan.steps.length; i++)
           if (plan.steps[i].action === "click" && plan.steps[i + 1]?.action !== "wait_text")
@@ -132,6 +199,7 @@
         const record = {id: crypto.randomUUID().replaceAll("-", ""), taskId, plan,
           fingerprint: await fingerprint(plan), status: "awaiting_approval", nextStep: 0,
           receipts: [], createdUtc: new Date().toISOString()};
+        if (sessionId) record.inspectionId = sessionId;
         await this.save(record); return record;
       });
     }
@@ -146,14 +214,19 @@
         if (record.status !== "awaiting_approval") throw new Error("Workflow cannot be replayed; inspect its receipts and create a new plan");
         if (record.fingerprint !== reviewedFingerprint || record.fingerprint !== await fingerprint(validatePlan(record.plan)))
           throw new Error("Reviewed workflow changed");
-        if (!await this.api.permissions.contains(permissions(record.plan)))
+        if (!await this.scoped(taskId).permissions.contains(permissions(record.plan)))
           throw new Error("Grant access to this exact site before execution");
         record.status = "running";
         record.approvedUtc = new Date().toISOString();
         await this.save(record);
         try {
           // Persist intent before creating a tab. A crash never silently replays an action.
-          const tab = await this.api.tabs.create({url: record.plan.url, active: true});
+          let tab;
+          if (record.inspectionId) {
+            const session = await this.inspection(taskId, record.inspectionId, record.plan.url);
+            tab = await this.scoped(taskId).tabs.get(session.tabId);
+            if (tab.url !== session.observedUrl) throw new Error("Inspected page changed; observe and review a new plan");
+          } else tab = await this.scoped(taskId).tabs.create({url: record.plan.url, active: true});
           if (!Number.isInteger(tab.id) || tab.id <= 0) throw new Error("No workflow tab was created");
           record.tabId = tab.id; await this.save(record);
           await this.waitLoaded(record);
@@ -179,10 +252,11 @@
       });
     }
     async waitLoaded(record) {
+      const taskId = record.taskId;
       const origin = new URL(record.plan.url).origin;
       const deadline = Date.now() + 15000;
       do {
-        const tab = await this.api.tabs.get(record.tabId);
+        const tab = await this.scoped(taskId).tabs.get(record.tabId);
         if (tab.url && tab.url !== "about:blank" && new URL(tab.url).origin !== origin)
           throw new Error("Workflow navigated outside the approved site");
         if (tab.status === "complete" && tab.url && new URL(tab.url).origin === origin) return;
@@ -191,15 +265,16 @@
       throw new Error("Page did not load within 15 seconds");
     }
     async perform(record, step) {
+      const taskId = record.taskId;
       const origin = new URL(record.plan.url).origin;
       const deadline = Date.now() + (step.action === "wait_text" ? 10000 : 0);
       do {
-        if (!await this.api.permissions.contains(permissions(record.plan))) throw new Error("Site access was revoked");
-        const tab = await this.api.tabs.get(record.tabId);
+        if (!await this.scoped(taskId).permissions.contains(permissions(record.plan))) throw new Error("Site access was revoked");
+        const tab = await this.scoped(taskId).tabs.get(record.tabId);
         if (!tab.url || new URL(tab.url).origin !== origin) throw new Error("Workflow tab left its approved site");
         let result;
         try {
-          const rows = await this.bounded(this.api.scripting.executeScript({target: {tabId: record.tabId, frameIds: [0]},
+          const rows = await this.bounded(this.scoped(taskId).scripting.executeScript({target: {tabId: record.tabId, frameIds: [0]},
             world: "ISOLATED", func: pageOperation, args: [{origin, step}]}));
           result = rows?.find(row => row.frameId === 0)?.result;
         } catch (error) {
@@ -223,7 +298,7 @@
       } finally { clearTimeout(timer); }
     }
   }
-  const api = {BrowserWorkflowRunner, validatePlan, permissions, fingerprint, pageOperation};
+  const api = {BrowserWorkflowRunner, validatePlan, permissions, fingerprint, pageOperation, inspectPage};
   globalThis.GizeBrowserWorkflow = api;
   if (typeof module !== "undefined") module.exports = api;
 })();
