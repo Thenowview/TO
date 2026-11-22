@@ -531,3 +531,7 @@ Standalone Windows Smoke now replaces the scoped synthetic saved login and requi
 
 ### SECURE-MEMORY saved-login target denial — 2026-11-22
 Saved-login adapter now rejects disconnected, read-only, disabled, inert, hidden/aria-hidden and CSS invisible/collapsed targets before filling. Static contract regression guards these denial predicates. Fresh CI pending; actual hostile-page/physical acceptance remains unavailable. Prior0ec19e5 passed seven checks. NO_GO retained; no VERIFIED promotion.
+
+
+### SECURE-MEMORY executable target guard regression — 2026-11-22
+Regression executes the production saved-login visibility predicate extracted from the packaged C# script with synthetic element/style fixtures: ordinary positive; disconnected/disabled/read-only/concealed/zero-rect and CSS hidden/collapse/none negatives. This is executable predicate coverage, not a real DOM/hostile-page or physical browser test. Prior16acbe062 passed seven checks; fresh CI pending. NO_GO retained.
