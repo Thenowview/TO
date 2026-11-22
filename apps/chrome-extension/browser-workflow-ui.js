@@ -4,6 +4,7 @@
   const byId = id => document.getElementById(id);
   let reviewed = null;
   let active = null;
+  let inspectionSession = null;
   const send = async (command, payload = {}) => {
     const result = await chrome.runtime.sendMessage({command, ...payload});
     if (!result?.ok) throw new Error(result?.error || "Browser workflow unavailable");
@@ -21,7 +22,33 @@
     byId("browserWorkflowRun").disabled = true;
   }
   byId("browserWorkflowPlan").addEventListener("input", invalidate);
-  byId("browserWorkflowOrder").addEventListener("change", invalidate);
+  byId("browserWorkflowOrder").addEventListener("change", () => { inspectionSession = null; invalidate(); });
+  byId("browserWorkflowDraft").addEventListener("click", () => {
+    try {
+      invalidate(); inspectionSession = null;
+      const scope = byId("browserWorkflowOrder").value;
+      if (!/^[a-f0-9]{32}$/.test(scope)) throw new Error("Choose a work order first");
+      const plan = GizeBrowserWorkflow.validatePlan({title: "Inspect and plan selected site",
+        url: byId("browserWorkflowUrl").value.trim(), steps: [{action: "read", selector: "body"}]});
+      const model = byId("browserWorkflowModel").value.trim();
+      // The permission request starts directly in this user gesture.
+      chrome.permissions.request(GizeBrowserWorkflow.permissions(plan)).then(async granted => {
+        if (!granted) { show("Site access declined; no inspection or action ran."); return; }
+        byId("browserWorkflowDraft").disabled = true;
+        try {
+          show("Inspecting the selected site and drafting task steps with your local model. No page action is executing.");
+          const inspected = await send("browser_workflow_inspect", {taskId: scope, url: plan.url});
+          const draft = await send("browser_workflow_draft", {taskId: scope, url: plan.url, model, observation: inspected.observation});
+          if (scope !== byId("browserWorkflowOrder").value) throw new Error("Work order changed; inspect and plan again");
+          const validated = GizeBrowserWorkflow.validatePlan(draft.plan);
+          byId("browserWorkflowPlan").value = JSON.stringify(validated, null, 2);
+          inspectionSession = inspected.sessionId;
+          show("Task steps drafted from the observed page. Review the complete plan below, then choose Review workflow and Approve and run.");
+        } catch (e) { show(e.message); }
+        finally { byId("browserWorkflowDraft").disabled = false; }
+      }).catch(e => show(e.message));
+    } catch (e) { show(e.message); }
+  });
   byId("browserWorkflowRefresh").addEventListener("click", async () => {
     try {
       invalidate(); const result = await send("orders");
@@ -39,7 +66,7 @@
     try {
       invalidate();
       const result = await send("browser_workflow_create", {taskId: await taskId(),
-        plan: JSON.parse(byId("browserWorkflowPlan").value)});
+        plan: JSON.parse(byId("browserWorkflowPlan").value), sessionId: inspectionSession});
       reviewed = result.workflow;
       show({siteAccess: GizeBrowserWorkflow.permissions(reviewed.plan).origins,
         reviewedPlan: reviewed.plan, fingerprint: reviewed.fingerprint,
@@ -62,7 +89,7 @@
     byId("browserWorkflowRun").disabled = true;
     byId("browserWorkflowReview").disabled = true;
     byId("browserWorkflowStop").disabled = false;
-    for (const id of ["browserWorkflowPlan", "browserWorkflowOrder", "browserWorkflowRefresh", "browserWorkflowGrant"])
+    for (const id of ["browserWorkflowPlan", "browserWorkflowOrder", "browserWorkflowRefresh", "browserWorkflowGrant", "browserWorkflowDraft", "browserWorkflowUrl", "browserWorkflowModel"])
       byId(id).disabled = true;
     try {
       show("Running reviewed steps. Keep the workflow tab open. Stop prevents the next action.");
@@ -74,7 +101,7 @@
       active = null;
       byId("browserWorkflowReview").disabled = false;
       byId("browserWorkflowStop").disabled = true;
-      for (const id of ["browserWorkflowPlan", "browserWorkflowOrder", "browserWorkflowRefresh"])
+      for (const id of ["browserWorkflowPlan", "browserWorkflowOrder", "browserWorkflowRefresh", "browserWorkflowDraft", "browserWorkflowUrl", "browserWorkflowModel"])
         byId(id).disabled = false;
     }
   });

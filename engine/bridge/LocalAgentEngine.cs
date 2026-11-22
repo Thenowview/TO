@@ -55,6 +55,7 @@ internal sealed class LocalAgentEngine
         {
             return command switch
             {
+                "agent_browser_draft" => BrowserAssistPlanner.Draft(request),
                 "agent_create" => Create(request),
                 "agent_get" => Get(request),
                 "agent_list" => List(request),

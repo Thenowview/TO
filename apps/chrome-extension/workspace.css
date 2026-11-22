@@ -1,0 +1,47 @@
+/* GIZE conversation workspace. Original execution/evidence panels remain available under Tools. */
+.chat-first .content > :not(#chatWorkspace) { display: none !important; }
+.chat-first .content { padding: 0; }
+.chat-first #chatWorkspace { display: flex; }
+#chatWorkspace { display: none; height: 100dvh; min-height: 540px; flex-direction: column; padding: 0 28px; margin: 0; }
+.chat-workspace-header { display: flex; align-items: center; gap: 14px; padding: 22px 0; border-bottom: 1px solid #ffffff12; }
+.chat-workspace-header h1 { font-size: 16px; line-height: 1.4; font-weight: 600; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.chat-model-controls { display: flex; align-items: center; gap: 8px; }
+.chat-model-controls select { max-width: 230px; }
+.chat-empty { max-width: 720px; margin: auto; text-align: center; padding: 48px 10px 24px; }
+.chat-empty h2 { font-size: clamp(25px, 3vw, 42px); font-weight: 500; margin: 16px 0; letter-spacing: -.03em; }
+.chat-empty p { color: #a5abb8; line-height: 1.7; }
+.chat-empty[hidden] { display: none; }
+.chat-orb { display: inline-grid; place-items: center; width: 56px; height: 56px; border: 1px solid #5ce1d04a; color: #5ce1d0; border-radius: 18px; font-size: 29px; }
+.chat-messages { overflow-y: auto; flex: 1; min-height: 0; padding: 22px 0; }
+.chat-message { max-width: 860px; margin: 0 auto 28px; padding: 0 14px; line-height: 1.75; }
+.chat-message strong { display: block; font-size: 12px; color: #8f98ac; margin-bottom: 8px; }
+.chat-message-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; color: #e3e7ee; }
+.chat-message.from-user .chat-message-text { display: inline-block; background: #1e2738; border: 1px solid #ffffff0d; border-radius: 18px 18px 4px 18px; padding: 14px 18px; }
+.chat-compose { width: min(100%, 860px); margin: 0 auto; border: 1px solid #ffffff1a; border-radius: 20px; background: #121b2a; padding: 15px; }
+.chat-compose textarea { display: block; width: 100%; resize: vertical; min-height: 76px; max-height: 220px; border: 0; background: transparent; box-shadow: none; padding: 3px 4px; font-size: 15px; }
+.chat-compose-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.chat-compose-actions .primary { margin-left: auto; }
+.chat-status { min-height: 36px; text-align: center; color: #939eb1; font-size: 11px; line-height: 1.5; padding: 10px 0; }
+.job-conversation-heading { display: flex; align-items: center; gap: 6px; margin-top: 22px; font-size: 10px; color: #939eb1; letter-spacing: .08em; text-transform: uppercase; }
+.job-conversation-heading button { margin-left: auto; }
+#chatSearchJobs { width: 100%; margin: 10px 0; font-size: 12px; }
+.job-conversations { min-height: 0; overflow: auto; }
+.chat-first .rail .navigation a:not([href="#home"]) { display: none; }
+.chat-first .rail { min-height: 0; }
+.chat-first .rail .job-conversations { flex: 1; }
+.chat-first .rail-footer { flex-shrink: 0; }
+.job-thread { display: block; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 9px; padding: 10px; color: #c9d2e2; margin-bottom: 4px; cursor: pointer; }
+.job-thread span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.job-thread small { display: block; margin-top: 4px; color: #78859a; font-size: 10px; }
+.job-thread[aria-current="true"], .job-thread:hover { background: #1b283c; border-color: #ffffff0c; }
+.chat-first .rail-caption { display: none; }
+#chatBack { margin: 12px 0; }
+.chat-first #chatBack { display: none; }
+@media (max-width: 760px) {
+ #chatWorkspace { padding: 0 12px; height: calc(100dvh - 65px); min-height: 420px; }
+ .chat-workspace-header { flex-wrap: wrap; padding: 14px 0; }
+ .chat-model-controls { width: 100%; }
+ .chat-model-controls select { flex: 1; max-width: unset; }
+ .chat-compose-actions { flex-wrap: wrap; }
+ .chat-empty { padding-top: 22px; }
+}

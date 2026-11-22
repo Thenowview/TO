@@ -2,6 +2,7 @@
  * External responses are never inserted as HTML or executed.
  */
 "use strict";
+if (!globalThis.GizeDesktopSurface) {
 
 const $ = (id) => document.getElementById(id);
 const app = { orders: [], activeId: null, providers: {}, handoffAgent: null, qaTarget: null };
@@ -853,3 +854,6 @@ function registerLocalAgentEvents() {
 })();
 
 
+
+
+}

@@ -1,0 +1,31 @@
+name: GIZE standalone workspace candidate
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  workspace:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test local chat transport and scoped browser adapter
+        run: node --test tests/local-chat-client.test.cjs tests/browser-workflow.test.cjs tests/ui-contract.test.cjs
+      - name: Compile standalone app without a Chrome extension dependency
+        run: dotnet publish apps/desktop/Gize.Desktop.csproj -c Release -o out/desktop
+      - name: Publish native host for actual protocol tests
+        run: dotnet publish engine/bridge/TheOrg.Bridge.csproj -c Release -r win-x64 --self-contained true -o out/bridge
+      - name: Verify chat streaming, duplicate prevention and per-job memory with a synthetic local runtime
+        run: python tests/local-chat-smoke.py out/bridge/TheOrg.Bridge.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GIZE-Standalone-UNSIGNED-CANDIDATE
+          path: out/desktop/
+          retention-days: 14
+          if-no-files-found: error
