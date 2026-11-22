@@ -511,3 +511,7 @@ Candidate b75e5425fa2739ffb98cc6e019e98cd36bc69234 rejects custom ports and user
 
 ### PC-05 runtime boundary test follow-up — 2026-11-22
 Windows standalone Smoke now invokes production WorkspaceUrl for custom-port, userinfo, HTTP, wrong-host and wrong-path negatives plus ordinary positive. It reads actual initialized workspace and both job WebView profiles and fails if general autofill or password saving is enabled. Fresh candidate Windows launch CI pending; no user hardware or permission-prompt acceptance inferred. Prior head39a0575 passed seven checks; draft remains unmerged. NO_GO retained.
+
+
+### SECURE-MEMORY synthetic revocation/company boundary — 2026-11-22
+Existing Credential Manager candidate now has standalone Windows Smoke assertions that another company cannot load the synthetic saved login, deletion makes it unavailable, and repeated deletion succeeds. Reuses existing vault and cleanup, no live credentials. Fresh exact-head CI pending. Lock/wrong-user/tamper and scoped autofill broker acceptance remain incomplete; no independent acceptance or VERIFIED promotion. NO_GO retained.
