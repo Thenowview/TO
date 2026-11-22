@@ -67,7 +67,8 @@ internal sealed class WorkspaceWindow : Form
         var forgetLogin = new ToolStripButton("Forget login"); forgetLogin.Click += (_, _) => ForgetLogin(); _toolbar.Items.Add(forgetLogin);
         Controls.Add(_tabs); Controls.Add(_toolbar); _toolbar.Dock = DockStyle.Top;
         Shown += async (_, _) => {await Initialize(); if (_smoke) await Smoke();};
-        FormClosed += (_, _) => {_controller.Dispose(); foreach (var tab in _browser.Values) tab.View.Dispose(); _workspace?.Dispose();};
+        Microsoft.Win32.SystemEvents.SessionSwitch += OnCredentialSessionSwitch;
+        FormClosed += (_, _) => {Microsoft.Win32.SystemEvents.SessionSwitch -= OnCredentialSessionSwitch; JobCredentialVault.Lock(); _controller.Dispose(); foreach (var tab in _browser.Values) tab.View.Dispose(); _workspace?.Dispose();};
     }
     private BrowserTab LoginTab()
     {
@@ -120,6 +121,11 @@ internal sealed class WorkspaceWindow : Form
         {MessageBox.Show(this, error is ArgumentException ? error.Message : "Windows could not remove this saved login", "GIZE saved login");}
     }
     private const string AutofillVisibility = "const visible=e=>{const s=getComputedStyle(e);return e.isConnected&&!e.disabled&&!e.readOnly&&!e.closest('[inert],[hidden],[aria-hidden=true]')&&s.visibility!=='hidden'&&s.visibility!=='collapse'&&s.display!=='none'&&e.getClientRects().length>0;};";
+    private static void OnCredentialSessionSwitch(object? sender, Microsoft.Win32.SessionSwitchEventArgs args)
+    {
+        // Revoke app-session consent on every Windows session transition.
+        JobCredentialVault.Lock();
+    }
     private async Task Smoke()
     {
         try
@@ -179,6 +185,9 @@ internal sealed class WorkspaceWindow : Form
             if (await _workspace.CoreWebView2.ExecuteScriptAsync("(()=>{" + AutofillVisibility + "const box=document.createElement('div');document.body.append(box);try{const e=document.createElement('input');box.append(e);if(!visible(e))return false;for(const attr of ['hidden','inert','aria-hidden']){box.setAttribute(attr,'true');if(visible(e))return false;box.removeAttribute(attr);}e.readOnly=true;if(visible(e))return false;e.readOnly=false;e.disabled=true;if(visible(e))return false;e.disabled=false;for(const value of ['hidden','collapse']){e.style.visibility=value;if(visible(e))return false;}e.style.visibility='visible';e.style.display='none';if(visible(e))return false;e.style.display='block';e.remove();return !visible(e);}finally{box.remove();}})()") != "true")
                 throw new InvalidOperationException("autofill_dom_denial_failed");
             JobCredentialVault.Lock();
+            JobCredentialVault.Unlock();
+            OnCredentialSessionSwitch(null, new Microsoft.Win32.SessionSwitchEventArgs(Microsoft.Win32.SessionSwitchReason.SessionLock));
+            if (!JobCredentialVault.IsLocked) throw new InvalidOperationException("session_transition_did_not_lock_vault");
             bool lockedLoadDenied = false, lockedSaveDenied = false;
             try {JobCredentialVault.Load("synthetic", new string('a',32), new Uri("https://example.com/"));}
             catch (InvalidOperationException) {lockedLoadDenied = true;}
