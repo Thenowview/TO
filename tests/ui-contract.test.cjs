@@ -125,3 +125,13 @@ test("quick start has three task choices and optional provider controls",()=>{
  assert.ok(ui.includes('rpc("accept_completion"'));
  assert.ok(ui.includes('navigator.clipboard.writeText(prepared.prompt)'));
 });
+
+
+test("standalone workspace and job browsers deny unsolicited permissions and autofill",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ for(const host of ["_workspace","view"]){
+  assert.ok(source.includes(host+".CoreWebView2.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;"),host+" must deny unbrokered camera, microphone, location and other site permissions");
+  assert.ok(source.includes(host+".CoreWebView2.Profile.IsGeneralAutofillEnabled = false;"),host+" must not autofill personal form data");
+  assert.ok(source.includes(host+".CoreWebView2.Profile.IsPasswordAutosaveEnabled = false;"),host+" must not save passwords outside the scoped vault");
+ }
+});
