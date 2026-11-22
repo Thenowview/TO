@@ -162,6 +162,12 @@ internal sealed class WorkspaceWindow : Form
                     JobCredentialVault.Load("other-company", id, vaultSite) != null ||
                     JobCredentialVault.Load("synthetic", id, new Uri("https://example.org/")) != null)
                     throw new InvalidOperationException("credential_vault_scope_failed");
+                JobCredentialVault.Save("synthetic", id, vaultSite, "synthetic-rotated-user", "synthetic-rotated-password");
+                var rotatedCredential = JobCredentialVault.Load("synthetic", id, vaultSite);
+                if (rotatedCredential?.Username != "synthetic-rotated-user" ||
+                    rotatedCredential?.Password != "synthetic-rotated-password")
+                    throw new InvalidOperationException("credential_vault_rotation_failed");
+
             }
             finally {JobCredentialVault.Remove("synthetic", id, vaultSite);}
             if (JobCredentialVault.Load("synthetic", id, vaultSite) != null)
