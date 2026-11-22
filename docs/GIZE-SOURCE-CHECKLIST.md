@@ -527,3 +527,7 @@ Standalone Windows Smoke now replaces the scoped synthetic saved login and requi
 
 ### SECURE-MEMORY malformed native record boundary — 2026-11-22
 523cfbca1189bffd526120c9d619dea4e81eb6b8 rejects empty/odd/oversized credential blobs, null blob pointers and empty/oversized usernames before secret marshaling. 9d609f6d31f61dbb8c39009ea70d862edd4b70d1 exercises malformed metadata negatives without dereferencing synthetic pointers. Priorcbfffc2 passed seven checks; fresh CI pending. OS vault tamper/wrong-user/lock and hardware acceptance remain separate, NO_GO retained.
+
+
+### SECURE-MEMORY saved-login target denial — 2026-11-22
+Saved-login adapter now rejects disconnected, read-only, disabled, inert, hidden/aria-hidden and CSS invisible/collapsed targets before filling. Static contract regression guards these denial predicates. Fresh CI pending; actual hostile-page/physical acceptance remains unavailable. Prior0ec19e5 passed seven checks. NO_GO retained; no VERIFIED promotion.
