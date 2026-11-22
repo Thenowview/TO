@@ -48,3 +48,13 @@ Scope: implement actual PC Assist execution and verify task outcomes. First cand
 ### PC Assist performance target follow-up
 
 Owner: "close the gap to 10", followed by "Bulk fix, auto approval". Continue authorized implementation and validation. Source-backed scope includes browser execution, Windows accessibility actions, natural-language/adaptive task completion and fair comparative acceptance. A numeric target is not a verified readiness score. Windows accessibility adapter is a draft; no deployment or real-app acceptance inferred.
+
+
+## CHANGE-20261122-SECURE-MEMORY
+
+Owner: “store passwords in GIZE memory”, followed by “Bulk fix, auto approval”. P0 desktop credential memory; implementation and acceptance outstanding. Preserve existing 150 source IDs; this is an owner amendment, not a verified source requirement.
+
+- Local Windows credential vault using OS-protected encryption, current-user isolation, authenticated encryption, explicit save/delete and lock. No raw credentials in ordinary AI memory, logs, screenshots, telemetry, Git, model prompts, or extension storage.
+- Browser autofill must be explicitly enrolled, origin-bound to HTTPS and user-authorized. Native app use must be bound to verified application identity and explicit task scope; deny ambiguous targets and cross-origin requests. No browser password database scraping or bulk credential extraction.
+- Broker exposes opaque credential handles to agents, never raw secret retrieval through generic automation interfaces; redact sensitive fields and audit metadata only. Preserve existing native messaging consent, MFA and required review gates.
+- Test with synthetic credentials: restart persistence, locked vault, tampering, wrong user/origin/app, revocation, redaction, denial, and actual Windows/Chrome acceptance. No live passwords in fixtures. Cloud sync disabled until separately reviewed. No claim of implementation or release from this amendment alone.
