@@ -503,3 +503,7 @@ docs/PC-ASSIST-WINDOWS-ACCESSIBILITY.md and canonical issue #71.
 
 ## PC-05 / SECURE-MEMORY — embedded permission boundary, 2026-11-22
 Runtime 333eb33cc6e2b78541ac10c796bed7b4ff934090 explicitly denies unbrokered WebView2 permission requests on workspace and per-job browsers and disables general autofill/password autosave. Contract regression 7e407e8434b9476887aa4abaf51c884e3b70c82d requires all three controls on both surfaces. Static contract evidence only; fresh Windows compilation/launch CI and actual device denial acceptance pending. Existing standalone PR reused; no credential vault or VERIFIED acceptance inferred. NO_GO retained.
+
+
+### PC-05 workspace origin follow-up — 2026-11-22
+Candidate b75e5425fa2739ffb98cc6e019e98cd36bc69234 rejects custom ports and userinfo in privileged workspace navigation/message sources. Static negative contract f01452a471f2cee5e7b49535bfe3e9f24b25c78d guards both constraints. Prior f92482670df3f4831353b0caabbd28bc3fb2c607 passed seven actual checks; fresh candidate CI pending. Runtime adversarial WebView acceptance remains unavailable; no VERIFIED promotion, NO_GO retained.
