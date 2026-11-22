@@ -151,3 +151,21 @@ test("saved-login adapter rejects concealed inert and readonly targets",()=>{
  for(const guard of ["!e.readOnly","!e.disabled","[inert],[hidden],[aria-hidden=true]","s.visibility!==\'hidden\'","s.visibility!==\'collapse\'","s.display!==\'none\'"])
   assert.ok(fill.includes(guard),"Missing saved-login denial: "+guard);
 });
+
+
+test("production saved-login visibility guard rejects unsafe targets",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ const fill=source.slice(source.indexOf("private async Task FillLogin()"));
+ const match=fill.match(/const visible=e=>\{([^}]+)\};/);
+ assert.ok(match,"Production visibility guard must be available");
+ const visible=new Function("e","getComputedStyle",match[1]);
+ const base=()=>({isConnected:true,disabled:false,readOnly:false,closest:()=>null,getClientRects:()=>[{}]});
+ const style={visibility:"visible",display:"block"};
+ assert.ok(visible(base(),()=>style));
+ for(const change of [{isConnected:false},{disabled:true},{readOnly:true},{closest:()=>({})},{getClientRects:()=>[]}]){
+  assert.equal(Boolean(visible({...base(),...change},()=>style)),false);
+ }
+ for(const change of [{visibility:"hidden"},{visibility:"collapse"},{display:"none"}]){
+  assert.equal(Boolean(visible(base(),()=>({...style,...change}))),false);
+ }
+});
