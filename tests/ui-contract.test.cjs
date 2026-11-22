@@ -135,3 +135,11 @@ test("standalone workspace and job browsers deny unsolicited permissions and aut
   assert.ok(source.includes(host+".CoreWebView2.Profile.IsPasswordAutosaveEnabled = false;"),host+" must not save passwords outside the scoped vault");
  }
 });
+
+
+test("workspace native-message source rejects custom ports and userinfo",()=>{
+ const source=fs.readFileSync(path.join(__dirname,"..","apps","desktop","Program.cs"),"utf8");
+ const guard=source.slice(source.indexOf("private static bool WorkspaceUrl"),source.indexOf("private async void BridgeMessage"));
+ assert.ok(guard.includes("uri.IsDefaultPort"),"same host on another port must not access bridge");
+ assert.ok(guard.includes("string.IsNullOrEmpty(uri.UserInfo)"),"credential-bearing URL must not access bridge");
+});
