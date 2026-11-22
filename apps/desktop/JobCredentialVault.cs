@@ -57,10 +57,16 @@ internal static class JobCredentialVault
         try
         {
             var credential = Marshal.PtrToStructure<Credential>(buffer);
-            if (credential.CredentialBlobSize > 4000 || credential.CredentialBlobSize % 2 != 0) throw new InvalidOperationException("Invalid vault record");
+            ValidateRecord(credential.CredentialBlobSize, credential.CredentialBlob, credential.UserName);
             return (credential.UserName, Marshal.PtrToStringUni(credential.CredentialBlob, (int)credential.CredentialBlobSize / 2) ?? "");
         }
         finally {CredFree(buffer);}
+    }
+    internal static void ValidateRecord(uint size, IntPtr blob, string? username)
+    {
+        if (size is < 2 or > 4000 || size % 2 != 0 || blob == IntPtr.Zero ||
+            string.IsNullOrEmpty(username) || username.Length > 256)
+            throw new InvalidOperationException("Invalid vault record");
     }
     internal static void Remove(string company, string order, Uri site)
     {if (!Delete(Target(company, order, site), 1, 0) && Marshal.GetLastWin32Error() != 1168) throw new Win32Exception(Marshal.GetLastWin32Error());}
