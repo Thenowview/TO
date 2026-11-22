@@ -53,9 +53,62 @@ internal sealed class WorkspaceWindow : Form
             var button = new ToolStripButton(provider.Item1); button.Click += async (_, _) => await OpenSelected(provider.Item2); _toolbar.Items.Add(button);
         }
         var close = new ToolStripButton("Close tab"); close.Click += (_, _) => CloseSelected(); _toolbar.Items.Add(close);
+        var saveLogin = new ToolStripButton("Save login"); saveLogin.Click += (_, _) => SaveLogin(); _toolbar.Items.Add(saveLogin);
+        var fillLogin = new ToolStripButton("Use saved login"); fillLogin.Click += async (_, _) => await FillLogin(); _toolbar.Items.Add(fillLogin);
+        var forgetLogin = new ToolStripButton("Forget login"); forgetLogin.Click += (_, _) => ForgetLogin(); _toolbar.Items.Add(forgetLogin);
         Controls.Add(_tabs); Controls.Add(_toolbar); _toolbar.Dock = DockStyle.Top;
         Shown += async (_, _) => {await Initialize(); if (_smoke) await Smoke();};
         FormClosed += (_, _) => {_controller.Dispose(); foreach (var tab in _browser.Values) tab.View.Dispose(); _workspace?.Dispose();};
+    }
+    private BrowserTab LoginTab()
+    {
+        var tab = _browser.Values.FirstOrDefault(item => item.Page == _tabs.SelectedTab);
+        if (tab?.View.Source == null) throw new ArgumentException("Open a job's website tab first");
+        _ = Https(tab.View.Source.AbsoluteUri); return tab;
+    }
+    private void SaveLogin()
+    {
+        try
+        {
+            var tab = LoginTab(); var site = tab.View.Source!;
+            using var dialog = new Form {Text = "Save login for this job", Width = 510, Height = 270, StartPosition = FormStartPosition.CenterParent};
+            var notice = new Label {Text = "Windows Credential Manager - job " + tab.Job.Id[..6] + "\n" + site.GetLeftPart(UriPartial.Authority), Left = 16, Top = 16, Width = 470, Height = 44};
+            var username = new TextBox {Left = 16, Top = 72, Width = 460, PlaceholderText = "Username or email", AccessibleName = "Saved login username"};
+            var password = new TextBox {Left = 16, Top = 112, Width = 460, UseSystemPasswordChar = true, PlaceholderText = "Password", AccessibleName = "Saved login password"};
+            var save = new Button {Text = "Save securely", Left = 16, Top = 160, Width = 140, DialogResult = DialogResult.OK};
+            var cancel = new Button {Text = "Cancel", Left = 170, Top = 160, Width = 100, DialogResult = DialogResult.Cancel};
+            dialog.Controls.AddRange(new Control[] {notice, username, password, save, cancel}); dialog.AcceptButton = save; dialog.CancelButton = cancel;
+            if (dialog.ShowDialog(this) == DialogResult.OK) JobCredentialVault.Save(tab.Job.Company, tab.Job.Id, site, username.Text, password.Text);
+            password.Clear();
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {MessageBox.Show(this, error is ArgumentException ? error.Message : "Windows could not save this login", "GIZE saved login");}
+    }
+    private async Task FillLogin()
+    {
+        try
+        {
+            var tab = LoginTab(); var site = tab.View.Source!;
+            var saved = JobCredentialVault.Load(tab.Job.Company, tab.Job.Id, site);
+            if (saved == null) throw new ArgumentException("No saved login for this job and exact website");
+            string data = JsonSerializer.Serialize(new {origin = site.GetLeftPart(UriPartial.Authority), username = saved.Value.Username, password = saved.Value.Password});
+            string script = "((data)=>{if(location.origin!==data.origin)return false;const visible=e=>e.getClientRects().length&&!e.disabled;" +
+                "const p=[...document.querySelectorAll('input[type=password]')].filter(visible);" +
+                "const u=[...document.querySelectorAll('input[type=email],input[autocomplete=username]')].filter(visible);" +
+                "if(p.length!==1||u.length!==1)return false;const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;" +
+                "set.call(u[0],data.username);u[0].dispatchEvent(new Event('input',{bubbles:true}));" +
+                "set.call(p[0],data.password);p[0].dispatchEvent(new Event('input',{bubbles:true}));return true;})(" + data + ")";
+            string result = await tab.View.CoreWebView2.ExecuteScriptAsync(script);
+            if (result != "true") throw new ArgumentException("This page needs manual login. GIZE fills only one visible username/email and password pair; it never submits the form.");
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Runtime.InteropServices.COMException)
+        {MessageBox.Show(this, error is ArgumentException ? error.Message : "Windows could not use this saved login", "GIZE saved login");}
+    }
+    private void ForgetLogin()
+    {
+        try {var tab = LoginTab(); JobCredentialVault.Remove(tab.Job.Company, tab.Job.Id, tab.View.Source!);}
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {MessageBox.Show(this, error is ArgumentException ? error.Message : "Windows could not remove this saved login", "GIZE saved login");}
     }
     private async Task Smoke()
     {
@@ -78,6 +131,16 @@ internal sealed class WorkspaceWindow : Form
                 if (DateTime.UtcNow > deadline) throw new InvalidOperationException("job_sidebar_not_rendered");
                 await Task.Delay(100);
             }
+            var vaultSite = new Uri("https://example.com/");
+            try
+            {
+                JobCredentialVault.Save("synthetic", id, vaultSite, "synthetic-user", "synthetic-password");
+                if (JobCredentialVault.Load("synthetic", id, vaultSite)?.Password != "synthetic-password" ||
+                    JobCredentialVault.Load("synthetic", new string('b', 32), vaultSite) != null ||
+                    JobCredentialVault.Load("synthetic", id, new Uri("https://example.org/")) != null)
+                    throw new InvalidOperationException("credential_vault_scope_failed");
+            }
+            finally {JobCredentialVault.Remove("synthetic", id, vaultSite);}
             var first = await CreateTab(RequireJob(id), "https://example.com/", false);
             var secondJob = JsonSerializer.SerializeToElement(await AppCommand(JsonSerializer.SerializeToElement(new {
                 command = "create_order", companyId = "synthetic", instruction = "Separate synthetic job"})), _json);
@@ -90,7 +153,7 @@ internal sealed class WorkspaceWindow : Form
             if (!rejected) throw new InvalidOperationException("cross_job_tab_access");
             File.WriteAllText("desktop-smoke-result.json", JsonSerializer.Serialize(new {ok = true,
                 packagedWorkspace = true, nativeJobCreation = true, sidebarRendered = true, isolatedProfiles = true,
-                providerBridgeDisabled = true, extensionRequired = false, synthetic = true}, _json));
+                providerBridgeDisabled = true, credentialVaultScoped = true, extensionRequired = false, synthetic = true}, _json));
         }
         catch (Exception error)
         {

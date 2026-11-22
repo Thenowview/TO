@@ -55,11 +55,15 @@ internal sealed class LocalChatEngine : IDisposable
                 if (!Regex.IsMatch(key, "^[a-zA-Z0-9_.-]{1,80}$") || content.Length is < 1 or > 8000 || source.Length > 2048)
                     throw new ArgumentException("Use a short memory key, 1–8000 characters and a bounded source reference");
                 using var memory = Open();
+                Run(memory, "BEGIN IMMEDIATE;");
+                try {
                 Run(memory, @"INSERT INTO job_memory(company,order_id,memory_key,content,source,updated_utc) VALUES($c,$o,$k,$t,$s,$utc)
                     ON CONFLICT(company,order_id,memory_key) DO UPDATE SET content=$t,source=$s,updated_utc=$utc",
                     ("$c", scope.Company), ("$o", scope.Order), ("$k", key), ("$t", content), ("$s", source), ("$utc", Now()));
                 Run(memory, "INSERT INTO job_workflow(company,order_id,kind,summary,source,created_utc) VALUES($c,$o,'memory_updated',$k,$s,$utc)",
                     ("$c", scope.Company), ("$o", scope.Order), ("$k", key), ("$s", source), ("$utc", Now()));
+                Run(memory, "COMMIT;");
+                } catch {Run(memory, "ROLLBACK;"); throw;}
                 return new {ok = true, key, scope = "selected_job_only"};
             }
             if (command == "chat_get") return Get(scope.Company, scope.Order);
