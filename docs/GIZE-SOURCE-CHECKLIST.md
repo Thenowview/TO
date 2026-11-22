@@ -539,3 +539,7 @@ Regression executes the production saved-login visibility predicate extracted fr
 
 ### SECURE-MEMORY actual WebView DOM candidate — 2026-11-22
 be240358fc97cefc4e416d06f6863385093de761 shares production AutofillVisibility with Windows launch Smoke. Smoke creates/removes synthetic DOM inputs in the packaged workspace and requires ordinary visible positive plus hidden/inert/aria-hidden ancestor, read-only, disabled, CSS hidden/collapse/none and disconnected negatives. No credentials or third-party page involved. Fresh Windows CI pending; this does not establish hostile-origin/provider or physical acceptance. NO_GO retained.
+
+
+### SECURE-MEMORY session lock candidate — 2026-11-22
+f1d10c5a959337baa91c4d382267beaa846f37dc defaults app-session credential access to locked and rejects Load/Save while locked. Desktop11f84a62aeb4d84e1d0396d5c22d32bf356662f2 adds explicit native-toolbar unlock confirmation/relock and synthetic locked read/save denials. This is process-local user consent, not Windows reauthentication or protection against other processes; OS credential custody unchanged. Fresh Windows CI pending; idle/session-lock hooks and full broker/wrong-user/physical acceptance remain incomplete. NO_GO retained.
