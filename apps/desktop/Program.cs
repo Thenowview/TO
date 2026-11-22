@@ -187,7 +187,8 @@ internal sealed class WorkspaceWindow : Form
         }
     }
     private static bool WorkspaceUrl(string text) => Uri.TryCreate(text, UriKind.Absolute, out var uri) &&
-        uri.Scheme == "https" && uri.Host == "gize.local" && uri.AbsolutePath == "/home.html";
+        uri.Scheme == "https" && uri.Host == "gize.local" && uri.IsDefaultPort &&
+        string.IsNullOrEmpty(uri.UserInfo) && uri.AbsolutePath == "/home.html";
     private async void BridgeMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         if (_workspace?.CoreWebView2 == null || !WorkspaceUrl(args.Source)) return;
