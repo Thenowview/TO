@@ -115,6 +115,16 @@ internal sealed class WorkspaceWindow : Form
         try
         {
             if (_workspace?.CoreWebView2 == null) throw new InvalidOperationException("workspace_not_initialized");
+            foreach (string deniedUrl in new[] {
+                "https://gize.local:8443/home.html", "https://user@gize.local/home.html",
+                "http://gize.local/home.html", "https://example.com/home.html",
+                "https://gize.local/other.html"})
+                if (WorkspaceUrl(deniedUrl)) throw new InvalidOperationException("workspace_url_boundary_failed");
+            if (!WorkspaceUrl("https://gize.local/home.html"))
+                throw new InvalidOperationException("workspace_url_positive_failed");
+            if (_workspace.CoreWebView2.Profile.IsGeneralAutofillEnabled ||
+                _workspace.CoreWebView2.Profile.IsPasswordAutosaveEnabled)
+                throw new InvalidOperationException("workspace_autofill_enabled");
             var deadline = DateTime.UtcNow.AddSeconds(30);
             while (await _workspace.CoreWebView2.ExecuteScriptAsync("Boolean(globalThis.GizeDesktopSurface && document.getElementById('chatRefresh'))") != "true")
             {
@@ -148,6 +158,10 @@ internal sealed class WorkspaceWindow : Form
             if (first.View.CoreWebView2.Environment.UserDataFolder == second.View.CoreWebView2.Environment.UserDataFolder ||
                 first.View.CoreWebView2.Settings.IsWebMessageEnabled || second.View.CoreWebView2.Settings.IsWebMessageEnabled)
                 throw new InvalidOperationException("provider_profile_or_bridge_isolation_failed");
+            foreach (var checkedTab in new[] {first, second})
+                if (checkedTab.View.CoreWebView2.Profile.IsGeneralAutofillEnabled ||
+                    checkedTab.View.CoreWebView2.Profile.IsPasswordAutosaveEnabled)
+                    throw new InvalidOperationException("provider_autofill_enabled");
             bool rejected = false;
             try {RequireTab(first.Job, second.Id);} catch (ArgumentException) {rejected = true;}
             if (!rejected) throw new InvalidOperationException("cross_job_tab_access");
