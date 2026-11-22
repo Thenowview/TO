@@ -141,6 +141,18 @@ internal sealed class WorkspaceWindow : Form
                 if (DateTime.UtcNow > deadline) throw new InvalidOperationException("job_sidebar_not_rendered");
                 await Task.Delay(100);
             }
+            foreach (var scope in new[] {
+                (Company: "synthetic\n", Order: new string('a', 32), Site: "https://example.com/"),
+                (Company: "synthetic", Order: new string('a', 32) + "\n", Site: "https://example.com/"),
+                (Company: "synthetic", Order: new string('a', 32), Site: "http://example.com/"),
+                (Company: "synthetic", Order: new string('a', 32), Site: "https://example.com:8443/"),
+                (Company: "synthetic", Order: new string('a', 32), Site: "https://user@example.com/")})
+            {
+                bool deniedScope = false;
+                try {JobCredentialVault.Load(scope.Company, scope.Order, new Uri(scope.Site));}
+                catch (ArgumentException) {deniedScope = true;}
+                if (!deniedScope) throw new InvalidOperationException("invalid_credential_scope_accepted");
+            }
             var vaultSite = new Uri("https://example.com/");
             try
             {
