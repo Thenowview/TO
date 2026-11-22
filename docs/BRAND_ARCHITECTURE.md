@@ -18,12 +18,12 @@ The owner now requires `.gize` for new encrypted exports and continued `.gaiz` r
 - **THEEPMO is an Orgaiz product, not another independent company or marketing brand.** Preserve THEEPMO's substantive enterprise governance, strategy, portfolio/project, approval and reporting capabilities.
 - **Exactly two customer-facing web experiences are planned:** (1) the Orgaiz public website and tools entry point; (2) the authenticated THEEPMO application under the Orgaiz brand. Background APIs, browser extensions, Windows apps and required subdomains do not constitute additional marketing websites.
 - **No third website and no stand-alone TheOrg marketing identity.** "TheOrg", `TO`, `TEFE` and `TEBE` may still occur as historical or technical names until an approved migration updates dependencies safely.
-- **`.gaiz` (lowercase) is the only approved proposed encrypted-file extension.** Do not substitute `.qaiz` or change its spelling/case in customer-facing product copy.
+- **Current decision:** `.gize` is the canonical extension for new encrypted exports; `.gaiz` remains readable for backward compatibility. Preserve GAIZ1/GAIZ2 protocol markers and verify implementations before release. `.qaiz` is not approved.
 
 ## Repository ownership and boundaries
 | Repository | Owns | Does not own |
 | --- | --- | --- |
-| [faisalwrokksa-hub/TO](https://github.com/faisalwrokksa-hub/TO) | Legacy TheOrg local-first Chrome/Windows supervisor, agents, reports, and the future **Orgaiz** AI-tools capability; own code rebranding and future integration work | THEEPMO authentication/database or unreviewed live Cloudflare deployment |
+| [Thenowview/TO](https://github.com/Thenowview/TO) | Legacy TheOrg local-first Chrome/Windows supervisor, agents, reports, and the future **Orgaiz** AI-tools capability; own code rebranding and future integration work | THEEPMO authentication/database or unreviewed live Cloudflare deployment |
 | [2029TEFE/TEFE](https://github.com/2029TEFE/TEFE) | Existing public THEEPMO marketing frontend; source to **consolidate into Orgaiz.com** without creating another public site | Authenticated THEEPMO `apps/web`, NestJS API, database, real customer data |
 | [2029TEBE/TEBE](https://github.com/2029TEBE/TEBE) | THEEPMO authenticated web application (`apps/web`), NestJS API (`apps/api`), contracts and PostgreSQL data/RLS | Another independent marketing site or a second credential manager |
 
@@ -61,7 +61,7 @@ The owner now requires `.gize` for new encrypted exports and continued `.gaiz` r
 ## Definition of done for a later implementation
 - One official Orgaiz public website, one authenticated THEEPMO web experience, no additional public TheOrg property.
 - Consistent brand/menu terminology across both, without regressing existing THEEPMO functions or TO local agent functions.
-- Correct `.gaiz` spelling and security claims supported by actual tests.
+- Correct `.gize` new-export and `.gaiz` legacy-read behavior, backed by interoperability and security tests.
 - All customer API connections tenant-isolated, revocable, permission-scoped, and charge-safe.
 - Redirects, SEO, localization, rollback, release history and live endpoint verification documented.
 

@@ -18,7 +18,7 @@
 
 ## Product objective
 
-TheOrg is a local-first Windows application coordinated from Chrome Stable. The user gives one order, a supervisor obtains a plan from an authorized AI session, specialist agents perform bounded tasks with approved browser/desktop tools, and TheOrg verifies resulting files before delivery.
+The legacy **TheOrg** codebase (now part of the **Orgaiz / GIZE AI** roadmap) is a local-first Windows application coordinated from Chrome Stable. The user gives one order, a supervisor obtains a plan from an authorized AI session, specialist agents perform bounded tasks with approved browser/desktop tools, and the local supervisor verifies resulting files before delivery.
 
 **Architecture:** dedicated Chrome profile → Manifest V3 extension (side panel and full tab) → authenticated Native Messaging bridge → bundled Windows execution engine → SQLite and per-company file workspaces. Online storage/email/calendar integrations remain optional and permission-scoped. Local tasks must remain usable offline.
 
@@ -45,14 +45,14 @@ The extension now includes an experimental local agent console. A saved text ins
 
 The CI workflow also builds an **unsigned** NSIS installer containing the bridge and unpacked extension source. It is not code-signed or independently security certified.
 
-1. Open [TheOrg GitHub Actions](https://github.com/faisalwrokksa-hub/TO/actions), select a successful **Chrome and Windows Bridge CI** run, and download the `TheOrg-DevPreview-Windows-x64-unsigned-installer` artifact.
+1. Open [TO GitHub Actions (legacy installer artifact naming)](https://github.com/Thenowview/TO/actions), select a successful **Chrome and Windows Bridge CI** run, and download the `TheOrg-DevPreview-Windows-x64-unsigned-installer` artifact.
 2. Extract the artifact ZIP and run `TheOrg-DevPreview-Windows-x64-unsigned.exe` only if you trust the source and build provenance.
 3. Use the installed Start Menu shortcut **TheOrg → Connect Chrome extension** to see the required manual Chrome configuration. Keep the extension identity private to your profile.
 4. The installer never connects an AI service or authorizes external actions on your behalf.
 
 ### Windows installation and local testing
 
-1. Open the [Windows CI workflow](https://github.com/faisalwrokksa-hub/TO/actions) and download the **unsigned bridge candidate** from a successful run. Alternatively, with the .NET 8 SDK installed, run:
+1. Open the [Windows CI workflow](https://github.com/Thenowview/TO/actions) and download the **unsigned bridge candidate** from a successful run. Alternatively, with the .NET 8 SDK installed, run:
 
    \`\`\`powershell
    dotnet publish engine/bridge/TheOrg.Bridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out/bridge
@@ -69,7 +69,7 @@ The CI workflow also builds an **unsigned** NSIS installer containing the bridge
 
    Use the real \`.exe\` path. If you downloaded the GitHub Actions artifact, extract it first and point to that executable.
 
-5. Click the TheOrg extension icon to open the full-tab Supervisor home page. Choose **Check connection**.
+5. Click the legacy TheOrg extension icon (until the extension identity is migrated and verified) to open the full-tab Supervisor home page. Choose **Check connection**.
 6. Create a demo order, manually consult an authorized AI provider, paste a structured plan, approve agent assignments, and use **Deliveries** to import a small local file for verification.
 7. To unregister the host without deleting workspaces:
 
@@ -102,7 +102,7 @@ This tree is a target, **not** a statement that its modules already exist.
 
 The [release audit](docs/RELEASE_AUDIT_2026-11-10.md) distinguishes automated Windows build/installation checks from real end-user Chrome acceptance. The installer CI additionally checks that user-scoped Native Messaging registration creates a valid manifest pointing to the installed executable and restricts `allowed_origins` to one explicit Chrome extension ID. This test uses a synthetic ID and does not prove browser connectivity on the owner's machine.
 
-To audit a build, open [GitHub Actions](https://github.com/faisalwrokksa-hub/TO/actions), verify both jobs are green for the **same commit**, and download only the unsigned developer-preview artifact from that run. Never interpret a green build as production readiness. For actual Windows acceptance, load the unpacked extension in Chrome Stable, register its real extension ID, use **Check connection**, and independently verify a complete test order and safe file import. Record the environment and results before signing off.
+To audit a build, open [GitHub Actions](https://github.com/Thenowview/TO/actions), verify both jobs are green for the **same commit**, and download only the unsigned developer-preview artifact from that run. Never interpret a green build as production readiness. For actual Windows acceptance, load the unpacked extension in Chrome Stable, register its real extension ID, use **Check connection**, and independently verify a complete test order and safe file import. Record the environment and results before signing off.
 
 ## First action
 

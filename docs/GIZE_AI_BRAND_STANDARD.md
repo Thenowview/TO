@@ -4,6 +4,12 @@
 **Scope:** TEBE, TEFE, TO  
 **State:** Approved naming; implementation and production verification tracked separately.
 
+## Current naming decision (23 November 2026)
+
+This section supersedes any earlier statement in this document that only `.gaiz` is approved or that `.gize` is unauthorized. **New encrypted exports are intended to use `.gize`; existing `.gaiz` files must remain readable.** This is an owner-approved naming/compatibility requirement, **not evidence that runtime export, import, association or installer support has shipped**. Preserve `GAIZ1`/`GAIZ2` signed protocol bytes and compatibility identifiers. Never perform an untested global search-and-replace of those identifiers.
+
+Canonical current names: **Orgaiz** (master brand), **THEEPMO** (enterprise product), **GIZE AI** (AI capability), **ORGANIZATION** and **STRATEGIZE**. **TheOrg, TheOrgnet, GAIZ AI, ORGNZION, ORGGIZE, and STRATGIZE** are historical visible names, not new products. Historical PRs, original archives, rollback evidence and legacy API/build names must be labeled, not erased. Current TO repository: [Thenowview/TO](https://github.com/Thenowview/TO); prior `faisalwrokksa-hub/TO` references are historical only.
+
 ## Canonical user-facing terminology
 
 | Retired visible label | Approved label | Description |
@@ -18,7 +24,7 @@
 
 ## Mandatory legacy name equivalence
 
-**GAIZ = GIZE.** GAIZ and GIZE refer to the **same product and intelligence capability**, not separate systems, services, products, customers, or entitlements. **GAIZ AI = GIZE AI** likewise refers to the same official AI product. The canonical **display names** are GIZE and GIZE AI. Legacy persisted `gaiz` identifiers, `GAIZ1`/`GAIZ2` wire markers, `.gaiz` files, routes, data, integrations and events remain readable and routable through explicitly tested backward-compatible handling; do not silently change their bytes, formats, keys, or access controls. Documentation and migration screens may mention GAIZ only to explain its legacy equivalence. New user-facing branding must say GIZE AI. No implication of separately approved `.gize` file format.
+**GAIZ = GIZE.** GAIZ and GIZE refer to the **same product and intelligence capability**, not separate systems, services, products, customers, or entitlements. **GAIZ AI = GIZE AI** likewise refers to the same official AI product. The canonical **display names** are GIZE and GIZE AI. Legacy persisted `gaiz` identifiers, `GAIZ1`/`GAIZ2` wire markers, `.gaiz` files, routes, data, integrations and events remain readable and routable through explicitly tested backward-compatible handling; do not silently change their bytes, formats, keys, or access controls. Documentation and migration screens may mention GAIZ only to explain its legacy equivalence. New user-facing branding must say GIZE AI. The newer owner decision makes `.gize` the canonical extension for new exports, with `.gaiz` read compatibility; this is not proof of implemented file-format support.
 
 ## Repo-specific implementation checklist
 
@@ -30,7 +36,7 @@
 
 ## Technical compatibility: no blind renaming
 
-The established technical extension **`.gaiz`** and technical identifiers are *not* automatically renamed by a marketing rebrand. An extension change to `.gize` is **not authorized by this addendum**: it needs a separate explicit file-format compatibility decision, format-version design, old-file opening tests, MIME/OS associations, import/export transitions, migration strategy and security review. New user-facing AI product names must say **GIZE AI**; technical `gaiz` strings may remain only when justified and documented.
+The established technical extension **`.gaiz`** and technical identifiers are *not* automatically renamed by a marketing rebrand. The newer owner decision authorizes `.gize` as the target new-export extension, but implementation still requires: it needs a separate explicit file-format compatibility decision, format-version design, old-file opening tests, MIME/OS associations, import/export transitions, migration strategy and security review. New user-facing AI product names must say **GIZE AI**; technical `gaiz` strings may remain only when justified and documented.
 
 Retain existing database schema, endpoints, auth IDs, keys, environment variables, webhooks, tenant settings and billing/subscription IDs unless a reviewed backward-compatible migration and rollback are supplied. Do not claim that renaming provides encryption or security.
 
