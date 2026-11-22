@@ -499,3 +499,7 @@ and tests/desktop-accessibility-smoke.py must establish runtime acceptance.
 No owner-PC/model inference acceptance or VERIFIED promotion. See
 docs/PC-ASSIST-WINDOWS-ACCESSIBILITY.md and canonical issue #71.
 
+
+
+## PC-05 / SECURE-MEMORY — embedded permission boundary, 2026-11-22
+Runtime 333eb33cc6e2b78541ac10c796bed7b4ff934090 explicitly denies unbrokered WebView2 permission requests on workspace and per-job browsers and disables general autofill/password autosave. Contract regression 7e407e8434b9476887aa4abaf51c884e3b70c82d requires all three controls on both surfaces. Static contract evidence only; fresh Windows compilation/launch CI and actual device denial acceptance pending. Existing standalone PR reused; no credential vault or VERIFIED acceptance inferred. NO_GO retained.
