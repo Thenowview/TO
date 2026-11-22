@@ -507,3 +507,7 @@ Runtime 333eb33cc6e2b78541ac10c796bed7b4ff934090 explicitly denies unbrokered We
 
 ### PC-05 workspace origin follow-up — 2026-11-22
 Candidate b75e5425fa2739ffb98cc6e019e98cd36bc69234 rejects custom ports and userinfo in privileged workspace navigation/message sources. Static negative contract f01452a471f2cee5e7b49535bfe3e9f24b25c78d guards both constraints. Prior f92482670df3f4831353b0caabbd28bc3fb2c607 passed seven actual checks; fresh candidate CI pending. Runtime adversarial WebView acceptance remains unavailable; no VERIFIED promotion, NO_GO retained.
+
+
+### PC-05 runtime boundary test follow-up — 2026-11-22
+Windows standalone Smoke now invokes production WorkspaceUrl for custom-port, userinfo, HTTP, wrong-host and wrong-path negatives plus ordinary positive. It reads actual initialized workspace and both job WebView profiles and fails if general autofill or password saving is enabled. Fresh candidate Windows launch CI pending; no user hardware or permission-prompt acceptance inferred. Prior head39a0575 passed seven checks; draft remains unmerged. NO_GO retained.
