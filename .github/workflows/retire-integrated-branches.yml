@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   retire:
-    if: github.repository == 'faisalwrokksa-hub/TO' && github.ref == 'refs/heads/main'
+    if: github.repository == 'Thenowview/TO' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
