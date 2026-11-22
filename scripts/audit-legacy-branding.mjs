@@ -7,7 +7,7 @@ const json = process.argv.includes('--json');
 const failOnReview = process.argv.includes('--fail-on-review');
 const ignored = new Set(['.git','node_modules','.next','dist','build','coverage','.venv','venv','out','.turbo','.cache','.pnpm-store']);
 const binary = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tgz|7z|exe|dll|so|dylib|woff2?|ttf|otf|mp4|mov|lock|map|snap|sqlite|db|bin|wasm)$/i;
-const legacy = /theorgnet|theorg|theepmotest|faisalwrokksa-hub\/TO|\b(?:gaiz ai|gaiz|orgnzion|orggize|stratgize|\.gaze)\b|\.gaiz\b/gi;
+const legacy = /align(?:[-_ ]?360)\b|theorgnet|theorg|theepmotest|faisalwrokksa-hub\/TO|\b(?:gaiz ai|gaiz|orgnzion|orggize|stratgize|\.gaze)\b|\.gaiz\b/gi;
 const matches = [], errors = [];
 function classify(file,line) {
   if (/^(?:legacy|archive|archives|migration|migrations)\//i.test(file) || /(?:^|\/)(?:CHANGELOG|HISTORY|RELEASE_AUDIT)[^/]*$/i.test(file)) return 'historical';
