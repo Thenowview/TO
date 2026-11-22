@@ -7,9 +7,26 @@ namespace Gize.Desktop;
 // Secrets stay in the current Windows user's Credential Manager, outside prompts and job notes.
 internal static class JobCredentialVault
 {
-    internal static bool IsLocked { get; private set; } = true;
-    internal static void Lock() => IsLocked = true;
-    internal static void Unlock() => IsLocked = false;
+    internal sealed class SessionLease
+    {
+        private readonly Func<long> _now;
+        private long _started;
+        private bool _locked = true;
+        internal SessionLease(Func<long> now) => _now = now;
+        internal bool IsLocked {
+            get {
+                long elapsed = unchecked(_now() - _started);
+                if (!_locked && (elapsed < 0 || elapsed >= 300000)) _locked = true;
+                return _locked;
+            }
+        }
+        internal void Lock() => _locked = true;
+        internal void Unlock() {_started = _now(); _locked = false;}
+    }
+    private static readonly SessionLease Lease = new(() => Environment.TickCount64);
+    internal static bool IsLocked => Lease.IsLocked;
+    internal static void Lock() => Lease.Lock();
+    internal static void Unlock() => Lease.Unlock();
     private static void RequireUnlocked()
     {if (IsLocked) throw new InvalidOperationException("Saved logins are locked for this app session");}
 
