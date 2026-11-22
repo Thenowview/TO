@@ -172,6 +172,9 @@ internal sealed class WorkspaceWindow : Form
             await _workspace.EnsureCoreWebView2Async(environment);
             _workspace.CoreWebView2.SetVirtualHostNameToFolderMapping("gize.local", Path.Combine(AppContext.BaseDirectory, "assets"), CoreWebView2HostResourceAccessKind.DenyCors);
             _workspace.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            _workspace.CoreWebView2.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;
+            _workspace.CoreWebView2.Profile.IsGeneralAutofillEnabled = false;
+            _workspace.CoreWebView2.Profile.IsPasswordAutosaveEnabled = false;
             _workspace.CoreWebView2.NavigationStarting += (_, args) => {if (!WorkspaceUrl(args.Uri)) args.Cancel = true;};
             _workspace.CoreWebView2.NewWindowRequested += (_, args) => args.Handled = true;
             _workspace.CoreWebView2.WebMessageReceived += BridgeMessage;
@@ -296,6 +299,8 @@ internal sealed class WorkspaceWindow : Form
         view.CoreWebView2.NavigationCompleted += (_, args) => tab.Loaded = args.IsSuccess;
         view.CoreWebView2.Settings.IsWebMessageEnabled = false;
         view.CoreWebView2.Settings.AreDevToolsEnabled = false;
+        view.CoreWebView2.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;
+        view.CoreWebView2.Profile.IsGeneralAutofillEnabled = false;
         view.CoreWebView2.Profile.IsPasswordAutosaveEnabled = false;
         view.CoreWebView2.NavigationStarting += (_, args) => {if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var target) || target.Scheme != "https") args.Cancel = true;};
         view.CoreWebView2.SourceChanged += (_, _) => address.Text = view.Source?.AbsoluteUri ?? "";
