@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 const script=readFileSync(new URL('../.github/workflows/retire-integrated-branches.yml',import.meta.url),'utf8');
 
 test('branch retirement is limited to the intended repository and main ref',()=>{
-  assert.match(script,/github\.repository == 'faisalwrokksa-hub\/TO'/);
+  assert.match(script,/github\.repository == 'Thenowview\/TO'/);
   assert.match(script,/github\.ref == 'refs\/heads\/main'/);
   assert.match(script,/branch\.name === 'main' \|\| branch\.protected/);
 });
