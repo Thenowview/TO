@@ -7,6 +7,12 @@ namespace Gize.Desktop;
 // Secrets stay in the current Windows user's Credential Manager, outside prompts and job notes.
 internal static class JobCredentialVault
 {
+    internal static bool IsLocked { get; private set; } = true;
+    internal static void Lock() => IsLocked = true;
+    internal static void Unlock() => IsLocked = false;
+    private static void RequireUnlocked()
+    {if (IsLocked) throw new InvalidOperationException("Saved logins are locked for this app session");}
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct Credential
     {
@@ -37,6 +43,7 @@ internal static class JobCredentialVault
     }
     internal static void Save(string company, string order, Uri site, string username, string password)
     {
+        RequireUnlocked();
         if (username.Length is < 1 or > 256 || password.Length is < 1 or > 2000) throw new ArgumentException("Enter a bounded username and password");
         byte[] bytes = Encoding.Unicode.GetBytes(password); IntPtr secret = Marshal.AllocCoTaskMem(bytes.Length);
         try
@@ -50,6 +57,7 @@ internal static class JobCredentialVault
     }
     internal static (string Username, string Password)? Load(string company, string order, Uri site)
     {
+        RequireUnlocked();
         if (!Read(Target(company, order, site), 1, 0, out var buffer))
         {
             int error = Marshal.GetLastWin32Error(); if (error == 1168) return null; throw new Win32Exception(error);
