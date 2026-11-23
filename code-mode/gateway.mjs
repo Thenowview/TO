@@ -54,6 +54,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       request.query.trim().length < 2 || request.query.length > 200 ||
       (request.limit !== undefined && (!Number.isInteger(request.limit) ||
         request.limit < 1 || request.limit > 20))) return denied("invalid_search");
+    request = boundedJson(request, MAX_INPUT);
     if (typeof canDiscover !== "function") return denied("discovery_disabled");
     const terms = request.query.toLowerCase().trim().split(/\s+/);
     const visible = [];
@@ -77,6 +78,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     if (!plain(request) || typeof request.code !== "string" ||
       request.code.length < 1 || Buffer.byteLength(request.code, "utf8") > MAX_INPUT)
       return denied("invalid_code");
+    const code = request.code;
     // The isolated worker must be provided by trusted host configuration, never by the model.
     if (!runner || runner.kind !== "isolated_worker" || typeof runner.run !== "function" ||
       typeof authorize !== "function" || typeof invoke !== "function")
@@ -111,7 +113,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     };
     try {
       const result = await runner.run({
-        code: request.code, callTool, timeoutMs: 10000, maxCalls: MAX_CALLS
+        code, callTool, timeoutMs: 10000, maxCalls: MAX_CALLS
       });
       return { ok: true, result: boundedJson(result, MAX_OUTPUT), calls };
     } catch { return denied("isolated_execution_failed"); }
