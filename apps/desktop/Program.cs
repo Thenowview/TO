@@ -99,6 +99,7 @@ internal sealed class WorkspaceWindow : Form
         try
         {
             var tab = LoginTab(); var site = tab.View.Source!;
+            long fillConsent = JobCredentialVault.CaptureConsent();
             var saved = JobCredentialVault.Load(tab.Job.Company, tab.Job.Id, site);
             if (saved == null) throw new ArgumentException("No saved login for this job and exact website");
             string data = JsonSerializer.Serialize(new {origin = site.GetLeftPart(UriPartial.Authority), username = saved.Value.Username, password = saved.Value.Password});
@@ -108,7 +109,7 @@ internal sealed class WorkspaceWindow : Form
                 "if(p.length!==1||u.length!==1)return false;const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;" +
                 "set.call(u[0],data.username);u[0].dispatchEvent(new Event('input',{bubbles:true}));" +
                 "set.call(p[0],data.password);p[0].dispatchEvent(new Event('input',{bubbles:true}));return true;})(" + data + ")";
-            string result = await tab.View.CoreWebView2.ExecuteScriptAsync(script);
+            string result = await JobCredentialVault.Dispatch(fillConsent, () => tab.View.CoreWebView2.ExecuteScriptAsync(script));
             if (result != "true") throw new ArgumentException("This page needs manual login. GIZE fills only one visible username/email and password pair; it never submits the form.");
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Runtime.InteropServices.COMException)
@@ -222,6 +223,12 @@ internal sealed class WorkspaceWindow : Form
             bool staleDenied = false;
             try {concurrentLease.Validate(staleConsent);} catch (InvalidOperationException) {staleDenied = true;}
             if (!staleDenied) throw new InvalidOperationException("revoked_consent_reused_after_unlock");
+            bool dispatchedRevoked = false, dispatchDenied = false;
+            try {concurrentLease.Dispatch(staleConsent, () => {dispatchedRevoked = true; return true;});}
+            catch (InvalidOperationException) {dispatchDenied = true;}
+            if (!dispatchDenied || dispatchedRevoked) throw new InvalidOperationException("revoked_broker_dispatch");
+            if (!concurrentLease.Dispatch(concurrentLease.Capture(), () => true))
+                throw new InvalidOperationException("fresh_broker_dispatch_failed");
             concurrentLease.Validate(concurrentLease.Capture());
             var vaultSite = new Uri("https://example.com/");
             try
