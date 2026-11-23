@@ -108,3 +108,13 @@ test("code cannot change while initial authorization waits",async()=>{
  assert.equal((await gateway.execute(request,context)).ok,true);
  assert.equal(received,"reviewed-code");
 });
+
+test("discovery retains validated result limit across async policy",async()=>{
+ const request={query:"synthetic",limit:1};
+ const gateway=createGizeCodeMode({
+  tools:[...tools,{id:"gize.second",risk:"read",description:"Synthetic second operation"}],
+  canDiscover:async()=>{request.limit=20;await Promise.resolve();return true;}
+ });
+ const result=await gateway.search(request,context);
+ assert.equal(result.ok,true);assert.equal(result.count,1);
+});
