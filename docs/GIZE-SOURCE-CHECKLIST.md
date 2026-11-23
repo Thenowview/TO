@@ -587,3 +587,6 @@ All three Code Mode suites passed locally: 17 tests, 0 failures, including disco
 
 ### PC-05 / configuration readiness — 23 November 2026
 Runtime a8926f760f82b580ed70853751c4f5c5b3d0e030 reports enabled only with isolated-runner kind plus callable run, authorization and dispatcher. Negative suite 3600f75a425badb307077dc90af5ba801bc8d54b: 11 local tests passed, incomplete configurations denied. This flag confirms configuration only, never sandbox review or acceptance. Prior head c4f04584acb75b886cc6cde0dd3520e9fbe11af1 ran only safe-auto-merge 45204025576; full Windows/runtime CI remains unavailable. NO_GO retained.
+
+### PC-05 / native catalog risk fidelity — 23 November 2026
+Runtime 9377e771dda450128ff84c3c66c18b45c34ddbce pins risk class per known native tool, rejecting receipt risk substitution rather than trusting claimed read-only status. Tests d702c27c7c42cfdcb989ba792643e9728915bd8a: 3 local tests passed including 12 risk-class substitutions across six tools; baseline positive retained. Metadata only, no native execution activation. Prior head 3de3db80d7df33f5bb1b0ad4a34fbca27bcc8aef has only automatic-merge run 45215917070; full CI unavailable. NO_GO retained for sandbox/hardware/signing/key custody and independent acceptance.
