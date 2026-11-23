@@ -551,3 +551,7 @@ Desktop subscribes Windows SystemEvents.SessionSwitch to revoke process-local va
 
 ### SECURE-MEMORY bounded consent lease — 2026-11-23
 1a643884a8893cce4adb8188a060b7446779c918 limits each explicit unlock to five monotonic minutes; expiry/backward elapsed time locks and stays locked until new consent. Read/Save existing guards evaluate the lease. 07a36d31793a4ce3f7188b7ab9cdcd33d7aec268 tests initial lock, pre-boundary positive, exact expiry, sticky expiry and backward clock denial with deterministic fake ticks. Fresh Windows CI pending; maximum consent duration, not idle detection/OS reauthentication. NO_GO retained.
+
+
+### SECURE-MEMORY concurrent consent state — 2026-11-23
+6027714e78300c257e6f526ea0f348427ecaf360 synchronizes lease read/expiry/lock/unlock state for UI and Windows SessionSwitch threads.0990bf51ac4dbeba33eeeb7e8c5e585b6d8e0b8a requires 256 parallel expired reads and 256 reads after cross-thread revocation all deny. Fresh Windows CI pending. Does not make credential retrieval/fill atomic with revocation; in-flight broker race and physical/security acceptance remain separate. NO_GO retained.
