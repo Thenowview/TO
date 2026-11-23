@@ -67,9 +67,10 @@ internal static class JobCredentialVault
             throw new ArgumentException("Invalid saved-login scope");
         return "GIZE/Desktop/" + company + "/" + order + "/" + site.GetLeftPart(UriPartial.Authority);
     }
-    internal static void Save(string company, string order, Uri site, string username, string password)
+    internal static void Save(string company, string order, Uri site, string username, string password, long? consent = null)
     {
         RequireUnlocked();
+        long saveConsent = consent ?? Lease.Capture();
         if (username.Length is < 1 or > 256 || password.Length is < 1 or > 2000) throw new ArgumentException("Enter a bounded username and password");
         byte[] bytes = Encoding.Unicode.GetBytes(password); IntPtr secret = Marshal.AllocCoTaskMem(bytes.Length);
         try
@@ -77,7 +78,10 @@ internal static class JobCredentialVault
             Marshal.Copy(bytes, 0, secret, bytes.Length);
             var credential = new Credential {Type = 1, TargetName = Target(company, order, site), UserName = username,
                 CredentialBlobSize = (uint)bytes.Length, CredentialBlob = secret, Persist = 2};
-            if (!Write(ref credential, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
+            Lease.Dispatch(saveConsent, () => {
+                if (!Write(ref credential, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                return true;
+            });
         }
         finally {for (int i = 0; i < bytes.Length; i++) Marshal.WriteByte(secret, i, 0); Marshal.FreeCoTaskMem(secret); Array.Clear(bytes);}
     }
