@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'offline_desktop/engine/device_capabilities.py'
+      - 'offline_desktop/engine/core.py'
       - 'offline_desktop/engine/model_behavior.py'
       - 'offline_desktop/tests/test_gize_model_resource_guard.py'
       - '.github/workflows/gize-offline-model-guards-ci.yml'
@@ -11,6 +12,7 @@ on:
     branches: [main]
     paths:
       - 'offline_desktop/engine/device_capabilities.py'
+      - 'offline_desktop/engine/core.py'
       - 'offline_desktop/engine/model_behavior.py'
       - 'offline_desktop/tests/test_gize_model_resource_guard.py'
       - '.github/workflows/gize-offline-model-guards-ci.yml'
@@ -30,7 +32,7 @@ jobs:
           python-version: '3.11'
       - name: Compile standalone model safety modules
         run: |
-          python -m py_compile offline_desktop/engine/device_capabilities.py offline_desktop/engine/model_behavior.py
+          python -m py_compile offline_desktop/engine/device_capabilities.py offline_desktop/engine/model_behavior.py offline_desktop/engine/core.py
       - name: Run GIZE low-memory and identity tests
         working-directory: offline_desktop
         run: python -m unittest discover -s tests -p test_gize_model_resource_guard.py -v
