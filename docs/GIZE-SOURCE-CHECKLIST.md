@@ -597,3 +597,6 @@ Runtime 9377e771dda450128ff84c3c66c18b45c34ddbce pins risk class per known nativ
 
 ### PC-05 / native descriptor scope fidelity — 24 November 2026
 Compared actual LocalAgentEngine agent_tools descriptors. Runtime 7e3935b96b17d6b53e577272099ef7f67a9eb688 pins scope/execution/safeBatch per tool; corrected synthetic fixture to actual distinct scopes. Tests 8b179d68a4530ebbcc99cf8c3c7d3883ec156319: 4 local tests passed including 18 scope/execution/batching substitutions and 12 risk substitutions. Main 25f3a00a6bd379fa49a7287e18fb4c99d7f787fa bridge/build/portable/onefile CI passed; no physical acceptance implied. New candidate CI pending. Metadata only; NO_GO retained.
+
+### PC-05 / C# descriptor source conformance — 24 November 2026
+Five local native-catalog tests passed, including parsing all six actual LocalAgentEngine source descriptors into metadata adapter, preserving 30 altered-claim denials. Source conformance only: not a launched native receipt or physical acceptance. Existing draft #150 reused; prior-head CI green, new-head CI pending. NO_GO retained.
