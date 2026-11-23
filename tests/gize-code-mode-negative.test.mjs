@@ -118,3 +118,18 @@ test("discovery retains validated result limit across async policy",async()=>{
  const result=await gateway.search(request,context);
  assert.equal(result.ok,true);assert.equal(result.count,1);
 });
+
+test("enabled requires complete trusted execution configuration",async()=>{
+ for(const config of [
+  {runner:{kind:"isolated_worker"}},
+  {runner,authorize:async()=>({allow:true})},
+  {runner,invoke:async()=>true},
+  {runner:{kind:"isolated_worker",run:"not-callable"},authorize:async()=>({allow:true}),invoke:async()=>true}
+ ]){
+  const gateway=createGizeCodeMode({tools,...config});
+  assert.equal(gateway.enabled,false);
+  assert.equal((await gateway.execute({code:"synthetic"},context)).error,"isolated_execution_not_configured");
+ }
+ const complete=createGizeCodeMode({tools,runner,authorize:async()=>({allow:true}),invoke:async()=>true});
+ assert.equal(complete.enabled,true);
+});
