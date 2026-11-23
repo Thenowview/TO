@@ -56,7 +56,11 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     const terms = request.query.toLowerCase().trim().split(/\s+/);
     const visible = [];
     for (const tool of catalog.values()) {
-      if (!(await canDiscover({ tool, context }))) continue;
+      // A discovery-policy failure must not reveal catalog structure.
+      let discoverable = false;
+      try { discoverable = (await canDiscover({ tool, context })) === true; }
+      catch { return denied("discovery_policy_unavailable"); }
+      if (!discoverable) continue;
       const haystack = (tool.id + " " + tool.description).toLowerCase();
       if (terms.every(term => haystack.includes(term))) visible.push(tool);
       if (visible.length >= (request.limit || 8)) break;
@@ -73,7 +77,9 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     if (!runner || runner.kind !== "isolated_worker" || typeof runner.run !== "function" ||
       typeof authorize !== "function" || typeof invoke !== "function")
       return denied("isolated_execution_not_configured");
-    const initial = await authorize({ action: "execute_code", context });
+    let initial;
+    try { initial = await authorize({ action: "execute_code", context }); }
+    catch { return denied("code_execution_not_authorized"); }
     if (!plain(initial) || initial.allow !== true) return denied("code_execution_not_authorized");
     let calls = 0;
     const callTool = async (id, args) => {
@@ -86,7 +92,9 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       if (tool.risk === "privileged") return denied("privileged_execution_disabled");
       // Re-authorize every individual upstream operation; a code-level grant is
       // never equivalent to a write-level grant or cross-tenant permission.
-      const decision = await authorize({ action: "invoke", tool, args, context });
+      let decision;
+      try { decision = await authorize({ action: "invoke", tool, args, context }); }
+      catch { return denied("tool_execution_not_authorized"); }
       if (!plain(decision) || decision.allow !== true ||
         (tool.risk !== "read" && decision.humanApprovalVerified !== true))
         return denied("tool_execution_not_authorized");
