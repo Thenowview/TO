@@ -19,6 +19,11 @@ const EXPECTED_RISK = Object.freeze({
   system_info: "read_only", browser_open: "consequential_external",
   windows_open_notepad: "consequential_external"
 });
+const EXPECTED_SCOPE = Object.freeze({
+ write_note:"company_order",read_note:"company_order",list_notes:"company_order",
+ system_info:"local_system_summary",browser_open:"approved_https_host",
+ windows_open_notepad:"explicit_notepad_launch"
+});
 const SAFE_ID = /^[a-z][a-z0-9_.-]{2,79}$/;
 function ownPlain(v) {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
@@ -49,7 +54,9 @@ export function describeNativeTools(receipt) {
       typeof descriptor.requiresOwnerApproval !== "boolean" ||
       descriptor.requiresOwnerApproval !== true ||
       typeof descriptor.permissionScope !== "string" ||
-      descriptor.permissionScope.length < 3 ||
+      descriptor.permissionScope !== EXPECTED_SCOPE[descriptor.id] ||
+      descriptor.execution !== (descriptor.id === "browser_open" ? "browser_navigation_only" : "native_allowlist") ||
+      descriptor.safeBatch !== (EXPECTED_RISK[descriptor.id] !== "consequential_external") ||
       typeof descriptor.execution !== "string" || !SAFE_ID.test(descriptor.execution) ||
       seen.has(descriptor.id)) {
       return Object.freeze({ ok: false, tools: Object.freeze([]), reason: "native_catalog_unverified" });

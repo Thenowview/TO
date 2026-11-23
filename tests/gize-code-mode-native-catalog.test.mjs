@@ -10,7 +10,7 @@ const descriptors = [
   ["windows_open_notepad", "consequential_external", "native_allowlist"]
 ].map(([id, riskClass, execution]) => ({
   id, version: 1, riskClass, requiresOwnerApproval: true,
-  permissionScope: "company_order", execution, safeBatch: riskClass !== "consequential_external"
+  permissionScope: ({system_info:"local_system_summary",browser_open:"approved_https_host",windows_open_notepad:"explicit_notepad_launch"})[id] || "company_order", execution, safeBatch: riskClass !== "consequential_external"
 }));
 const fixture = {
   ok: true, catalogVersion: "ao.local.tools.v1",
@@ -49,5 +49,12 @@ test("every native tool rejects risk-class substitution",()=>{
    assert.equal(result.ok,false,descriptors[i].id+" risk "+riskClass);
    assert.deepEqual(result.tools,[]);
   }
+ }
+});
+
+test("scope, execution and batching claims cannot widen native contract",()=>{
+ for(let i=0;i<descriptors.length;i++)for(const change of [{permissionScope:"all_tenants"},{execution:"arbitrary_shell"},{safeBatch:!descriptors[i].safeBatch}]){
+ const result=describeNativeTools({...fixture,toolDescriptors:descriptors.map((d,j)=>j===i?{...d,...change}:d)});
+ assert.equal(result.ok,false);assert.deepEqual(result.tools,[]);
  }
 });
