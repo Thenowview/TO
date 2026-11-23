@@ -23,8 +23,8 @@ function boundedJson(value, limit) {
   return JSON.parse(json);
 }
 function trustedContext(context) {
-  return plain(context) && IDENT.test(context.jobId || "") &&
-    IDENT.test(context.principalId || "") && IDENT.test(context.tenantId || "");
+  return plain(context) && ["jobId", "principalId", "tenantId"].every(
+    key => typeof context[key] === "string" && IDENT.test(context[key]));
 }
 function denied(error) { return { ok: false, error }; }
 
@@ -48,6 +48,8 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
 
   async function search(request = {}, context) {
     if (!trustedContext(context)) return denied("trusted_context_required");
+    try { context = boundedJson(context, MAX_INPUT); }
+    catch { return denied("trusted_context_required"); }
     if (!plain(request) || typeof request.query !== "string" ||
       request.query.trim().length < 2 || request.query.length > 200 ||
       (request.limit !== undefined && (!Number.isInteger(request.limit) ||
@@ -70,6 +72,8 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
 
   async function execute(request = {}, context) {
     if (!trustedContext(context)) return denied("trusted_context_required");
+    try { context = boundedJson(context, MAX_INPUT); }
+    catch { return denied("trusted_context_required"); }
     if (!plain(request) || typeof request.code !== "string" ||
       request.code.length < 1 || Buffer.byteLength(request.code, "utf8") > MAX_INPUT)
       return denied("invalid_code");
