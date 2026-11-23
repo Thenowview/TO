@@ -6,6 +6,7 @@ const RISKS = new Set(["read", "reversible_write", "external_write", "privileged
 const MAX_CALLS = 12;
 const MAX_INPUT = 16_384;
 const MAX_OUTPUT = 24_000;
+const MAX_WALL_MS = 10_000;
 
 function plain(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
@@ -49,7 +50,9 @@ function denied(error) { return { ok: false, error }; }
  * a host-side tool dispatcher. An in-process eval/vm is NOT a safe runner.
  * Credential material is never passed to the runner by this module.
  */
-export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canDiscover } = {}) {
+export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canDiscover, executionTimeoutMs = MAX_WALL_MS } = {}) {
+  if (!Number.isInteger(executionTimeoutMs) || executionTimeoutMs < 25 || executionTimeoutMs > MAX_WALL_MS)
+    throw new TypeError("invalid_execution_timeout");
   if (!Array.isArray(tools) || tools.length > 512) throw new TypeError("invalid_catalog");
   const catalog = new Map();
   for (const tool of tools) {
@@ -132,13 +135,27 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       } catch { return denied("tool_execution_failed"); }
       } finally { dispatching = false; }
     };
+    // The host enforces a wall-clock deadline in addition to the isolated
+    // runner's own timeout. This closes callback permissions after expiry,
+    // but the host must still terminate the worker/process to stop CPU use.
+    let timer;
+    const timeoutError = new Error("execution_timeout");
     try {
-      const result = await runner.run({
-        code, callTool, timeoutMs: 10000, maxCalls: MAX_CALLS
-      });
+      const result = await Promise.race([
+        Promise.resolve().then(() => runner.run({
+          code, callTool, timeoutMs: executionTimeoutMs, maxCalls: MAX_CALLS
+        })),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(timeoutError), executionTimeoutMs);
+        })
+      ]);
       return { ok: true, result: boundedJson(result, MAX_OUTPUT), calls };
-    } catch { return denied("isolated_execution_failed"); }
-    finally { active = false; }
+    } catch (error) {
+      return denied(error === timeoutError ? "execution_timeout" : "isolated_execution_failed");
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      active = false;
+    }
   }
 
   return Object.freeze({ search, execute, enabled: Boolean(runner && runner.kind === "isolated_worker" &&
