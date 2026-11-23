@@ -571,3 +571,26 @@ Runtimea58497652dfc06287d85a5b8866bfcbb2552406c validates consent generation und
 
 ### SECURE-MEMORY password dialog failure cleanup — 2026-11-23
 Save dialog password control is cleared in finally on successful save, cancellation or exception. Windows Smoke injects synthetic save failure and no-op cancellation and requires empty TextBox afterward. Fresh CI pending; managed strings/OS/renderer zeroization not claimed. NO_GO retained for physical/security/signing/release acceptance.
+
+
+### PC-05 / Code Mode argument snapshot — 2026-11-23
+Gateway now uses validated bounded JSON snapshot before asynchronous authorization/invocation. Negative regression mutates original nested arguments during authorization and requires reviewed snapshot at invocation. Mock-runner evidence only, fresh CI pending; no hardened sandbox/live MCP activation or independent security acceptance. NO_GO retained.
+
+
+### PC-05 / Code Mode callback lifecycle — 2026-11-23
+Runner completion or failure closes the gateway callback; pending authorization must recheck closure before dispatch. Six local negative tests passed, including retained callbacks after success/failure and delayed authorization after exit. Mock runner only; no cancellation of already dispatched effects, hardened sandbox, physical Windows or independent acceptance established. Fresh GitHub CI pending. Mapping of 78 original OT source IDs to 150 master IDs is traceability, not verified completion. NO_GO retained.
+
+### PC-05 / trusted context snapshot — 23 November 2026
+Strict string identities and bounded context copy precede async discovery/execution policy. Eight local negative tests passed, including caller tenant mutation and identity coercion rejection. Mock runner only; fresh CI pending. NO_GO remains for hardened sandbox, Windows hardware, signing/key custody and independent acceptance; 78-to-150 traceability is not acceptance.
+
+### PC-05 / request mutation boundary — 23 November 2026
+Code string captured before initial async authorization; discovery copies validated query/limit. Nine local negative tests passed for code capture and previous boundaries; final discovery field-copy refinement awaits fresh checks. Prior head e38a69cd89b8ed44606078c341d5b3db0cb04eae ran only Safe automatic PR merge (45183553434); full runtime/Windows CI unavailable on that head. No merge. NO_GO remains physical/sandbox/signing/key custody/independent acceptance. Source mapping is not completion.
+
+### PC-05 / complete local Code Mode regression — 23 November 2026
+All three Code Mode suites passed locally: 17 tests, 0 failures, including discovery-limit mutation during asynchronous policy. Runtime blob 12e1c580dbf906d305ed9e13c9c1a0990cb91ac3. Reconciled 78 unique source rows: all IDs occur in master register; this is traceability, not accepted completion. Current prior head e8eb8ca79e7ea7e57628bb401bfb221d4f44a9c8 has only Safe automatic PR merge run 45193168508, no full runtime/Windows workflow evidence. Merge remains blocked; NO_GO for hardened runner, hardware/provider, signing/key custody and independent/customer acceptance.
+
+### PC-05 / configuration readiness — 23 November 2026
+Runtime a8926f760f82b580ed70853751c4f5c5b3d0e030 reports enabled only with isolated-runner kind plus callable run, authorization and dispatcher. Negative suite 3600f75a425badb307077dc90af5ba801bc8d54b: 11 local tests passed, incomplete configurations denied. This flag confirms configuration only, never sandbox review or acceptance. Prior head c4f04584acb75b886cc6cde0dd3520e9fbe11af1 ran only safe-auto-merge 45204025576; full Windows/runtime CI remains unavailable. NO_GO retained.
+
+### PC-05 / native catalog risk fidelity — 23 November 2026
+Runtime 9377e771dda450128ff84c3c66c18b45c34ddbce pins risk class per known native tool, rejecting receipt risk substitution rather than trusting claimed read-only status. Tests d702c27c7c42cfdcb989ba792643e9728915bd8a: 3 local tests passed including 12 risk-class substitutions across six tools; baseline positive retained. Metadata only, no native execution activation. Prior head 3de3db80d7df33f5bb1b0ad4a34fbca27bcc8aef has only automatic-merge run 45215917070; full CI unavailable. NO_GO retained for sandbox/hardware/signing/key custody and independent acceptance.
