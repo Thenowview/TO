@@ -559,3 +559,7 @@ Desktop subscribes Windows SystemEvents.SessionSwitch to revoke process-local va
 
 ### SECURE-MEMORY revoked native read candidate — 2026-11-23
 fd018ff9d4e5d3198170a9fcf0c49f4c32a464b0 captures consent generation before native retrieval and validates it before returning credentials. Lock/unlock increments generation; stale consent cannot revive after unlock.1dc1cb5593e7d2b5cea1e9e0cb394db95ac26206 tests lock/unlock stale denial and fresh positive. Fresh CI pending. Post-return browser dispatch/save race remains separate; no complete atomic broker or physical/security acceptance claimed. NO_GO retained.
+
+
+### SECURE-MEMORY browser dispatch initiation — 2026-11-23
+Runtimea58497652dfc06287d85a5b8866bfcbb2552406c validates consent generation under the lease monitor while initiating a callback. Desktopae43a44b6500f9d6abbe4100d5e13b76388fac28 captures before Load, dispatches ExecuteScriptAsync through that boundary and tests stale callback never invoked/fresh positive. Fresh Windows CI pending. Already queued renderer execution cannot be retracted by this boundary; save atomicity/renderer/physical/security acceptance remain open. NO_GO retained.
