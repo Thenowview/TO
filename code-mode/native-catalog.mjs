@@ -14,6 +14,11 @@ const KNOWN = Object.freeze({
   browser_open: "Navigate a browser tab to an approved HTTPS host",
   windows_open_notepad: "Launch an explicitly approved Notepad instance"
 });
+const EXPECTED_RISK = Object.freeze({
+  write_note: "reversible_write", read_note: "read_only", list_notes: "read_only",
+  system_info: "read_only", browser_open: "consequential_external",
+  windows_open_notepad: "consequential_external"
+});
 const SAFE_ID = /^[a-z][a-z0-9_.-]{2,79}$/;
 function ownPlain(v) {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
@@ -40,6 +45,7 @@ export function describeNativeTools(receipt) {
   for (const descriptor of receipt.toolDescriptors) {
     if (!ownPlain(descriptor) || !Object.hasOwn(KNOWN, descriptor.id) ||
       descriptor.version !== 1 || !Object.hasOwn(RISK, descriptor.riskClass) ||
+      descriptor.riskClass !== EXPECTED_RISK[descriptor.id] ||
       typeof descriptor.requiresOwnerApproval !== "boolean" ||
       descriptor.requiresOwnerApproval !== true ||
       typeof descriptor.permissionScope !== "string" ||
