@@ -81,3 +81,21 @@ test("authorization completing after runner exit cannot dispatch",async()=>{
  assert.equal((await pending).error,"execution_closed");
  assert.equal(invocations,0);
 });
+
+test("caller context mutation cannot switch tenant during authorization",async()=>{
+ const original={...context};let seen;
+ const gateway=createGizeCodeMode({tools,runner,
+ authorize:async({action,context:scoped})=>{
+  if(action==="execute_code"){original.tenantId="tenant-other";await Promise.resolve();}
+  assert.equal(scoped.tenantId,context.tenantId);return {allow:true};
+ },invoke:async({context:scoped})=>{seen=scoped.tenantId;return "synthetic";}});
+ assert.equal((await gateway.execute({code:"synthetic"},original)).result.ok,true);
+ assert.equal(seen,context.tenantId);
+});
+test("coercible identity objects are rejected without invoking policy",async()=>{
+ let called=false;
+ const gateway=createGizeCodeMode({tools,runner,authorize:async()=>{called=true;return {allow:true};},invoke:async()=>true});
+ const malformed={...context,tenantId:{toString(){return "tenant-12345";}}};
+ assert.equal((await gateway.execute({code:"synthetic"},malformed)).error,"trusted_context_required");
+ assert.equal(called,false);
+});
