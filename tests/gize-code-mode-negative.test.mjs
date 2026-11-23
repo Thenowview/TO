@@ -133,3 +133,68 @@ test("enabled requires complete trusted execution configuration",async()=>{
  const complete=createGizeCodeMode({tools,runner,authorize:async()=>({allow:true}),invoke:async()=>true});
  assert.equal(complete.enabled,true);
 });
+
+
+test("nested context and reviewed arguments cannot be rewritten by policy", async () => {
+  const input = { path: "approved.txt", nested: { workspace: "job-only" } };
+  const job = { ...context, scope: { workspace: "job-only" } };
+  let policySawFrozen = false;
+  let delivered;
+  const gateway = createGizeCodeMode({
+    tools,
+    runner: { kind: "isolated_worker", async run({ callTool }) {
+      return callTool("gize.read", input);
+    }},
+    authorize: async ({ action, args, context: jobContext }) => {
+      if (action === "invoke") {
+        assert.equal(args.path, "approved.txt");
+        assert.equal(args.nested.workspace, "job-only");
+        assert.equal(jobContext.scope.workspace, "job-only");
+        assert.equal(Object.isFrozen(args), true);
+        assert.equal(Object.isFrozen(args.nested), true);
+        assert.equal(Object.isFrozen(jobContext.scope), true);
+        policySawFrozen = true;
+        assert.throws(() => { args.nested.workspace = "different"; }, TypeError);
+        assert.throws(() => { jobContext.scope.workspace = "other-tenant"; }, TypeError);
+      }
+      return { allow: true };
+    },
+    invoke: async ({ args, context: jobContext }) => {
+      delivered = { args, context: jobContext };
+      return "synthetic";
+    }
+  });
+  const result = await gateway.execute({ code: "synthetic" }, job);
+  assert.equal(result.ok, true);
+  assert.equal(result.result.ok, true);
+  assert.equal(policySawFrozen, true);
+  assert.equal(delivered.args.nested.workspace, "job-only");
+  assert.equal(delivered.context.scope.workspace, "job-only");
+});
+
+test("concurrent model tool requests cannot run overlapping dispatches", async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  let invoked = 0;
+  const gateway = createGizeCodeMode({
+    tools,
+    runner: { kind: "isolated_worker", async run({ callTool }) {
+      const first = callTool("gize.read", { id: "first" });
+      const overlapping = await callTool("gize.read", { id: "second" });
+      release();
+      const completed = await first;
+      return { overlapping, completed };
+    }},
+    authorize: async ({ action }) => {
+      if (action === "invoke") await gate;
+      return { allow: true };
+    },
+    invoke: async () => { invoked += 1; return { approved: true }; }
+  });
+  const result = await gateway.execute({ code: "synthetic" }, context);
+  assert.equal(result.ok, true);
+  assert.equal(result.result.overlapping.error, "concurrent_tool_call_denied");
+  assert.equal(result.result.completed.ok, true);
+  assert.equal(invoked, 1);
+  assert.equal(result.calls, 1);
+});
