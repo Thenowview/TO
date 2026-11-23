@@ -55,3 +55,29 @@ test("worker argument mutation cannot change authorized invocation",async()=>{
  assert.equal(result.result.ok,true);
  assert.deepEqual(invoked,{path:"reviewed.txt",nested:{scope:"job-only"}});
 });
+
+test("retained callback is denied after runner completion or failure",async()=>{
+ for(const fails of [false,true]){
+  let retained,invocations=0;
+  const gateway=createGizeCodeMode({
+   tools,runner:{kind:"isolated_worker",async run({callTool}){retained=callTool;if(fails)throw Error("synthetic");return "done";}},
+   authorize:async()=>({allow:true}),invoke:async()=>{invocations++;return "unexpected";}
+  });
+  await gateway.execute({code:"synthetic"},context);
+  assert.equal((await retained("gize.read",{})).error,"execution_closed");
+  assert.equal(invocations,0);
+ }
+});
+test("authorization completing after runner exit cannot dispatch",async()=>{
+ let pending,release,invocations=0;
+ const gate=new Promise(resolve=>{release=resolve;});
+ const gateway=createGizeCodeMode({
+  tools,runner:{kind:"isolated_worker",async run({callTool}){pending=callTool("gize.read",{});return "done";}},
+  authorize:async({action})=>{if(action==="invoke")await gate;return {allow:true};},
+  invoke:async()=>{invocations++;return "unexpected";}
+ });
+ await gateway.execute({code:"synthetic"},context);
+ release();
+ assert.equal((await pending).error,"execution_closed");
+ assert.equal(invocations,0);
+});
