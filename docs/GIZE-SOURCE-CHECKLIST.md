@@ -581,3 +581,6 @@ Strict string identities and bounded context copy precede async discovery/execut
 
 ### PC-05 / request mutation boundary — 23 November 2026
 Code string captured before initial async authorization; discovery copies validated query/limit. Nine local negative tests passed for code capture and previous boundaries; final discovery field-copy refinement awaits fresh checks. Prior head e38a69cd89b8ed44606078c341d5b3db0cb04eae ran only Safe automatic PR merge (45183553434); full runtime/Windows CI unavailable on that head. No merge. NO_GO remains physical/sandbox/signing/key custody/independent acceptance. Source mapping is not completion.
+
+### PC-05 / complete local Code Mode regression — 23 November 2026
+All three Code Mode suites passed locally: 17 tests, 0 failures, including discovery-limit mutation during asynchronous policy. Runtime blob 12e1c580dbf906d305ed9e13c9c1a0990cb91ac3. Reconciled 78 unique source rows: all IDs occur in master register; this is traceability, not accepted completion. Current prior head e8eb8ca79e7ea7e57628bb401bfb221d4f44a9c8 has only Safe automatic PR merge run 45193168508, no full runtime/Windows workflow evidence. Merge remains blocked; NO_GO for hardened runner, hardware/provider, signing/key custody and independent/customer acceptance.
