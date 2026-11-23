@@ -578,3 +578,6 @@ Runner completion or failure closes the gateway callback; pending authorization 
 
 ### PC-05 / trusted context snapshot — 23 November 2026
 Strict string identities and bounded context copy precede async discovery/execution policy. Eight local negative tests passed, including caller tenant mutation and identity coercion rejection. Mock runner only; fresh CI pending. NO_GO remains for hardened sandbox, Windows hardware, signing/key custody and independent acceptance; 78-to-150 traceability is not acceptance.
+
+### PC-05 / request mutation boundary — 23 November 2026
+Code string captured before initial async authorization; discovery copies validated query/limit. Nine local negative tests passed for code capture and previous boundaries; final discovery field-copy refinement awaits fresh checks. Prior head e38a69cd89b8ed44606078c341d5b3db0cb04eae ran only Safe automatic PR merge (45183553434); full runtime/Windows CI unavailable on that head. No merge. NO_GO remains physical/sandbox/signing/key custody/independent acceptance. Source mapping is not completion.
