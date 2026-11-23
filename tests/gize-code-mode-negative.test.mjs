@@ -35,3 +35,23 @@ test("per operation authorization callback failures never invoke tools",async()=
   assert.equal(result.result.error,"tool_execution_not_authorized");
   assert.equal(called,0);
 });
+
+test("worker argument mutation cannot change authorized invocation",async()=>{
+ const original={path:"reviewed.txt",nested:{scope:"job-only"}};
+ let invoked;
+ const gateway=createGizeCodeMode({
+  tools,runner:{kind:"isolated_worker",async run({callTool}){return callTool("gize.read",original);}},
+  authorize:async({action,args})=>{
+   if(action==="invoke"){
+    assert.equal(args.path,"reviewed.txt");
+    original.path="changed.txt"; original.nested.scope="other-job";
+    await Promise.resolve();
+   }
+   return {allow:true};
+  },
+  invoke:async({args})=>{invoked=args;return "synthetic";}
+ });
+ const result=await gateway.execute({code:"synthetic"},context);
+ assert.equal(result.result.ok,true);
+ assert.deepEqual(invoked,{path:"reviewed.txt",nested:{scope:"job-only"}});
+});
