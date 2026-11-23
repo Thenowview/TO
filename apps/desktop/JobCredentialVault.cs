@@ -26,6 +26,7 @@ internal static class JobCredentialVault
         }
         internal void Lock() {lock (_gate) {_locked = true; _generation++;}}
         internal void Unlock() {lock (_gate) {_started = _now(); _locked = false; _generation++;}}
+        internal T Dispatch<T>(long generation, Func<T> action) {lock (_gate) {Validate(generation); return action();}}
         internal long Capture() {lock (_gate) {if (IsLocked) throw new InvalidOperationException("Credential consent locked"); return _generation;}}
         internal void Validate(long generation) {lock (_gate) {if (IsLocked || generation != _generation) throw new InvalidOperationException("Credential consent revoked");}}
     }
@@ -33,6 +34,8 @@ internal static class JobCredentialVault
     internal static bool IsLocked => Lease.IsLocked;
     internal static void Lock() => Lease.Lock();
     internal static void Unlock() => Lease.Unlock();
+    internal static long CaptureConsent() => Lease.Capture();
+    internal static T Dispatch<T>(long consent, Func<T> action) => Lease.Dispatch(consent, action);
     private static void RequireUnlocked()
     {if (IsLocked) throw new InvalidOperationException("Saved logins are locked for this app session");}
 
