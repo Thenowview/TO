@@ -206,6 +206,16 @@ internal sealed class WorkspaceWindow : Form
             if (!testLease.IsLocked) throw new InvalidOperationException("expired_lease_reopened");
             testLease.Unlock(); leaseNow--;
             if (!testLease.IsLocked) throw new InvalidOperationException("backward_clock_not_denied");
+            long concurrentTicks = 0;
+            var concurrentLease = new JobCredentialVault.SessionLease(() => Interlocked.Read(ref concurrentTicks));
+            concurrentLease.Unlock(); Interlocked.Exchange(ref concurrentTicks, 300000);
+            int expiredAccess = 0;
+            Parallel.For(0, 256, _ => {if (!concurrentLease.IsLocked) Interlocked.Increment(ref expiredAccess);});
+            if (expiredAccess != 0) throw new InvalidOperationException("concurrent_expired_consent");
+            concurrentLease.Unlock();
+            Task.Run(() => concurrentLease.Lock()).GetAwaiter().GetResult();
+            Parallel.For(0, 256, _ => {if (!concurrentLease.IsLocked) Interlocked.Increment(ref expiredAccess);});
+            if (expiredAccess != 0) throw new InvalidOperationException("cross_thread_lock_not_observed");
             var vaultSite = new Uri("https://example.com/");
             try
             {
