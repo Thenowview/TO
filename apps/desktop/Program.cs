@@ -216,6 +216,13 @@ internal sealed class WorkspaceWindow : Form
             Task.Run(() => concurrentLease.Lock()).GetAwaiter().GetResult();
             Parallel.For(0, 256, _ => {if (!concurrentLease.IsLocked) Interlocked.Increment(ref expiredAccess);});
             if (expiredAccess != 0) throw new InvalidOperationException("cross_thread_lock_not_observed");
+            concurrentLease.Unlock();
+            long staleConsent = concurrentLease.Capture();
+            concurrentLease.Lock(); concurrentLease.Unlock();
+            bool staleDenied = false;
+            try {concurrentLease.Validate(staleConsent);} catch (InvalidOperationException) {staleDenied = true;}
+            if (!staleDenied) throw new InvalidOperationException("revoked_consent_reused_after_unlock");
+            concurrentLease.Validate(concurrentLease.Capture());
             var vaultSite = new Uri("https://example.com/");
             try
             {
