@@ -567,3 +567,7 @@ Runtimea58497652dfc06287d85a5b8866bfcbb2552406c validates consent generation und
 
 ### SECURE-MEMORY native save consent — 2026-11-23
 23906da8c46d8a030c3ce5acf46e3de99baa12d6 validates captured consent under lease monitor with native credential write. Desktopb136c46f7145aced33062e5862fc3862030eda32 captures before dialog; stale lock/unlock consent must reject and actual Credential Manager readback remain absent. Existing fresh save/replacement positives follow. Fresh Windows CI pending. Already-queued renderer and physical/security acceptance remain separate; NO_GO retained.
+
+
+### PC-05 / Code Mode argument snapshot — 2026-11-23
+Gateway now uses validated bounded JSON snapshot before asynchronous authorization/invocation. Negative regression mutates original nested arguments during authorization and requires reviewed snapshot at invocation. Mock-runner evidence only, fresh CI pending; no hardened sandbox/live MCP activation or independent security acceptance. NO_GO retained.
