@@ -99,3 +99,12 @@ test("coercible identity objects are rejected without invoking policy",async()=>
  assert.equal((await gateway.execute({code:"synthetic"},malformed)).error,"trusted_context_required");
  assert.equal(called,false);
 });
+
+test("code cannot change while initial authorization waits",async()=>{
+ const request={code:"reviewed-code"};let received;
+ const gateway=createGizeCodeMode({tools,
+ runner:{kind:"isolated_worker",async run({code}){received=code;return "done";}},
+ authorize:async()=>{request.code="changed-code";await Promise.resolve();return {allow:true};},invoke:async()=>true});
+ assert.equal((await gateway.execute(request,context)).ok,true);
+ assert.equal(received,"reviewed-code");
+});
