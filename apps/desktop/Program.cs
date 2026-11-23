@@ -81,6 +81,7 @@ internal sealed class WorkspaceWindow : Form
         try
         {
             var tab = LoginTab(); var site = tab.View.Source!;
+            long saveConsent = JobCredentialVault.CaptureConsent();
             using var dialog = new Form {Text = "Save login for this job", Width = 510, Height = 270, StartPosition = FormStartPosition.CenterParent};
             var notice = new Label {Text = "Windows Credential Manager - job " + tab.Job.Id[..6] + "\n" + site.GetLeftPart(UriPartial.Authority), Left = 16, Top = 16, Width = 470, Height = 44};
             var username = new TextBox {Left = 16, Top = 72, Width = 460, PlaceholderText = "Username or email", AccessibleName = "Saved login username"};
@@ -88,7 +89,7 @@ internal sealed class WorkspaceWindow : Form
             var save = new Button {Text = "Save securely", Left = 16, Top = 160, Width = 140, DialogResult = DialogResult.OK};
             var cancel = new Button {Text = "Cancel", Left = 170, Top = 160, Width = 100, DialogResult = DialogResult.Cancel};
             dialog.Controls.AddRange(new Control[] {notice, username, password, save, cancel}); dialog.AcceptButton = save; dialog.CancelButton = cancel;
-            if (dialog.ShowDialog(this) == DialogResult.OK) JobCredentialVault.Save(tab.Job.Company, tab.Job.Id, site, username.Text, password.Text);
+            if (dialog.ShowDialog(this) == DialogResult.OK) JobCredentialVault.Save(tab.Job.Company, tab.Job.Id, site, username.Text, password.Text, saveConsent);
             password.Clear();
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
@@ -231,6 +232,14 @@ internal sealed class WorkspaceWindow : Form
                 throw new InvalidOperationException("fresh_broker_dispatch_failed");
             concurrentLease.Validate(concurrentLease.Capture());
             var vaultSite = new Uri("https://example.com/");
+            long staleSave = JobCredentialVault.CaptureConsent();
+            JobCredentialVault.Lock(); JobCredentialVault.Unlock();
+            bool saveDenied = false;
+            try {JobCredentialVault.Save("synthetic", id, vaultSite, "synthetic", "synthetic", staleSave);}
+            catch (InvalidOperationException) {saveDenied = true;}
+            if (!saveDenied || JobCredentialVault.Load("synthetic", id, vaultSite) != null)
+                throw new InvalidOperationException("revoked_save_persisted");
+
             try
             {
                 JobCredentialVault.Save("synthetic", id, vaultSite, "synthetic-user", "synthetic-password");
