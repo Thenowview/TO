@@ -22,6 +22,21 @@ function boundedJson(value, limit) {
     throw new Error("bounded_json_rejected");
   return JSON.parse(json);
 }
+// JSON input is copied before policy evaluation. Freeze the entire tree so
+// an authorization callback cannot change a nested path, tenant or argument
+// after evaluating it but before a privileged dispatcher consumes it.
+function freezeJsonTree(value) {
+  const pending = [value];
+  const seen = new Set();
+  while (pending.length) {
+    const current = pending.pop();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
+    seen.add(current);
+    for (const child of Object.values(current)) pending.push(child);
+    Object.freeze(current);
+  }
+  return value;
+}
 function trustedContext(context) {
   return plain(context) && ["jobId", "principalId", "tenantId"].every(
     key => typeof context[key] === "string" && IDENT.test(context[key]));
@@ -48,7 +63,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
 
   async function search(request = {}, context) {
     if (!trustedContext(context)) return denied("trusted_context_required");
-    try { context = boundedJson(context, MAX_INPUT); }
+    try { context = freezeJsonTree(boundedJson(context, MAX_INPUT)); }
     catch { return denied("trusted_context_required"); }
     if (!plain(request) || typeof request.query !== "string" ||
       request.query.trim().length < 2 || request.query.length > 200 ||
@@ -73,7 +88,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
 
   async function execute(request = {}, context) {
     if (!trustedContext(context)) return denied("trusted_context_required");
-    try { context = boundedJson(context, MAX_INPUT); }
+    try { context = freezeJsonTree(boundedJson(context, MAX_INPUT)); }
     catch { return denied("trusted_context_required"); }
     if (!plain(request) || typeof request.code !== "string" ||
       request.code.length < 1 || Buffer.byteLength(request.code, "utf8") > MAX_INPUT)
@@ -89,14 +104,19 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     if (!plain(initial) || initial.allow !== true) return denied("code_execution_not_authorized");
     let calls = 0;
     let active = true;
+    let dispatching = false;
     const callTool = async (id, args) => {
       if (!active) return denied("execution_closed");
+      // Only one reviewed upstream operation can be in-flight per job.
+      if (dispatching) return denied("concurrent_tool_call_denied");
+      dispatching = true;
+      try {
       calls += 1;
       if (calls > MAX_CALLS) return denied("call_budget_exceeded");
       const tool = catalog.get(id);
       if (!tool) return denied("unknown_tool");
       if (!plain(args)) return denied("invalid_arguments");
-      try { args = boundedJson(args, MAX_INPUT); } catch { return denied("invalid_arguments"); }
+      try { args = freezeJsonTree(boundedJson(args, MAX_INPUT)); } catch { return denied("invalid_arguments"); }
       if (tool.risk === "privileged") return denied("privileged_execution_disabled");
       // Re-authorize every individual upstream operation; a code-level grant is
       // never equivalent to a write-level grant or cross-tenant permission.
@@ -110,6 +130,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       try {
         return { ok: true, result: boundedJson(await invoke({ id: tool.id, args, context }), MAX_OUTPUT) };
       } catch { return denied("tool_execution_failed"); }
+      } finally { dispatching = false; }
     };
     try {
       const result = await runner.run({
