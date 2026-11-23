@@ -555,3 +555,7 @@ Desktop subscribes Windows SystemEvents.SessionSwitch to revoke process-local va
 
 ### SECURE-MEMORY concurrent consent state — 2026-11-23
 6027714e78300c257e6f526ea0f348427ecaf360 synchronizes lease read/expiry/lock/unlock state for UI and Windows SessionSwitch threads.0990bf51ac4dbeba33eeeb7e8c5e585b6d8e0b8a requires 256 parallel expired reads and 256 reads after cross-thread revocation all deny. Fresh Windows CI pending. Does not make credential retrieval/fill atomic with revocation; in-flight broker race and physical/security acceptance remain separate. NO_GO retained.
+
+
+### SECURE-MEMORY revoked native read candidate — 2026-11-23
+fd018ff9d4e5d3198170a9fcf0c49f4c32a464b0 captures consent generation before native retrieval and validates it before returning credentials. Lock/unlock increments generation; stale consent cannot revive after unlock.1dc1cb5593e7d2b5cea1e9e0cb394db95ac26206 tests lock/unlock stale denial and fresh positive. Fresh CI pending. Post-return browser dispatch/save race remains separate; no complete atomic broker or physical/security acceptance claimed. NO_GO retained.
