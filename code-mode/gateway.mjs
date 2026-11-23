@@ -82,7 +82,9 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     catch { return denied("code_execution_not_authorized"); }
     if (!plain(initial) || initial.allow !== true) return denied("code_execution_not_authorized");
     let calls = 0;
+    let active = true;
     const callTool = async (id, args) => {
+      if (!active) return denied("execution_closed");
       calls += 1;
       if (calls > MAX_CALLS) return denied("call_budget_exceeded");
       const tool = catalog.get(id);
@@ -98,6 +100,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       if (!plain(decision) || decision.allow !== true ||
         (tool.risk !== "read" && decision.humanApprovalVerified !== true))
         return denied("tool_execution_not_authorized");
+      if (!active) return denied("execution_closed");
       try {
         return { ok: true, result: boundedJson(await invoke({ id: tool.id, args, context }), MAX_OUTPUT) };
       } catch { return denied("tool_execution_failed"); }
@@ -108,6 +111,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       });
       return { ok: true, result: boundedJson(result, MAX_OUTPUT), calls };
     } catch { return denied("isolated_execution_failed"); }
+    finally { active = false; }
   }
 
   return Object.freeze({ search, execute, enabled: Boolean(runner && runner.kind === "isolated_worker") });
