@@ -48,6 +48,17 @@ class ModelGuardTests(unittest.TestCase):
         self.assertTrue(allowed)
         self.assertIn("may still fail", reason)
 
+    def test_adaptive_context_never_exceeds_requested_or_safe_headroom(self):
+        required = 1 * GIB
+        reserve = 384 * MIB
+        adjust = device_capabilities.adaptive_context_window
+        self.assertEqual(adjust(8192, required, required + reserve), 1024)
+        self.assertEqual(adjust(8192, required, required + reserve + 300*MIB), 2048)
+        self.assertEqual(adjust(8192, required, required + reserve + 800*MIB), 4096)
+        self.assertEqual(adjust(8192, required, required + reserve + 2*GIB), 8192)
+        self.assertEqual(adjust(2048, required, required + reserve + 2*GIB), 2048)
+        self.assertEqual(adjust(-1, required, required + reserve + 2*GIB), 1024)
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
