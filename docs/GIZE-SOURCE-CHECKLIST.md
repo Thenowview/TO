@@ -571,3 +571,7 @@ Runtimea58497652dfc06287d85a5b8866bfcbb2552406c validates consent generation und
 
 ### PC-05 / Code Mode argument snapshot — 2026-11-23
 Gateway now uses validated bounded JSON snapshot before asynchronous authorization/invocation. Negative regression mutates original nested arguments during authorization and requires reviewed snapshot at invocation. Mock-runner evidence only, fresh CI pending; no hardened sandbox/live MCP activation or independent security acceptance. NO_GO retained.
+
+
+### PC-05 / Code Mode callback lifecycle — 2026-11-23
+Runner completion or failure closes the gateway callback; pending authorization must recheck closure before dispatch. Six local negative tests passed, including retained callbacks after success/failure and delayed authorization after exit. Mock runner only; no cancellation of already dispatched effects, hardened sandbox, physical Windows or independent acceptance established. Fresh GitHub CI pending. Mapping of 78 original OT source IDs to 150 master IDs is traceability, not verified completion. NO_GO retained.
