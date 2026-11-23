@@ -43,9 +43,19 @@ def detect(total_bytes=None, available_bytes=None, cores=None, platform_name=Non
                 inference_block_reason=reason)
 
 def model_allowed(estimated_bytes, available_bytes, reserve_bytes=384*MIB):
+    """Fail closed on missing/invalid telemetry and budget estimates.
+
+    This is a preflight, never a guarantee of real GGUF runtime capacity.
+    Boolean values are rejected because bool is a subclass of int in Python.
+    """
     if available_bytes is None:
-        return False,'Available physical memory could not be determined.'
-    if estimated_bytes+reserve_bytes>available_bytes:
-        return False,('Insufficient available RAM: model estimate %d MiB plus %d MiB device reserve exceeds %d MiB free.'
-                      %(estimated_bytes//MIB,reserve_bytes//MIB,available_bytes//MIB))
-    return True,'Currently available RAM passes the estimate; actual model loading may still fail.'
+        return False, 'Available physical memory could not be determined.'
+    values=(estimated_bytes, available_bytes, reserve_bytes)
+    if any(type(n) is not int or n < 0 for n in values) or estimated_bytes == 0:
+        return False, 'Invalid memory telemetry or model budget.'
+    # Keep a meaningful system reserve even if a caller supplies zero.
+    reserve_bytes=max(reserve_bytes, 384*MIB)
+    if estimated_bytes + reserve_bytes > available_bytes:
+        return False, ('Insufficient available RAM: model estimate %d MiB plus %d MiB device reserve exceeds %d MiB free.'
+                       % (estimated_bytes//MIB, reserve_bytes//MIB, available_bytes//MIB))
+    return True, 'Currently available RAM passes the estimate; actual model loading may still fail.'
