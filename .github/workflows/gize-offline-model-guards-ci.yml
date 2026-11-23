@@ -1,0 +1,36 @@
+name: GIZE offline model safety checks
+
+on:
+  pull_request:
+    paths:
+      - 'offline_desktop/engine/device_capabilities.py'
+      - 'offline_desktop/engine/model_behavior.py'
+      - 'offline_desktop/tests/test_gize_model_resource_guard.py'
+      - '.github/workflows/gize-offline-model-guards-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'offline_desktop/engine/device_capabilities.py'
+      - 'offline_desktop/engine/model_behavior.py'
+      - 'offline_desktop/tests/test_gize_model_resource_guard.py'
+      - '.github/workflows/gize-offline-model-guards-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-model-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile standalone model safety modules
+        run: |
+          python -m py_compile offline_desktop/engine/device_capabilities.py offline_desktop/engine/model_behavior.py
+      - name: Run GIZE low-memory and identity tests
+        working-directory: offline_desktop
+        run: python -m unittest discover -s tests -p test_gize_model_resource_guard.py -v
