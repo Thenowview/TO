@@ -88,7 +88,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       const tool = catalog.get(id);
       if (!tool) return denied("unknown_tool");
       if (!plain(args)) return denied("invalid_arguments");
-      try { boundedJson(args, MAX_INPUT); } catch { return denied("invalid_arguments"); }
+      try { args = boundedJson(args, MAX_INPUT); } catch { return denied("invalid_arguments"); }
       if (tool.risk === "privileged") return denied("privileged_execution_disabled");
       // Re-authorize every individual upstream operation; a code-level grant is
       // never equivalent to a write-level grant or cross-tenant permission.
