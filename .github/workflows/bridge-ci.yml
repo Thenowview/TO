@@ -34,7 +34,7 @@ jobs:
           node --check apps/chrome-extension/browser-workflow-ui.js
           node --check apps/chrome-extension/desktop-assist-ui.js
       - name: Verify GIZE Code Mode gateway is deny-first and sandbox-gated
-        run: node --test tests/gize-code-mode.test.mjs
+        run: node --test tests/gize-code-mode.test.mjs tests/gize-code-mode-native-catalog.test.mjs tests/gize-code-mode-negative.test.mjs
       - name: Test Supervisor handoff and artifact gates with simulated Chrome
         run: node --test tests/task-manager.test.cjs tests/reviewed-plan.test.cjs
       - name: Audit Supervisor UI to background contracts
