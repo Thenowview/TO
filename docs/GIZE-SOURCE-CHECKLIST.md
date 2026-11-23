@@ -567,3 +567,7 @@ Runtimea58497652dfc06287d85a5b8866bfcbb2552406c validates consent generation und
 
 ### SECURE-MEMORY native save consent — 2026-11-23
 23906da8c46d8a030c3ce5acf46e3de99baa12d6 validates captured consent under lease monitor with native credential write. Desktopb136c46f7145aced33062e5862fc3862030eda32 captures before dialog; stale lock/unlock consent must reject and actual Credential Manager readback remain absent. Existing fresh save/replacement positives follow. Fresh Windows CI pending. Already-queued renderer and physical/security acceptance remain separate; NO_GO retained.
+
+
+### SECURE-MEMORY password dialog failure cleanup — 2026-11-23
+Save dialog password control is cleared in finally on successful save, cancellation or exception. Windows Smoke injects synthetic save failure and no-op cancellation and requires empty TextBox afterward. Fresh CI pending; managed strings/OS/renderer zeroization not claimed. NO_GO retained for physical/security/signing/release acceptance.
