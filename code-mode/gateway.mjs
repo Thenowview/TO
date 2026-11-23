@@ -120,5 +120,6 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     finally { active = false; }
   }
 
-  return Object.freeze({ search, execute, enabled: Boolean(runner && runner.kind === "isolated_worker") });
+  return Object.freeze({ search, execute, enabled: Boolean(runner && runner.kind === "isolated_worker" &&
+    typeof runner.run === "function" && typeof authorize === "function" && typeof invoke === "function") });
 }
