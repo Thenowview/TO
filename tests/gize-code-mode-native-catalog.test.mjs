@@ -39,3 +39,15 @@ test("rejected catalogs cannot inject tools, claims or authorizations", () => {
     assert.deepEqual(r.tools, []);
   }
 });
+
+test("every native tool rejects risk-class substitution",()=>{
+ for(let i=0;i<descriptors.length;i++){
+  for(const riskClass of ["read_only","reversible_write","consequential_external"]){
+   if(riskClass===descriptors[i].riskClass)continue;
+   const altered=descriptors.map((d,j)=>j===i?{...d,riskClass}:d);
+   const result=describeNativeTools({...fixture,toolDescriptors:altered});
+   assert.equal(result.ok,false,descriptors[i].id+" risk "+riskClass);
+   assert.deepEqual(result.tools,[]);
+  }
+ }
+});
