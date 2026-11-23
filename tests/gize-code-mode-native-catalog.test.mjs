@@ -58,3 +58,15 @@ test("scope, execution and batching claims cannot widen native contract",()=>{
  assert.equal(result.ok,false);assert.deepEqual(result.tools,[]);
  }
 });
+
+test("C# bridge source descriptors conform to the metadata adapter",async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const source=await readFile(new URL("../engine/bridge/LocalAgentEngine.cs",import.meta.url),"utf8");
+ const rows=[...source.matchAll(/new \{id="([^"]+)",version=(\d+),riskClass="([^"]+)",requiresOwnerApproval=(true|false),permissionScope="([^"]+)",execution="([^"]+)",safeBatch=(true|false)\}/g)];
+ assert.equal(rows.length,6,"closed native descriptor source contract changed");
+ const actual=rows.map(([,id,version,riskClass,approval,permissionScope,execution,batch])=>({
+  id,version:Number(version),riskClass,requiresOwnerApproval:approval==="true",permissionScope,execution,safeBatch:batch==="true"
+ }));
+ const result=describeNativeTools({...fixture,toolDescriptors:actual});
+ assert.equal(result.ok,true);assert.equal(result.executionSupported,false);
+});
