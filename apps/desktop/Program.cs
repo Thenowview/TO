@@ -89,11 +89,18 @@ internal sealed class WorkspaceWindow : Form
             var save = new Button {Text = "Save securely", Left = 16, Top = 160, Width = 140, DialogResult = DialogResult.OK};
             var cancel = new Button {Text = "Cancel", Left = 170, Top = 160, Width = 100, DialogResult = DialogResult.Cancel};
             dialog.Controls.AddRange(new Control[] {notice, username, password, save, cancel}); dialog.AcceptButton = save; dialog.CancelButton = cancel;
-            if (dialog.ShowDialog(this) == DialogResult.OK) JobCredentialVault.Save(tab.Job.Company, tab.Job.Id, site, username.Text, password.Text, saveConsent);
-            password.Clear();
+            WithPasswordCleanup(password, () => {
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                    JobCredentialVault.Save(tab.Job.Company, tab.Job.Id, site, username.Text, password.Text, saveConsent);
+            });
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {MessageBox.Show(this, error is ArgumentException ? error.Message : "Windows could not save this login", "GIZE saved login");}
+    }
+    private static void WithPasswordCleanup(TextBox password, Action action)
+    {
+        try {action();}
+        finally {password.Clear();}
     }
     private async Task FillLogin()
     {
@@ -231,6 +238,17 @@ internal sealed class WorkspaceWindow : Form
             if (!concurrentLease.Dispatch(concurrentLease.Capture(), () => true))
                 throw new InvalidOperationException("fresh_broker_dispatch_failed");
             concurrentLease.Validate(concurrentLease.Capture());
+            using (var cleanupPassword = new TextBox {Text = "synthetic-secret"})
+            {
+                bool syntheticFault = false;
+                try {WithPasswordCleanup(cleanupPassword, () => throw new InvalidOperationException("synthetic-save-fault"));}
+                catch (InvalidOperationException) {syntheticFault = true;}
+                if (!syntheticFault || cleanupPassword.Text.Length != 0)
+                    throw new InvalidOperationException("password_cleanup_on_error_failed");
+                cleanupPassword.Text = "synthetic-secret";
+                WithPasswordCleanup(cleanupPassword, () => {});
+                if (cleanupPassword.Text.Length != 0) throw new InvalidOperationException("password_cleanup_on_cancel_failed");
+            }
             var vaultSite = new Uri("https://example.com/");
             long staleSave = JobCredentialVault.CaptureConsent();
             JobCredentialVault.Lock(); JobCredentialVault.Unlock();
