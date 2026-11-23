@@ -12,6 +12,7 @@ internal static class JobCredentialVault
         private readonly Func<long> _now;
         private readonly object _gate = new();
         private long _started;
+        private long _generation;
         private bool _locked = true;
         internal SessionLease(Func<long> now) => _now = now;
         internal bool IsLocked {
@@ -23,8 +24,10 @@ internal static class JobCredentialVault
                 }
             }
         }
-        internal void Lock() {lock (_gate) _locked = true;}
-        internal void Unlock() {lock (_gate) {_started = _now(); _locked = false;}}
+        internal void Lock() {lock (_gate) {_locked = true; _generation++;}}
+        internal void Unlock() {lock (_gate) {_started = _now(); _locked = false; _generation++;}}
+        internal long Capture() {lock (_gate) {if (IsLocked) throw new InvalidOperationException("Credential consent locked"); return _generation;}}
+        internal void Validate(long generation) {lock (_gate) {if (IsLocked || generation != _generation) throw new InvalidOperationException("Credential consent revoked");}}
     }
     private static readonly SessionLease Lease = new(() => Environment.TickCount64);
     internal static bool IsLocked => Lease.IsLocked;
@@ -78,6 +81,7 @@ internal static class JobCredentialVault
     internal static (string Username, string Password)? Load(string company, string order, Uri site)
     {
         RequireUnlocked();
+        long consent = Lease.Capture();
         if (!Read(Target(company, order, site), 1, 0, out var buffer))
         {
             int error = Marshal.GetLastWin32Error(); if (error == 1168) return null; throw new Win32Exception(error);
@@ -86,7 +90,9 @@ internal static class JobCredentialVault
         {
             var credential = Marshal.PtrToStructure<Credential>(buffer);
             ValidateRecord(credential.CredentialBlobSize, credential.CredentialBlob, credential.UserName);
-            return (credential.UserName, Marshal.PtrToStringUni(credential.CredentialBlob, (int)credential.CredentialBlobSize / 2) ?? "");
+            string password = Marshal.PtrToStringUni(credential.CredentialBlob, (int)credential.CredentialBlobSize / 2) ?? "";
+            Lease.Validate(consent);
+            return (credential.UserName, password);
         }
         finally {CredFree(buffer);}
     }
