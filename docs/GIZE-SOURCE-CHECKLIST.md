@@ -584,3 +584,6 @@ Code string captured before initial async authorization; discovery copies valida
 
 ### PC-05 / complete local Code Mode regression — 23 November 2026
 All three Code Mode suites passed locally: 17 tests, 0 failures, including discovery-limit mutation during asynchronous policy. Runtime blob 12e1c580dbf906d305ed9e13c9c1a0990cb91ac3. Reconciled 78 unique source rows: all IDs occur in master register; this is traceability, not accepted completion. Current prior head e8eb8ca79e7ea7e57628bb401bfb221d4f44a9c8 has only Safe automatic PR merge run 45193168508, no full runtime/Windows workflow evidence. Merge remains blocked; NO_GO for hardened runner, hardware/provider, signing/key custody and independent/customer acceptance.
+
+### PC-05 / configuration readiness — 23 November 2026
+Runtime a8926f760f82b580ed70853751c4f5c5b3d0e030 reports enabled only with isolated-runner kind plus callable run, authorization and dispatcher. Negative suite 3600f75a425badb307077dc90af5ba801bc8d54b: 11 local tests passed, incomplete configurations denied. This flag confirms configuration only, never sandbox review or acceptance. Prior head c4f04584acb75b886cc6cde0dd3520e9fbe11af1 ran only safe-auto-merge 45204025576; full Windows/runtime CI remains unavailable. NO_GO retained.
