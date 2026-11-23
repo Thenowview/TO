@@ -54,7 +54,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       request.query.trim().length < 2 || request.query.length > 200 ||
       (request.limit !== undefined && (!Number.isInteger(request.limit) ||
         request.limit < 1 || request.limit > 20))) return denied("invalid_search");
-    request = boundedJson(request, MAX_INPUT);
+    request = { query: request.query, limit: request.limit };
     if (typeof canDiscover !== "function") return denied("discovery_disabled");
     const terms = request.query.toLowerCase().trim().split(/\s+/);
     const visible = [];
