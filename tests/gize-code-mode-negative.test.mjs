@@ -198,3 +198,27 @@ test("concurrent model tool requests cannot run overlapping dispatches", async (
   assert.equal(invoked, 1);
   assert.equal(result.calls, 1);
 });
+
+
+test("host deadline closes retained tools if an isolated worker never responds", async () => {
+  let retained;
+  const gateway = createGizeCodeMode({
+    tools, executionTimeoutMs: 30,
+    runner: { kind: "isolated_worker", async run({ callTool, timeoutMs }) {
+      assert.equal(timeoutMs, 30);
+      retained = callTool;
+      return new Promise(() => {});
+    }},
+    authorize: async () => ({ allow: true }),
+    invoke: async () => { throw Error("must not be dispatched"); }
+  });
+  assert.equal((await gateway.execute({ code: "synthetic" }, context)).error, "execution_timeout");
+  assert.equal((await retained("gize.read", {})).error, "execution_closed");
+});
+
+test("host deadline configuration is strictly bounded", () => {
+  for (const timeout of [0, -1, 1, 24, 10001, 1.5, NaN, "30"]) {
+    assert.throws(() => createGizeCodeMode({ tools, executionTimeoutMs: timeout }), TypeError);
+  }
+  assert.equal(createGizeCodeMode({ tools, executionTimeoutMs: 25 }).enabled, false);
+});
