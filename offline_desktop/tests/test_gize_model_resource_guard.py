@@ -114,6 +114,21 @@ class ModelGuardTests(unittest.TestCase):
                     self.assertIsNone(result["available_ram_bytes"])
                     self.assertEqual(result["cpu_cores"],1)
 
+    def test_valid_device_telemetry_keeps_optional_model_policy(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        with patch.dict(sys.modules, {"engine.core":SimpleNamespace(available_physical_memory_bytes=lambda:None)}):
+            healthy=device_capabilities.detect(total_bytes=8*GIB, available_bytes=2*GIB, cores=4)
+            self.assertTrue(healthy["optional_local_llm"])
+            self.assertEqual(healthy["tier"],"enhanced")
+            self.assertEqual(healthy["cpu_cores"],4)
+            self.assertIn("preflight",healthy["model_policy"])
+            low=device_capabilities.detect(total_bytes=8*GIB, available_bytes=128*MIB, cores=4)
+            self.assertFalse(low["optional_local_llm"])
+            missing=device_capabilities.detect(total_bytes=8*GIB, available_bytes=None, cores=4)
+            self.assertFalse(missing["optional_local_llm"])
+            self.assertIn("could not be measured",missing["inference_block_reason"])
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
