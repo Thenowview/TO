@@ -59,6 +59,13 @@ class ModelGuardTests(unittest.TestCase):
         self.assertEqual(adjust(2048, required, required + reserve + 2*GIB), 2048)
         self.assertEqual(adjust(-1, required, required + reserve + 2*GIB), 1024)
 
+    def test_small_requested_context_is_never_increased(self):
+        adjust = device_capabilities.adaptive_context_window
+        for requested in (1, 128, 256, 512, 1023):
+            for available in (1408*MIB, 8*GIB):
+                with self.subTest(requested=requested, available=available):
+                    self.assertEqual(adjust(requested, 1*GIB, available), requested)
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
