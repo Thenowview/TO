@@ -102,6 +102,18 @@ class ModelGuardTests(unittest.TestCase):
                     scope["import_model_zip_stream"]("synthetic.zip", Oversized(), 100)
             self.assertEqual(list(models.iterdir()), [])
 
+    def test_device_detection_rejects_malformed_telemetry(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        with patch.dict(sys.modules, {"engine.core":SimpleNamespace(available_physical_memory_bytes=lambda:None)}):
+            for value in ("invalid", True, -1, float("nan")):
+                with self.subTest(value=value):
+                    result=device_capabilities.detect(total_bytes=value, available_bytes=value, cores=value)
+                    self.assertFalse(result["optional_local_llm"])
+                    self.assertIsNone(result["total_ram_bytes"])
+                    self.assertIsNone(result["available_ram_bytes"])
+                    self.assertEqual(result["cpu_cores"],1)
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
