@@ -129,6 +129,18 @@ class ModelGuardTests(unittest.TestCase):
             self.assertFalse(missing["optional_local_llm"])
             self.assertIn("could not be measured",missing["inference_block_reason"])
 
+    def test_available_ram_cannot_exceed_physical_total(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        with patch.dict(sys.modules, {"engine.core":SimpleNamespace(available_physical_memory_bytes=lambda:None)}):
+            inconsistent=device_capabilities.detect(total_bytes=4*GIB, available_bytes=8*GIB, cores=4)
+            self.assertFalse(inconsistent["optional_local_llm"])
+            self.assertIsNone(inconsistent["available_ram_bytes"])
+            self.assertEqual(inconsistent["total_ram_bytes"],4*GIB)
+            equal=device_capabilities.detect(total_bytes=4*GIB, available_bytes=4*GIB, cores=4)
+            self.assertTrue(equal["optional_local_llm"])
+            self.assertEqual(equal["available_ram_bytes"],4*GIB)
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
