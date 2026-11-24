@@ -621,3 +621,6 @@ Gateway instance rejects overlapping execute calls for the same tenant/principal
 
 ### PC-05 / timeout replay quarantine — 24 November 2026
 Runtime 9184797dd55237944c9143e9fea5a132cd6c3081 retains instance-local admission after timeout; same job cannot replay while unrelated job continues. Tests d132ecdf808bd726e588c525be698f09dae1cf98:17 local negative tests pass. Host must verify recovery before replacing gateway; no termination or distributed/persistent quarantine claimed. Main65182d1f9f4922b1a11563157ce2d70148ebad61 CI green. Candidate CI pending; NO_GO retained.
+
+### PC-05 / bounded admission retention — 24 November 2026
+Runtime dd2d9bda44fd53e5f4bcf6be731ca6d2bb0646a4 caps active/quarantined scoped keys at256, rejecting overflow without eviction/replay. Tests928eeac97288f1b27d2498db1367beb7ce9bcbcd:18 local negatives passed, including256 concurrent admissions,257th denial, retained first-job denial and normal capacity reuse. Prior0fdd41a251f8e3b043ccd47c50e5cbeb997e0019 checks green; new CI pending. Instance-local only, no worker termination/persistent recovery. NO_GO retained.
