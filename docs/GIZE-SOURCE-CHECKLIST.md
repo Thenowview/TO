@@ -627,3 +627,6 @@ Runtime dd2d9bda44fd53e5f4bcf6be731ca6d2bb0646a4 caps active/quarantined scoped 
 
 ### OFFLINE / telemetry normalization — 24 November 2026
 Runtime03e5e3e3a463d8d6573b22281c759ccf91a7ab29 normalizes malformed RAM telemetry to unknown and malformed CPU counts to1; prevents type exceptions/false optional inference readiness. Testff40b1c3cf2d009675edc4939eb55aaeda4491fa covers string/bool/negative/NaN. Ten local resource tests passed. Main823b42a77b8008bd10d9afdd8a52c3cfbc12df27 CI green. Candidate CI pending; no real inference/hardware acceptance. NO_GO retained.
+
+### OFFLINE / healthy and low telemetry policy — 24 November 2026
+Test5d74c63001990fa569299ae0475115784f3817c3 verifies healthy8GiB/2GiB telemetry retains optional-model eligibility and preflight requirement; low128MiB and unavailable telemetry deny eligibility. Eleven local resource tests passed. Prior da4eefce878441c02dd7ee8f7bad4e8162a1fa4a all non-preview checks green. Fresh CI pending; no model loading or hardware acceptance. NO_GO retained.
