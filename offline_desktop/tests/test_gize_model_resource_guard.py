@@ -141,6 +141,51 @@ class ModelGuardTests(unittest.TestCase):
             self.assertTrue(equal["optional_local_llm"])
             self.assertEqual(equal["available_ram_bytes"],4*GIB)
 
+    def test_launch_resamples_ram_inside_lock_before_starting_process(self):
+        import ast, tempfile, threading, os
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "start_local_model")
+        with tempfile.TemporaryDirectory() as folder:
+            model = Path(folder) / "synthetic.gguf"
+            model.write_bytes(b"GGUF" + b"x"*4092)
+            lock = threading.Lock()
+            def measured(value):
+                self.assertTrue(lock.locked())
+                return value
+            for fresh in (None, 128*MIB, False, -1, 2*GIB):
+                with self.subTest(fresh=fresh):
+                    process = Mock(return_value=SimpleNamespace(pid=123))
+                    ram = Mock(side_effect=lambda: measured(fresh))
+                    context = Mock(wraps=device_capabilities.adaptive_context_window)
+                    scope = dict(_model_process=None, _model_lock=lock, EngineError=RuntimeError,
+                        local_models=lambda:[dict(name=model.name, path=str(model), bytes=4096)],
+                        model_start_preflight=lambda name:dict(ram_check_passed=True,
+                            available_ram_bytes=8*GIB, estimated_min_available_ram_bytes=1*GIB),
+                        llama_binary=lambda:"synthetic-server",
+                        available_backends=lambda:dict(llamacpp=False),
+                        available_physical_memory_bytes=ram, os=os, DATA=Path(folder),
+                        device_capabilities=SimpleNamespace(model_allowed=device_capabilities.model_allowed,
+                            adaptive_context_window=context),
+                        subprocess=SimpleNamespace(Popen=process, STDOUT=-2, DEVNULL=-3),
+                        set_setting=Mock(), audit=Mock())
+                    exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-model-launch>", "exec"), scope)
+                    with patch.dict(os.environ, {"GIZE_MODEL_CONTEXT":"8192"}):
+                        if fresh == 2*GIB:
+                            self.assertTrue(scope["start_local_model"](model.name)["started"])
+                            process.assert_called_once()
+                            context.assert_called_once_with(8192, 1*GIB, fresh)
+                            args=process.call_args.args[0]
+                            self.assertEqual(args[args.index("-c")+1], "2048")
+                        else:
+                            with self.assertRaisesRegex(RuntimeError, "fresh RAM check"):
+                                scope["start_local_model"](model.name)
+                            process.assert_not_called()
+                            scope["set_setting"].assert_not_called()
+                            scope["audit"].assert_not_called()
+                    ram.assert_called_once_with()
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
