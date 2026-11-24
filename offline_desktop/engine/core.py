@@ -521,6 +521,8 @@ def import_model_stream(filename, incoming, length):
             while remaining:
                 chunk = incoming.read(min(1024**2, remaining))
                 if not chunk: raise EngineError('Model upload interrupted before completing.')
+                if not isinstance(chunk, bytes) or len(chunk) > remaining:
+                    raise EngineError('Model upload exceeded the declared byte length.')
                 output.write(chunk)
                 received += len(chunk)
                 remaining -= len(chunk)
