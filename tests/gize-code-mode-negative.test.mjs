@@ -235,3 +235,14 @@ test("same scoped job rejects overlapping executions and admits retry after comp
  release();assert.equal((await first).ok,true);
  assert.equal((await gateway.execute({code:"synthetic"},context)).ok,true);
 });
+
+test("timed out job cannot be replayed while unrelated job can continue",async()=>{
+ let runs=0;
+ const gateway=createGizeCodeMode({tools,executionTimeoutMs:25,
+ runner:{kind:"isolated_worker",run(){runs++;return runs===1?new Promise(()=>{}):Promise.resolve("done");}},
+ authorize:async()=>({allow:true}),invoke:async()=>true});
+ assert.equal((await gateway.execute({code:"synthetic"},context)).error,"execution_timeout");
+ assert.equal((await gateway.execute({code:"synthetic"},context)).error,"job_execution_in_progress");
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-other"})).ok,true);
+ assert.equal(runs,2);
+});
