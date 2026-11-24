@@ -94,6 +94,7 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     if (!trustedContext(context)) return denied("trusted_context_required");
     const key = JSON.stringify([context.tenantId, context.principalId, context.jobId]);
     if (runningJobs.has(key)) return denied("job_execution_in_progress");
+    if (runningJobs.size >= 256) return denied("job_admission_capacity_exceeded");
     runningJobs.add(key);
     let timedOut = false;
     try {
