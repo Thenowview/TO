@@ -600,3 +600,6 @@ Compared actual LocalAgentEngine agent_tools descriptors. Runtime 7e3935b96b17d6
 
 ### PC-05 / C# descriptor source conformance — 24 November 2026
 Five local native-catalog tests passed, including parsing all six actual LocalAgentEngine source descriptors into metadata adapter, preserving 30 altered-claim denials. Source conformance only: not a launched native receipt or physical acceptance. Existing draft #150 reused; prior-head CI green, new-head CI pending. NO_GO retained.
+
+### PC-05 / framed native receipt integration — 24 November 2026
+Added real published-host agent_tools framed exchange into metadata adapter, with malformed/extra frame rejection and MCP-enabled claim denial. Windows bridge CI invokes it after native smoke tests. Local Node syntax passed; actual Windows process execution unavailable locally, fresh CI pending. Prior draft head 029d0ee3e28b1b344829cda50f383f2f75254cc5 checks green. NO_GO retained; no physical/sandbox/security acceptance or execution activation.
