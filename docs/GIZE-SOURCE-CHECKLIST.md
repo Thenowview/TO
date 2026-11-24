@@ -618,3 +618,6 @@ Runtime c0c1514f76e2e1f902c03a47114045c817bc3321 rejects oversized/non-byte ZIP 
 
 ### PC-05 / scoped execution admission — 24 November 2026
 Gateway instance rejects overlapping execute calls for the same tenant/principal/job until the admitted execute settles; fresh call after completion allowed. Runtime 6bd63f77c9583fe4d676fe8fa6284ee50e39d963; tests aa494120c53b88c5a1914ed86cd46034b542c543:16 local negative tests pass. Instance-local only; timeout does not terminate worker or retract in-flight operations, so no complete recovery/side-effect guarantee. Main packaging retries succeeded on c01f130073910916f9a76eb675c8a6d458e6d0cc. Candidate CI pending; NO_GO retained.
+
+### PC-05 / timeout replay quarantine — 24 November 2026
+Runtime 9184797dd55237944c9143e9fea5a132cd6c3081 retains instance-local admission after timeout; same job cannot replay while unrelated job continues. Tests d132ecdf808bd726e588c525be698f09dae1cf98:17 local negative tests pass. Host must verify recovery before replacing gateway; no termination or distributed/persistent quarantine claimed. Main65182d1f9f4922b1a11563157ce2d70148ebad61 CI green. Candidate CI pending; NO_GO retained.
