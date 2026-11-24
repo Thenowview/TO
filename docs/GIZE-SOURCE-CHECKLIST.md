@@ -603,3 +603,6 @@ Five local native-catalog tests passed, including parsing all six actual LocalAg
 
 ### PC-05 / framed native receipt integration — 24 November 2026
 Added real published-host agent_tools framed exchange into metadata adapter, with malformed/extra frame rejection and MCP-enabled claim denial. Windows bridge CI invokes it after native smoke tests. Local Node syntax passed; actual Windows process execution unavailable locally, fresh CI pending. Prior draft head 029d0ee3e28b1b344829cda50f383f2f75254cc5 checks green. NO_GO retained; no physical/sandbox/security acceptance or execution activation.
+
+### PC-05 / actual Windows receipt verified — 24 November 2026
+Exact head 8b23a051ce46ac240fa237f303d3238ad411127f windows-bridge job 138118129360 succeeded; logs confirm actual framed native catalog accepted and MCP activation claims denied. All 11 non-preview checks passed; preview skipped. Extended test f11065f5a24bfbb1f087690239e286670f3b98fa adds 24 per-descriptor altered-claim denials on the actual receipt; syntax passed, fresh Windows CI pending. Hosted Windows integration is not physical Windows or independent security/customer acceptance. Draft retained; NO_GO remains.
