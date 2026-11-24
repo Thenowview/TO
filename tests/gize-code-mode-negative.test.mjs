@@ -235,3 +235,25 @@ test("same scoped job rejects overlapping executions and admits retry after comp
  release();assert.equal((await first).ok,true);
  assert.equal((await gateway.execute({code:"synthetic"},context)).ok,true);
 });
+
+test("timed out job cannot be replayed while unrelated job can continue",async()=>{
+ let runs=0;
+ const gateway=createGizeCodeMode({tools,executionTimeoutMs:25,
+ runner:{kind:"isolated_worker",run(){runs++;return runs===1?new Promise(()=>{}):Promise.resolve("done");}},
+ authorize:async()=>({allow:true}),invoke:async()=>true});
+ assert.equal((await gateway.execute({code:"synthetic"},context)).error,"execution_timeout");
+ assert.equal((await gateway.execute({code:"synthetic"},context)).error,"job_execution_in_progress");
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-other"})).ok,true);
+ assert.equal(runs,2);
+});
+
+test("job admission is bounded without evicting active jobs",async()=>{
+ let release;const gate=new Promise(r=>{release=r;});
+ const gateway=createGizeCodeMode({tools,runner:{kind:"isolated_worker",async run(){return "done";}},
+ authorize:async()=>{await gate;return {allow:true};},invoke:async()=>true});
+ const pending=Array.from({length:256},(_,i)=>gateway.execute({code:"synthetic"},{...context,jobId:"job-"+i}));
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-overflow"})).error,"job_admission_capacity_exceeded");
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-0"})).error,"job_execution_in_progress");
+ release();assert.equal((await Promise.all(pending)).every(r=>r.ok),true);
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-overflow"})).ok,true);
+});
