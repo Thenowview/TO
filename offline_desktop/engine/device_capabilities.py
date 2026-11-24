@@ -74,4 +74,4 @@ def adaptive_context_window(requested_tokens, required_bytes, available_bytes, r
     cap=(1024 if headroom < 256*MIB else
          2048 if headroom < 768*MIB else
          4096 if headroom < 1536*MIB else 8192)
-    return min(max(1024, requested_tokens), cap)
+    return min(requested_tokens, cap)
