@@ -606,3 +606,6 @@ Added real published-host agent_tools framed exchange into metadata adapter, wit
 
 ### PC-05 / actual Windows receipt verified — 24 November 2026
 Exact head 8b23a051ce46ac240fa237f303d3238ad411127f windows-bridge job 138118129360 succeeded; logs confirm actual framed native catalog accepted and MCP activation claims denied. All 11 non-preview checks passed; preview skipped. Extended test f11065f5a24bfbb1f087690239e286670f3b98fa adds 24 per-descriptor altered-claim denials on the actual receipt; syntax passed, fresh Windows CI pending. Hosted Windows integration is not physical Windows or independent security/customer acceptance. Draft retained; NO_GO remains.
+
+### OFFLINE / small context request ceiling — 24 November 2026
+Runtime 4d82e26d4a9b817364d5d16c73c87a21f7c61377 no longer raises valid sub-1024 token requests to 1024. Tests f29cbaec8e8be772104cdbead6e6b447b0492ac7: seven local resource-guard tests passed, including ten small-context/headroom combinations. No real model loading or memory guarantee claimed. Prior head 54a5b9f6923339a56eb3c8dd5073a86655c1ecdb all non-preview checks passed including actual native receipt denials. New CI pending; draft/NO_GO retained.
