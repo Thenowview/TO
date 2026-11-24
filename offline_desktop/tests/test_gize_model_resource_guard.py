@@ -186,6 +186,36 @@ class ModelGuardTests(unittest.TestCase):
                             scope["audit"].assert_not_called()
                     ram.assert_called_once_with()
 
+    def test_shutdown_timeout_escalates_and_failed_kill_retains_handle(self):
+        import ast, threading, subprocess
+        from unittest.mock import Mock
+        source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "stop_local_model")
+        for kill_fails in (False, True):
+            with self.subTest(kill_fails=kill_fails):
+                proc=Mock()
+                proc.poll.return_value=None
+                proc.wait.side_effect=[subprocess.TimeoutExpired("synthetic", 10), 0]
+                if kill_fails:
+                    proc.kill.side_effect=OSError("synthetic kill failure")
+                audit=Mock()
+                scope=dict(_model_process=proc, _model_lock=threading.Lock(),
+                           subprocess=subprocess, audit=audit)
+                exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-model-stop>", "exec"), scope)
+                if kill_fails:
+                    with self.assertRaisesRegex(OSError, "synthetic kill failure"):
+                        scope["stop_local_model"]()
+                    self.assertIs(scope["_model_process"], proc)
+                    audit.assert_not_called()
+                else:
+                    self.assertTrue(scope["stop_local_model"]()["stopped"])
+                    self.assertIsNone(scope["_model_process"])
+                    self.assertEqual(proc.wait.call_args_list[1].kwargs, dict(timeout=5))
+                    audit.assert_called_once_with("model.stop", {})
+                proc.terminate.assert_called_once_with()
+                proc.kill.assert_called_once_with()
+                self.assertFalse(scope["_model_lock"].locked())
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
