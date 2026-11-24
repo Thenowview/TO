@@ -564,6 +564,8 @@ def import_model_zip_stream(filename, incoming, length):
                 block=incoming.read(min(4*1024**2, remaining))
                 if not block:
                     raise EngineError('ZIP upload interrupted; no model installed.')
+                if not isinstance(block, bytes) or len(block) > remaining:
+                    raise EngineError('ZIP upload exceeded the declared byte length.')
                 writer.write(block)
                 remaining -= len(block)
         try:
