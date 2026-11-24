@@ -219,6 +219,35 @@ class ModelGuardTests(unittest.TestCase):
                 proc.kill.assert_called_once_with()
                 self.assertFalse(scope["_model_lock"].locked())
 
+    def test_retained_active_process_denies_relaunch_before_spawn(self):
+        import ast, tempfile, threading
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        source=ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn=next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name=="start_local_model")
+        with tempfile.TemporaryDirectory() as folder:
+            model=Path(folder)/"synthetic.gguf"
+            model.write_bytes(b"GGUF"+b"x"*4092)
+            retained=Mock()
+            retained.poll.return_value=None
+            spawn=Mock()
+            audit=Mock()
+            settings=Mock()
+            lock=threading.Lock()
+            scope=dict(_model_process=retained, _model_lock=lock, EngineError=RuntimeError,
+                local_models=lambda:[dict(name=model.name,path=str(model),bytes=4096)],
+                model_start_preflight=lambda name:dict(ram_check_passed=True),
+                llama_binary=lambda:"synthetic-server", subprocess=SimpleNamespace(Popen=spawn),
+                audit=audit, set_setting=settings)
+            exec(compile(ast.Module(body=[fn],type_ignores=[]),"<actual-model-relaunch>","exec"),scope)
+            with self.assertRaisesRegex(RuntimeError,"already active"):
+                scope["start_local_model"](model.name)
+            self.assertIs(scope["_model_process"],retained)
+            spawn.assert_not_called()
+            audit.assert_not_called()
+            settings.assert_not_called()
+            self.assertFalse(lock.locked())
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
