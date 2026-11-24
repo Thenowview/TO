@@ -89,7 +89,17 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     return { ok: true, tools: visible, count: visible.length };
   }
 
+  const runningJobs = new Set();
   async function execute(request = {}, context) {
+    if (!trustedContext(context)) return denied("trusted_context_required");
+    const key = JSON.stringify([context.tenantId, context.principalId, context.jobId]);
+    if (runningJobs.has(key)) return denied("job_execution_in_progress");
+    runningJobs.add(key);
+    try { return await executeAdmitted(request, context); }
+    finally { runningJobs.delete(key); }
+  }
+
+  async function executeAdmitted(request = {}, context) {
     if (!trustedContext(context)) return denied("trusted_context_required");
     try { context = freezeJsonTree(boundedJson(context, MAX_INPUT)); }
     catch { return denied("trusted_context_required"); }

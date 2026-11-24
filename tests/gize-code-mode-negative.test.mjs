@@ -222,3 +222,16 @@ test("host deadline configuration is strictly bounded", () => {
   }
   assert.equal(createGizeCodeMode({ tools, executionTimeoutMs: 25 }).enabled, false);
 });
+
+test("same scoped job rejects overlapping executions and admits retry after completion",async()=>{
+ let release;let started;
+ const began=new Promise(r=>{started=r});
+ const gate=new Promise(r=>{release=r});
+ const gateway=createGizeCodeMode({tools,runner:{kind:"isolated_worker",async run(){started();await gate;return "done";}},
+ authorize:async()=>({allow:true}),invoke:async()=>true});
+ const first=gateway.execute({code:"synthetic"},context);
+ await began;
+ assert.equal((await gateway.execute({code:"synthetic"},context)).error,"job_execution_in_progress");
+ release();assert.equal((await first).ok,true);
+ assert.equal((await gateway.execute({code:"synthetic"},context)).ok,true);
+});
