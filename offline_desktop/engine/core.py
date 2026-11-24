@@ -473,6 +473,13 @@ def start_local_model(name):
             raise EngineError('A local llama-server process is already active.')
         if available_backends()['llamacpp']:
             raise EngineError('Port 8081 already hosts a llama.cpp server; configure it separately.')
+        # RAM may change while waiting for the model lock or probing the port.
+        # Sample again at admission; the earlier preflight is advisory.
+        launch_available=available_physical_memory_bytes()
+        allowed, reason=device_capabilities.model_allowed(
+            preflight['estimated_min_available_ram_bytes'], launch_available)
+        if not allowed:
+            raise EngineError('Model launch blocked by fresh RAM check: '+reason)
         threads=max(1,(os.cpu_count() or 2)//2)
         # Prefer GIZE override while retaining the legacy environment alias.
         context_text=os.getenv('GIZE_MODEL_CONTEXT',os.getenv('THEORG_MODEL_CONTEXT','4096'))
@@ -481,7 +488,7 @@ def start_local_model(name):
         context_tokens=device_capabilities.adaptive_context_window(
             requested_context,
             preflight['estimated_min_available_ram_bytes'],
-            preflight['available_ram_bytes'])
+            launch_available)
         args=[binary,'-m',candidate['path'],'--host','127.0.0.1','--port','8081','-c',str(context_tokens),'-t',str(threads),'-np','1']
         log=open(DATA/'llama-server.log','ab')
         try:
