@@ -246,3 +246,14 @@ test("timed out job cannot be replayed while unrelated job can continue",async()
  assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-other"})).ok,true);
  assert.equal(runs,2);
 });
+
+test("job admission is bounded without evicting active jobs",async()=>{
+ let release;const gate=new Promise(r=>{release=r;});
+ const gateway=createGizeCodeMode({tools,runner:{kind:"isolated_worker",async run(){return "done";}},
+ authorize:async()=>{await gate;return {allow:true};},invoke:async()=>true});
+ const pending=Array.from({length:256},(_,i)=>gateway.execute({code:"synthetic"},{...context,jobId:"job-"+i}));
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-overflow"})).error,"job_admission_capacity_exceeded");
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-0"})).error,"job_execution_in_progress");
+ release();assert.equal((await Promise.all(pending)).every(r=>r.ok),true);
+ assert.equal((await gateway.execute({code:"synthetic"},{...context,jobId:"job-overflow"})).ok,true);
+});
