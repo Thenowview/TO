@@ -597,3 +597,21 @@ Runtime 9377e771dda450128ff84c3c66c18b45c34ddbce pins risk class per known nativ
 
 ### PC-05 / native descriptor scope fidelity — 24 November 2026
 Compared actual LocalAgentEngine agent_tools descriptors. Runtime 7e3935b96b17d6b53e577272099ef7f67a9eb688 pins scope/execution/safeBatch per tool; corrected synthetic fixture to actual distinct scopes. Tests 8b179d68a4530ebbcc99cf8c3c7d3883ec156319: 4 local tests passed including 18 scope/execution/batching substitutions and 12 risk substitutions. Main 25f3a00a6bd379fa49a7287e18fb4c99d7f787fa bridge/build/portable/onefile CI passed; no physical acceptance implied. New candidate CI pending. Metadata only; NO_GO retained.
+
+### PC-05 / C# descriptor source conformance — 24 November 2026
+Five local native-catalog tests passed, including parsing all six actual LocalAgentEngine source descriptors into metadata adapter, preserving 30 altered-claim denials. Source conformance only: not a launched native receipt or physical acceptance. Existing draft #150 reused; prior-head CI green, new-head CI pending. NO_GO retained.
+
+### PC-05 / framed native receipt integration — 24 November 2026
+Added real published-host agent_tools framed exchange into metadata adapter, with malformed/extra frame rejection and MCP-enabled claim denial. Windows bridge CI invokes it after native smoke tests. Local Node syntax passed; actual Windows process execution unavailable locally, fresh CI pending. Prior draft head 029d0ee3e28b1b344829cda50f383f2f75254cc5 checks green. NO_GO retained; no physical/sandbox/security acceptance or execution activation.
+
+### PC-05 / actual Windows receipt verified — 24 November 2026
+Exact head 8b23a051ce46ac240fa237f303d3238ad411127f windows-bridge job 138118129360 succeeded; logs confirm actual framed native catalog accepted and MCP activation claims denied. All 11 non-preview checks passed; preview skipped. Extended test f11065f5a24bfbb1f087690239e286670f3b98fa adds 24 per-descriptor altered-claim denials on the actual receipt; syntax passed, fresh Windows CI pending. Hosted Windows integration is not physical Windows or independent security/customer acceptance. Draft retained; NO_GO remains.
+
+### OFFLINE / small context request ceiling — 24 November 2026
+Runtime 4d82e26d4a9b817364d5d16c73c87a21f7c61377 no longer raises valid sub-1024 token requests to 1024. Tests f29cbaec8e8be772104cdbead6e6b447b0492ac7: seven local resource-guard tests passed, including ten small-context/headroom combinations. No real model loading or memory guarantee claimed. Prior head 54a5b9f6923339a56eb3c8dd5073a86655c1ecdb all non-preview checks passed including actual native receipt denials. New CI pending; draft/NO_GO retained.
+
+### OFFLINE / bounded model stream — 24 November 2026
+Runtime 63c4dcae6c1a5500e743ddae89345c44e9a3b111 rejects stream chunks exceeding remaining declared length before writing; prevents negative remaining counter/unbounded read continuation. Test 008fd429a5a95717016e884dbb8ce5420de6d66b runs actual extracted import function with oversized synthetic reader and requires no partial/installed file. Fresh CI pending; no local execution claimed this batch. Prior head 58a0f95714025b05feecc1e775e20ae7dc144942 non-preview CI green. NO_GO retained.
+
+### OFFLINE / ZIP stream ceiling — 24 November 2026
+Runtime c0c1514f76e2e1f902c03a47114045c817bc3321 rejects oversized/non-byte ZIP chunks before writing. Tests d6674e6006548506a6f4f22adc1d9b38b31f2923: nine local resource tests pass, including actual extracted GGUF/ZIP importer functions and no leftover partial files. Prior 90ebe091de04adf954175a486aa42020b8ec906c all non-preview CI passed; new CI pending. NO_GO retained; no hardware/model inference/security acceptance claimed.

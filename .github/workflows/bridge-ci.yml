@@ -93,6 +93,7 @@ jobs:
           $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'TheOrg-Smoke-Env-Redirect'
           python tests/native-messaging-smoke.py out/bridge/TheOrg.Bridge.exe
           python tests/ao-native-agent-smoke.py out/bridge/TheOrg.Bridge.exe
+          node tests/gize-native-catalog-smoke.mjs out/bridge/TheOrg.Bridge.exe
           python tests/desktop-native-schema-smoke.py out/bridge/TheOrg.Bridge.exe
       - name: Verify accessibility actions against a disposable synthetic Windows application
         shell: pwsh

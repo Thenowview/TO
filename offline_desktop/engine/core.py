@@ -474,7 +474,15 @@ def start_local_model(name):
         if available_backends()['llamacpp']:
             raise EngineError('Port 8081 already hosts a llama.cpp server; configure it separately.')
         threads=max(1,(os.cpu_count() or 2)//2)
-        args=[binary,'-m',candidate['path'],'--host','127.0.0.1','--port','8081','-c',str(max(1024,min(8192,int(os.getenv('THEORG_MODEL_CONTEXT','4096'))))),'-t',str(threads),'-np','1']
+        # Prefer GIZE override while retaining the legacy environment alias.
+        context_text=os.getenv('GIZE_MODEL_CONTEXT',os.getenv('THEORG_MODEL_CONTEXT','4096'))
+        try: requested_context=int(context_text)
+        except (TypeError,ValueError): requested_context=4096
+        context_tokens=device_capabilities.adaptive_context_window(
+            requested_context,
+            preflight['estimated_min_available_ram_bytes'],
+            preflight['available_ram_bytes'])
+        args=[binary,'-m',candidate['path'],'--host','127.0.0.1','--port','8081','-c',str(context_tokens),'-t',str(threads),'-np','1']
         log=open(DATA/'llama-server.log','ab')
         try:
             _model_process=subprocess.Popen(args,stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL)
@@ -513,6 +521,8 @@ def import_model_stream(filename, incoming, length):
             while remaining:
                 chunk = incoming.read(min(1024**2, remaining))
                 if not chunk: raise EngineError('Model upload interrupted before completing.')
+                if not isinstance(chunk, bytes) or len(chunk) > remaining:
+                    raise EngineError('Model upload exceeded the declared byte length.')
                 output.write(chunk)
                 received += len(chunk)
                 remaining -= len(chunk)
@@ -554,6 +564,8 @@ def import_model_zip_stream(filename, incoming, length):
                 block=incoming.read(min(4*1024**2, remaining))
                 if not block:
                     raise EngineError('ZIP upload interrupted; no model installed.')
+                if not isinstance(block, bytes) or len(block) > remaining:
+                    raise EngineError('ZIP upload exceeded the declared byte length.')
                 writer.write(block)
                 remaining -= len(block)
         try:

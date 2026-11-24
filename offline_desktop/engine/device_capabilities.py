@@ -43,9 +43,35 @@ def detect(total_bytes=None, available_bytes=None, cores=None, platform_name=Non
                 inference_block_reason=reason)
 
 def model_allowed(estimated_bytes, available_bytes, reserve_bytes=384*MIB):
+    """Fail closed on missing/invalid telemetry and budget estimates.
+
+    This is a preflight, never a guarantee of real GGUF runtime capacity.
+    Boolean values are rejected because bool is a subclass of int in Python.
+    """
     if available_bytes is None:
-        return False,'Available physical memory could not be determined.'
-    if estimated_bytes+reserve_bytes>available_bytes:
-        return False,('Insufficient available RAM: model estimate %d MiB plus %d MiB device reserve exceeds %d MiB free.'
-                      %(estimated_bytes//MIB,reserve_bytes//MIB,available_bytes//MIB))
-    return True,'Currently available RAM passes the estimate; actual model loading may still fail.'
+        return False, 'Available physical memory could not be determined.'
+    values=(estimated_bytes, available_bytes, reserve_bytes)
+    if any(type(n) is not int or n < 0 for n in values) or estimated_bytes == 0:
+        return False, 'Invalid memory telemetry or model budget.'
+    # Keep a meaningful system reserve even if a caller supplies zero.
+    reserve_bytes=max(reserve_bytes, 384*MIB)
+    if estimated_bytes + reserve_bytes > available_bytes:
+        return False, ('Insufficient available RAM: model estimate %d MiB plus %d MiB device reserve exceeds %d MiB free.'
+                       % (estimated_bytes//MIB, reserve_bytes//MIB, available_bytes//MIB))
+    return True, 'Currently available RAM passes the estimate; actual model loading may still fail.'
+
+def adaptive_context_window(requested_tokens, required_bytes, available_bytes, reserve_bytes=384*MIB):
+    """Bound GGUF context size using *measured* remaining RAM headroom.
+
+    This is an advisory upper bound after model_allowed passed; lowering context
+    reduces KV-cache pressure but cannot guarantee that the runtime will fit.
+    """
+    values=(requested_tokens, required_bytes, available_bytes, reserve_bytes)
+    if any(type(v) is not int or v < 0 for v in values) or requested_tokens == 0:
+        return 1024
+    reserve=max(reserve_bytes, 384*MIB)
+    headroom=max(0, available_bytes-required_bytes-reserve)
+    cap=(1024 if headroom < 256*MIB else
+         2048 if headroom < 768*MIB else
+         4096 if headroom < 1536*MIB else 8192)
+    return min(requested_tokens, cap)
