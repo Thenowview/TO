@@ -95,8 +95,16 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
     const key = JSON.stringify([context.tenantId, context.principalId, context.jobId]);
     if (runningJobs.has(key)) return denied("job_execution_in_progress");
     runningJobs.add(key);
-    try { return await executeAdmitted(request, context); }
-    finally { runningJobs.delete(key); }
+    let timedOut = false;
+    try {
+      const result = await executeAdmitted(request, context);
+      timedOut = result.error === "execution_timeout";
+      return result;
+    } finally {
+      // Timeout closes callbacks, but does not prove the worker or effects stopped.
+      // Keep this job quarantined until the host replaces the gateway after recovery.
+      if (!timedOut) runningJobs.delete(key);
+    }
   }
 
   async function executeAdmitted(request = {}, context) {
