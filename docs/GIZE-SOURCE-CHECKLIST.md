@@ -630,3 +630,6 @@ Runtime03e5e3e3a463d8d6573b22281c759ccf91a7ab29 normalizes malformed RAM telemet
 
 ### OFFLINE / healthy and low telemetry policy — 24 November 2026
 Test5d74c63001990fa569299ae0475115784f3817c3 verifies healthy8GiB/2GiB telemetry retains optional-model eligibility and preflight requirement; low128MiB and unavailable telemetry deny eligibility. Eleven local resource tests passed. Prior da4eefce878441c02dd7ee8f7bad4e8162a1fa4a all non-preview checks green. Fresh CI pending; no model loading or hardware acceptance. NO_GO retained.
+
+### OFFLINE / RAM measurement consistency — 24 November 2026
+Runtime f3f236d1d6273ac38e80ae3489c89044fa47c5b6 marks available RAM unknown when exceeding valid physical total. Tests5f35c977bb81d9ce842f6582033ffdc5daf84063:12 local resource tests pass, including contradictory8GiB available/4GiB total denial and equal-boundary positive. Maina47e7b4817b57cbce3647f088e8440ddf562d688 CI green. New CI pending; no real inference/hardware guarantee. NO_GO retained.
