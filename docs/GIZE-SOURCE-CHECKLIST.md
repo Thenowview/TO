@@ -609,3 +609,6 @@ Exact head 8b23a051ce46ac240fa237f303d3238ad411127f windows-bridge job 138118129
 
 ### OFFLINE / small context request ceiling — 24 November 2026
 Runtime 4d82e26d4a9b817364d5d16c73c87a21f7c61377 no longer raises valid sub-1024 token requests to 1024. Tests f29cbaec8e8be772104cdbead6e6b447b0492ac7: seven local resource-guard tests passed, including ten small-context/headroom combinations. No real model loading or memory guarantee claimed. Prior head 54a5b9f6923339a56eb3c8dd5073a86655c1ecdb all non-preview checks passed including actual native receipt denials. New CI pending; draft/NO_GO retained.
+
+### OFFLINE / bounded model stream — 24 November 2026
+Runtime 63c4dcae6c1a5500e743ddae89345c44e9a3b111 rejects stream chunks exceeding remaining declared length before writing; prevents negative remaining counter/unbounded read continuation. Test 008fd429a5a95717016e884dbb8ce5420de6d66b runs actual extracted import function with oversized synthetic reader and requires no partial/installed file. Fresh CI pending; no local execution claimed this batch. Prior head 58a0f95714025b05feecc1e775e20ae7dc144942 non-preview CI green. NO_GO retained.
