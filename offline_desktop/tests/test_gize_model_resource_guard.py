@@ -66,6 +66,24 @@ class ModelGuardTests(unittest.TestCase):
                 with self.subTest(requested=requested, available=available):
                     self.assertEqual(adjust(requested, 1*GIB, available), requested)
 
+    def test_model_import_rejects_oversized_stream_and_removes_partial(self):
+        import ast, tempfile, shutil, secrets, os
+        from unittest.mock import patch
+        source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "import_model_stream")
+        with tempfile.TemporaryDirectory() as folder:
+            models = Path(folder)
+            scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
+                         shutil=shutil, secrets=secrets, os=os, audit=lambda *a: None)
+            exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-import-function>", "exec"), scope)
+            class Oversized:
+                def read(self, count):
+                    return b"GGUF" + b"x"*count
+            with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                with self.assertRaisesRegex(RuntimeError, "declared"):
+                    scope["import_model_stream"]("synthetic.gguf", Oversized(), 4096)
+            self.assertEqual(list(models.iterdir()), [])
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
