@@ -191,19 +191,22 @@ class ModelGuardTests(unittest.TestCase):
         from unittest.mock import Mock
         source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
         fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "stop_local_model")
-        for kill_fails in (False, True):
-            with self.subTest(kill_fails=kill_fails):
+        for failure in ('none', 'kill', 'wait'):
+            with self.subTest(failure=failure):
                 proc=Mock()
                 proc.poll.return_value=None
                 proc.wait.side_effect=[subprocess.TimeoutExpired("synthetic", 10), 0]
-                if kill_fails:
+                if failure == 'wait':
+                    proc.wait.side_effect=[subprocess.TimeoutExpired('synthetic', 10), subprocess.TimeoutExpired('synthetic', 5)]
+                if failure == 'kill':
                     proc.kill.side_effect=OSError("synthetic kill failure")
                 audit=Mock()
                 scope=dict(_model_process=proc, _model_lock=threading.Lock(),
                            subprocess=subprocess, audit=audit)
                 exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-model-stop>", "exec"), scope)
-                if kill_fails:
-                    with self.assertRaisesRegex(OSError, "synthetic kill failure"):
+                if failure != "none":
+                    expected=OSError if failure == "kill" else subprocess.TimeoutExpired
+                    with self.assertRaises(expected):
                         scope["stop_local_model"]()
                     self.assertIs(scope["_model_process"], proc)
                     audit.assert_not_called()
