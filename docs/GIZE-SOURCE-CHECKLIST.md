@@ -624,3 +624,6 @@ Runtime 9184797dd55237944c9143e9fea5a132cd6c3081 retains instance-local admissio
 
 ### PC-05 / bounded admission retention — 24 November 2026
 Runtime dd2d9bda44fd53e5f4bcf6be731ca6d2bb0646a4 caps active/quarantined scoped keys at256, rejecting overflow without eviction/replay. Tests928eeac97288f1b27d2498db1367beb7ce9bcbcd:18 local negatives passed, including256 concurrent admissions,257th denial, retained first-job denial and normal capacity reuse. Prior0fdd41a251f8e3b043ccd47c50e5cbeb997e0019 checks green; new CI pending. Instance-local only, no worker termination/persistent recovery. NO_GO retained.
+
+### OFFLINE / telemetry normalization — 24 November 2026
+Runtime03e5e3e3a463d8d6573b22281c759ccf91a7ab29 normalizes malformed RAM telemetry to unknown and malformed CPU counts to1; prevents type exceptions/false optional inference readiness. Testff40b1c3cf2d009675edc4939eb55aaeda4491fa covers string/bool/negative/NaN. Ten local resource tests passed. Main823b42a77b8008bd10d9afdd8a52c3cfbc12df27 CI green. Candidate CI pending; no real inference/hardware acceptance. NO_GO retained.
