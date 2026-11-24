@@ -615,3 +615,6 @@ Runtime 63c4dcae6c1a5500e743ddae89345c44e9a3b111 rejects stream chunks exceeding
 
 ### OFFLINE / ZIP stream ceiling — 24 November 2026
 Runtime c0c1514f76e2e1f902c03a47114045c817bc3321 rejects oversized/non-byte ZIP chunks before writing. Tests d6674e6006548506a6f4f22adc1d9b38b31f2923: nine local resource tests pass, including actual extracted GGUF/ZIP importer functions and no leftover partial files. Prior 90ebe091de04adf954175a486aa42020b8ec906c all non-preview CI passed; new CI pending. NO_GO retained; no hardware/model inference/security acceptance claimed.
+
+### PC-05 / scoped execution admission — 24 November 2026
+Gateway instance rejects overlapping execute calls for the same tenant/principal/job until the admitted execute settles; fresh call after completion allowed. Runtime 6bd63f77c9583fe4d676fe8fa6284ee50e39d963; tests aa494120c53b88c5a1914ed86cd46034b542c543:16 local negative tests pass. Instance-local only; timeout does not terminate worker or retract in-flight operations, so no complete recovery/side-effect guarantee. Main packaging retries succeeded on c01f130073910916f9a76eb675c8a6d458e6d0cc. Candidate CI pending; NO_GO retained.
