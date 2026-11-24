@@ -19,4 +19,11 @@ for(const patch of [{mcpEnabled:true},{remoteToolExecutionEnabled:true}]){
  const denied=describeNativeTools({...receipt,...patch});
  assert.equal(denied.ok,false);assert.deepEqual(denied.tools,[]);
 }
+for(let index=0;index<receipt.toolDescriptors.length;index++){
+ for(const patch of [{riskClass:"privileged"},{permissionScope:"all_tenants"},{execution:"arbitrary_shell"},{safeBatch:!receipt.toolDescriptors[index].safeBatch}]){
+  const altered={...receipt,toolDescriptors:receipt.toolDescriptors.map((d,i)=>i===index?{...d,...patch}:d)};
+  const denied=describeNativeTools(altered);
+  assert.equal(denied.ok,false);assert.deepEqual(denied.tools,[]);
+ }
+}
 console.log("Actual native framed catalog accepted; MCP activation claims denied; execution remains disabled.");
