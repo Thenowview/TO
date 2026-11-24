@@ -28,7 +28,10 @@ def detect(total_bytes=None, available_bytes=None, cores=None, platform_name=Non
                 if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(info)):
                     total_bytes=int(info.ullTotalPhys)
             except (OSError,ValueError,AttributeError):pass
+    if type(available_bytes) is not int or available_bytes < 0: available_bytes=None
+    if type(total_bytes) is not int or total_bytes <= 0: total_bytes=None
     cores=cores if cores is not None else (os.cpu_count() or 1)
+    if type(cores) is not int or cores < 1: cores=1
     system=platform_name or platform.system()
     tier=('unknown' if total_bytes is None else
           'below-minimum' if total_bytes<2*GIB else
