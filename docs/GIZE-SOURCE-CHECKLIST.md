@@ -612,3 +612,6 @@ Runtime 4d82e26d4a9b817364d5d16c73c87a21f7c61377 no longer raises valid sub-1024
 
 ### OFFLINE / bounded model stream — 24 November 2026
 Runtime 63c4dcae6c1a5500e743ddae89345c44e9a3b111 rejects stream chunks exceeding remaining declared length before writing; prevents negative remaining counter/unbounded read continuation. Test 008fd429a5a95717016e884dbb8ce5420de6d66b runs actual extracted import function with oversized synthetic reader and requires no partial/installed file. Fresh CI pending; no local execution claimed this batch. Prior head 58a0f95714025b05feecc1e775e20ae7dc144942 non-preview CI green. NO_GO retained.
+
+### OFFLINE / ZIP stream ceiling — 24 November 2026
+Runtime c0c1514f76e2e1f902c03a47114045c817bc3321 rejects oversized/non-byte ZIP chunks before writing. Tests d6674e6006548506a6f4f22adc1d9b38b31f2923: nine local resource tests pass, including actual extracted GGUF/ZIP importer functions and no leftover partial files. Prior 90ebe091de04adf954175a486aa42020b8ec906c all non-preview CI passed; new CI pending. NO_GO retained; no hardware/model inference/security acceptance claimed.
