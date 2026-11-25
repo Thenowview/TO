@@ -121,8 +121,18 @@ export function createGizeCodeMode({ tools = [], runner, authorize, invoke, canD
       typeof authorize !== "function" || typeof invoke !== "function")
       return denied("isolated_execution_not_configured");
     let initial;
-    try { initial = await authorize({ action: "execute_code", context }); }
-    catch { return denied("code_execution_not_authorized"); }
+    let admissionTimer;
+    const admissionTimeout = Symbol("admission_timeout");
+    try {
+      initial = await Promise.race([
+        Promise.resolve().then(() => authorize({ action: "execute_code", context })),
+        new Promise(resolve => {
+          admissionTimer = setTimeout(() => resolve(admissionTimeout), executionTimeoutMs);
+        })
+      ]);
+      if (initial === admissionTimeout) return denied("execution_timeout");
+    } catch { return denied("code_execution_not_authorized"); }
+    finally { if (admissionTimer !== undefined) clearTimeout(admissionTimer); }
     if (!plain(initial) || initial.allow !== true) return denied("code_execution_not_authorized");
     let calls = 0;
     let active = true;
