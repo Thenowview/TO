@@ -13,16 +13,12 @@ if(-not $SkipTests){ python -m unittest discover -s tests -v; if($LASTEXITCODE -
 
 # Official llama.cpp release CPU runtime; tag is intentionally fixed.
 $LlamaTag='b12248'
-$Release=Invoke-RestMethod "https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/$LlamaTag" -Headers @{ 'User-Agent'='TheOrg-Portable-Build' }
 $AssetName="llama-$LlamaTag-bin-win-cpu-x64.zip"
-$Asset=@($Release.assets | Where-Object { $_.name -eq $AssetName }) | Select-Object -First 1
-if(-not $Asset){throw "Missing official llama.cpp release asset $AssetName"}
-if(-not $Asset.digest -or -not $Asset.digest.StartsWith('sha256:')){throw 'Official llama.cpp asset has no verifiable sha256 digest.'}
 $LlamaZip=Join-Path $Cache $AssetName
-Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $LlamaZip
+# Fixed official release URL: no metadata API quota or credentials required.
+Invoke-WebRequest -Uri "https://github.com/ggml-org/llama.cpp/releases/download/$LlamaTag/$AssetName" -OutFile $LlamaZip
 $Actual=(Get-FileHash $LlamaZip -Algorithm SHA256).Hash.ToLowerInvariant()
-$Expected=$Asset.digest.Substring(7).ToLowerInvariant()
-if($Expected -ne 'bb306bfd390f8782c0acaba490505d12f07392791b48f1dd039387a5bacf1181'){throw 'Pinned llama.cpp release digest unexpectedly changed'}
+$Expected='bb306bfd390f8782c0acaba490505d12f07392791b48f1dd039387a5bacf1181'
 if($Actual -ne $Expected){throw "llama.cpp binary hash mismatch: $Actual"}
 $LlamaExtract=Join-Path $Cache 'llama-extracted'
 Expand-Archive -Path $LlamaZip -DestinationPath $LlamaExtract -Force
