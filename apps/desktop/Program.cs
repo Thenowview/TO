@@ -238,6 +238,19 @@ internal sealed class WorkspaceWindow : Form
             if (!concurrentLease.Dispatch(concurrentLease.Capture(), () => true))
                 throw new InvalidOperationException("fresh_broker_dispatch_failed");
             concurrentLease.Validate(concurrentLease.Capture());
+            long expiringConsent = concurrentLease.Capture();
+            Interlocked.Add(ref concurrentTicks, 300000);
+            bool expiredDispatchRan = false, expiredDispatchDenied = false;
+            try {concurrentLease.Dispatch(expiringConsent, () => {expiredDispatchRan = true; return true;});}
+            catch (InvalidOperationException) {expiredDispatchDenied = true;}
+            if (!expiredDispatchDenied || expiredDispatchRan)
+                throw new InvalidOperationException("expired_consent_dispatched_action");
+            concurrentLease.Unlock();
+            bool actionFaultObserved = false;
+            try {concurrentLease.Dispatch(concurrentLease.Capture(), () => {throw new InvalidOperationException("synthetic-dispatch-fault"); return true;});}
+            catch (InvalidOperationException ex) when (ex.Message == "synthetic-dispatch-fault") {actionFaultObserved = true;}
+            if (!actionFaultObserved || !concurrentLease.Dispatch(concurrentLease.Capture(), () => true))
+                throw new InvalidOperationException("dispatch_fault_prevented_recovery");
             using (var cleanupPassword = new TextBox {Text = "synthetic-secret"})
             {
                 bool syntheticFault = false;
