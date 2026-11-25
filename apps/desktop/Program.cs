@@ -179,6 +179,12 @@ internal sealed class WorkspaceWindow : Form
                 catch (ArgumentException) {deniedScope = true;}
                 if (!deniedScope) throw new InvalidOperationException("invalid_credential_scope_accepted");
             }
+            foreach (var invalidSite in new Uri?[] {null, new Uri("/relative", UriKind.Relative)}) {
+                bool deniedSite = false;
+                try {JobCredentialVault.Load("synthetic", new string('a', 32), invalidSite!);}
+                catch (ArgumentException) {deniedSite = true;}
+                if (!deniedSite) throw new InvalidOperationException("non_absolute_vault_origin_accepted");
+            }
             foreach (var malformed in new[] {
                 (Size: 0u, Blob: new IntPtr(1), User: "synthetic"),
                 (Size: 3u, Blob: new IntPtr(1), User: "synthetic"),
