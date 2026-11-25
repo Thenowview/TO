@@ -39,3 +39,27 @@ test("admission quarantine is scoped; unrelated jobs continue and denied policy 
   assert.equal((await gateway.execute({code:"x"},retry)).ok,true);
   assert.equal(runs,2);
 });
+
+test("same job ID in another tenant or principal does not inherit quarantine", async () => {
+  const base={tenantId:"tenant1",principalId:"user001",jobId:"shared001"};
+  const seen=[];
+  const gateway=createGizeCodeMode({
+    executionTimeoutMs:25,
+    runner:{kind:"isolated_worker",run:async()=> "done"},
+    authorize:({context})=>{
+      seen.push([context.tenantId,context.principalId,context.jobId]);
+      return context.tenantId===base.tenantId && context.principalId===base.principalId
+        ? new Promise(()=>{}) : {allow:true};
+    },
+    invoke:async()=>null
+  });
+  assert.equal((await gateway.execute({code:"x"},base)).error,"execution_timeout");
+  assert.equal((await gateway.execute({code:"x"},{...base,tenantId:"tenant2"})).ok,true);
+  assert.equal((await gateway.execute({code:"x"},{...base,principalId:"user002"})).ok,true);
+  assert.equal((await gateway.execute({code:"x"},base)).error,"job_execution_in_progress");
+  assert.deepEqual(seen,[
+    ["tenant1","user001","shared001"],
+    ["tenant2","user001","shared001"],
+    ["tenant1","user002","shared001"]
+  ]);
+});
