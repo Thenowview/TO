@@ -93,21 +93,23 @@ internal static class JobCredentialVault
         {
             int error = Marshal.GetLastWin32Error(); if (error == 1168) return null; throw new Win32Exception(error);
         }
-        Credential credential = default;
-        bool validated = false;
         try
         {
-            credential = Marshal.PtrToStructure<Credential>(buffer);
+            var credential = Marshal.PtrToStructure<Credential>(buffer);
             ValidateRecord(credential.CredentialBlobSize, credential.CredentialBlob, credential.UserName);
-            validated = true;
-            string password = Marshal.PtrToStringUni(credential.CredentialBlob, (int)credential.CredentialBlobSize / 2) ?? "";
-            Lease.Validate(consent);
-            return (credential.UserName, password);
+            return ConsumeSecretBuffer(credential.CredentialBlob, credential.CredentialBlobSize, password => {
+                Lease.Validate(consent);
+                return (credential.UserName, password);
+            });
         }
-        finally {
-            try {if (validated) ClearSecretBuffer(credential.CredentialBlob, credential.CredentialBlobSize);}
-            finally {CredFree(buffer);}
-        }
+        finally {CredFree(buffer);}
+    }
+    internal static T ConsumeSecretBuffer<T>(IntPtr blob, uint size, Func<string, T> consume)
+    {
+        if (blob == IntPtr.Zero || size is < 2 or > 4000 || size % 2 != 0)
+            throw new ArgumentException("Invalid secret buffer");
+        try {return consume(Marshal.PtrToStringUni(blob, (int)size / 2) ?? "");}
+        finally {ClearSecretBuffer(blob, size);}
     }
     internal static void ClearSecretBuffer(IntPtr blob, uint size)
     {
