@@ -200,6 +200,17 @@ internal sealed class WorkspaceWindow : Form
                         throw new InvalidOperationException("vault_secret_buffer_not_cleared");
                 if (System.Runtime.InteropServices.Marshal.ReadByte(syntheticBuffer, 4) != 127)
                     throw new InvalidOperationException("vault_cleanup_exceeded_buffer");
+                for (int i = 0; i < 4; i++) System.Runtime.InteropServices.Marshal.WriteByte(syntheticBuffer, i, 65);
+                bool consumeFault = false;
+                try {JobCredentialVault.ConsumeSecretBuffer<bool>(syntheticBuffer, 4,
+                    _ => throw new InvalidOperationException("synthetic-consent-revoked"));}
+                catch (InvalidOperationException ex) when (ex.Message == "synthetic-consent-revoked") {consumeFault = true;}
+                if (!consumeFault) throw new InvalidOperationException("vault_consumer_fault_hidden");
+                for (int i = 0; i < 4; i++)
+                    if (System.Runtime.InteropServices.Marshal.ReadByte(syntheticBuffer, i) != 0)
+                        throw new InvalidOperationException("vault_fault_cleanup_failed");
+                if (System.Runtime.InteropServices.Marshal.ReadByte(syntheticBuffer, 4) != 127)
+                    throw new InvalidOperationException("vault_fault_cleanup_overrun");
                 foreach (uint invalidSize in new uint[] {0, 3, 4002}) {
                     bool deniedSize = false;
                     try {JobCredentialVault.ClearSecretBuffer(syntheticBuffer, invalidSize);}
