@@ -191,6 +191,22 @@ internal sealed class WorkspaceWindow : Form
                 catch (InvalidOperationException) {rejectedRecord = true;}
                 if (!rejectedRecord) throw new InvalidOperationException("malformed_vault_record_accepted");
             }
+            var syntheticBuffer = System.Runtime.InteropServices.Marshal.AllocCoTaskMem(6);
+            try {
+                for (int i = 0; i < 6; i++) System.Runtime.InteropServices.Marshal.WriteByte(syntheticBuffer, i, 127);
+                JobCredentialVault.ClearSecretBuffer(syntheticBuffer, 4);
+                for (int i = 0; i < 4; i++)
+                    if (System.Runtime.InteropServices.Marshal.ReadByte(syntheticBuffer, i) != 0)
+                        throw new InvalidOperationException("vault_secret_buffer_not_cleared");
+                if (System.Runtime.InteropServices.Marshal.ReadByte(syntheticBuffer, 4) != 127)
+                    throw new InvalidOperationException("vault_cleanup_exceeded_buffer");
+                foreach (uint invalidSize in new uint[] {0, 3, 4002}) {
+                    bool deniedSize = false;
+                    try {JobCredentialVault.ClearSecretBuffer(syntheticBuffer, invalidSize);}
+                    catch (ArgumentException) {deniedSize = true;}
+                    if (!deniedSize) throw new InvalidOperationException("vault_cleanup_invalid_size");
+                }
+            } finally {System.Runtime.InteropServices.Marshal.FreeCoTaskMem(syntheticBuffer);}
             if (await _workspace.CoreWebView2.ExecuteScriptAsync("(()=>{" + AutofillVisibility + "const box=document.createElement('div');document.body.append(box);try{const e=document.createElement('input');box.append(e);if(!visible(e))return false;for(const attr of ['hidden','inert','aria-hidden']){box.setAttribute(attr,'true');if(visible(e))return false;box.removeAttribute(attr);}e.readOnly=true;if(visible(e))return false;e.readOnly=false;e.disabled=true;if(visible(e))return false;e.disabled=false;for(const value of ['hidden','collapse']){e.style.visibility=value;if(visible(e))return false;}e.style.visibility='visible';e.style.display='none';if(visible(e))return false;e.style.display='block';e.remove();return !visible(e);}finally{box.remove();}})()") != "true")
                 throw new InvalidOperationException("autofill_dom_denial_failed");
             JobCredentialVault.Lock();
