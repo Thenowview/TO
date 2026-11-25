@@ -5,7 +5,7 @@ from pathlib import Path
 class PinnedDownloadTests(unittest.TestCase):
     def test_download_has_no_metadata_or_credentials_and_verifies_before_extract(self):
         script=(Path(__file__).resolve().parents[1]/"Build-TheOrg-Portable-Windows.ps1").read_text()
-        section=script.split("# Official llama.cpp",1)[1].split("# Portable Git",1)[0]
+        section="# Official llama.cpp"+script.split("# Official llama.cpp",1)[1].split("# Portable Git",1)[0]
         self.assertNotIn("api.github.com",section)
         self.assertNotIn("Invoke-RestMethod",section)
         self.assertNotIn("Authorization",section)
@@ -25,7 +25,7 @@ class PinnedDownloadTests(unittest.TestCase):
                 self.fail("Windows hash rejection test requires PowerShell")
             self.skipTest("PowerShell unavailable; Windows CI must execute this test")
         script=(Path(__file__).resolve().parents[1]/"Build-TheOrg-Portable-Windows.ps1").read_text()
-        section=script.split("# Official llama.cpp",1)[1].split("# Portable Git",1)[0]
+        section="# Official llama.cpp"+script.split("# Official llama.cpp",1)[1].split("# Portable Git",1)[0]
         with tempfile.TemporaryDirectory() as folder:
             harness=Path(folder)/"tampered.ps1"
             harness.write_text("""
