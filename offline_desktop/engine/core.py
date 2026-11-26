@@ -645,6 +645,7 @@ def stop_local_model():
     global _model_process
     with _model_lock:
         if not _model_process or _model_process.poll() is not None:
+            _model_process = None
             return {'stopped':False,'note':'No TheOrg-managed model is running.'}
         proc = _model_process
         proc.terminate()
