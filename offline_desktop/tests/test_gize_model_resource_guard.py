@@ -248,6 +248,26 @@ class ModelGuardTests(unittest.TestCase):
             settings.assert_not_called()
             self.assertFalse(lock.locked())
 
+
+    def test_terminate_failure_retains_process_and_releases_lock(self):
+        import ast, threading, subprocess
+        from unittest.mock import Mock
+        source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "stop_local_model")
+        proc = Mock()
+        proc.poll.return_value = None
+        proc.terminate.side_effect = OSError("synthetic terminate failure")
+        lock, audit = threading.Lock(), Mock()
+        scope = dict(_model_process=proc, _model_lock=lock, subprocess=subprocess, audit=audit)
+        exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-model-stop>", "exec"), scope)
+        with self.assertRaisesRegex(OSError, "synthetic terminate failure"):
+            scope["stop_local_model"]()
+        self.assertIs(scope["_model_process"], proc)
+        proc.wait.assert_not_called()
+        proc.kill.assert_not_called()
+        audit.assert_not_called()
+        self.assertFalse(lock.locked())
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
