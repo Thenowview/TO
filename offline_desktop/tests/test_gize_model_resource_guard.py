@@ -289,6 +289,26 @@ class ModelGuardTests(unittest.TestCase):
                 audit.assert_not_called()
                 self.assertFalse(lock.locked())
 
+
+    def test_poll_failure_does_not_discard_unknown_process(self):
+        import ast, threading, subprocess
+        from unittest.mock import Mock
+        source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "stop_local_model")
+        proc, audit = Mock(), Mock()
+        proc.poll.side_effect = OSError("synthetic poll failure")
+        lock = threading.Lock()
+        scope = dict(_model_process=proc, _model_lock=lock, subprocess=subprocess, audit=audit)
+        exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-model-stop>", "exec"), scope)
+        with self.assertRaisesRegex(OSError, "synthetic poll failure"):
+            scope["stop_local_model"]()
+        self.assertIs(scope["_model_process"], proc)
+        proc.terminate.assert_not_called()
+        proc.kill.assert_not_called()
+        proc.wait.assert_not_called()
+        audit.assert_not_called()
+        self.assertFalse(lock.locked())
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
