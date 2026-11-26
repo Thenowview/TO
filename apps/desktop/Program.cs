@@ -237,6 +237,12 @@ internal sealed class WorkspaceWindow : Form
             catch (InvalidOperationException) {lockedSaveDenied = true;}
             if (!lockedLoadDenied || !lockedSaveDenied) throw new InvalidOperationException("locked_vault_access");
             JobCredentialVault.Unlock();
+            foreach (var invalidUsername in new string?[] {null, "", "synthetic\0suffix", new string('x', 257)}) {
+                bool rejectedUsername = false;
+                try {JobCredentialVault.Save("synthetic", new string('a', 32), new Uri("https://example.com/"), invalidUsername!, "synthetic");}
+                catch (ArgumentException) {rejectedUsername = true;}
+                if (!rejectedUsername) throw new InvalidOperationException("ambiguous_vault_username_accepted");
+            }
             long leaseNow = 100;
             var testLease = new JobCredentialVault.SessionLease(() => leaseNow);
             if (!testLease.IsLocked) throw new InvalidOperationException("lease_not_initially_locked");
