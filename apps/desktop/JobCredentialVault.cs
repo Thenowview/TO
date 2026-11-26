@@ -72,7 +72,7 @@ internal static class JobCredentialVault
     {
         RequireUnlocked();
         long saveConsent = consent ?? Lease.Capture();
-        if (username.Length is < 1 or > 256 || password.Length is < 1 or > 2000) throw new ArgumentException("Enter a bounded username and password");
+        if (string.IsNullOrEmpty(username) || username.Length > 256 || username.Contains('\0') || string.IsNullOrEmpty(password) || password.Length > 2000) throw new ArgumentException("Enter a bounded username and password");
         byte[] bytes = Encoding.Unicode.GetBytes(password); IntPtr secret = Marshal.AllocCoTaskMem(bytes.Length);
         try
         {
