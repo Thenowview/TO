@@ -493,10 +493,11 @@ def start_local_model(name):
         log=open(DATA/'llama-server.log','ab')
         try:
             _model_process=subprocess.Popen(args,stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL)
+            started_pid=_model_process.pid
         finally: log.close()
     set_setting('backend','llamacpp')
-    audit('model.start',{'name':name,'pid':_model_process.pid})
-    return {'started':True,'name':name,'pid':_model_process.pid,'note':'Model may take time to initialize; refresh status.'}
+    audit('model.start',{'name':name,'pid':started_pid})
+    return {'started':True,'name':name,'pid':started_pid,'note':'Model may take time to initialize; refresh status.'}
 
 
 MAX_MODEL_BYTES = 32 * 1024**3

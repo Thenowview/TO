@@ -173,7 +173,11 @@ class ModelGuardTests(unittest.TestCase):
                     exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-model-launch>", "exec"), scope)
                     with patch.dict(os.environ, {"GIZE_MODEL_CONTEXT":"8192"}):
                         if fresh == 2*GIB:
-                            self.assertTrue(scope["start_local_model"](model.name)["started"])
+                            scope["set_setting"].side_effect = lambda *args: scope.update(_model_process=None)
+                            receipt = scope["start_local_model"](model.name)
+                            self.assertTrue(receipt["started"])
+                            self.assertEqual(receipt["pid"], 123)
+                            scope["audit"].assert_called_once_with("model.start", {"name": model.name, "pid": 123})
                             process.assert_called_once()
                             context.assert_called_once_with(8192, 1*GIB, fresh)
                             args=process.call_args.args[0]
