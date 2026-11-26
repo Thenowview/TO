@@ -62,7 +62,8 @@ internal static class JobCredentialVault
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool Delete(string target, uint type, uint flags);
     private static string Target(string company, string order, Uri site)
     {
-        if (!System.Text.RegularExpressions.Regex.IsMatch(company, @"\A[a-z0-9_-]{1,40}\z") ||
+        if (site is null || !site.IsAbsoluteUri || string.IsNullOrEmpty(site.Host) ||
+            !System.Text.RegularExpressions.Regex.IsMatch(company, @"\A[a-z0-9_-]{1,40}\z") ||
             !System.Text.RegularExpressions.Regex.IsMatch(order, @"\A[a-f0-9]{32}\z") || site.Scheme != "https" || site.UserInfo != "" || site.Port != 443)
             throw new ArgumentException("Invalid saved-login scope");
         return "GIZE/Desktop/" + company + "/" + order + "/" + site.GetLeftPart(UriPartial.Authority);
