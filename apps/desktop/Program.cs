@@ -268,6 +268,13 @@ internal sealed class WorkspaceWindow : Form
             try {concurrentLease.Dispatch(staleConsent, () => {dispatchedRevoked = true; return true;});}
             catch (InvalidOperationException) {dispatchDenied = true;}
             if (!dispatchDenied || dispatchedRevoked) throw new InvalidOperationException("revoked_broker_dispatch");
+            int revokedCallbacks = 0, revokedDenials = 0;
+            Parallel.For(0, 256, _ => {
+                try {concurrentLease.Dispatch(staleConsent, () => {Interlocked.Increment(ref revokedCallbacks); return true;});}
+                catch (InvalidOperationException) {Interlocked.Increment(ref revokedDenials);}
+            });
+            if (revokedCallbacks != 0 || revokedDenials != 256)
+                throw new InvalidOperationException("concurrent_revoked_dispatch_accepted");
             if (!concurrentLease.Dispatch(concurrentLease.Capture(), () => true))
                 throw new InvalidOperationException("fresh_broker_dispatch_failed");
             concurrentLease.Validate(concurrentLease.Capture());
