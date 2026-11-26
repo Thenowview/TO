@@ -268,6 +268,27 @@ class ModelGuardTests(unittest.TestCase):
         audit.assert_not_called()
         self.assertFalse(lock.locked())
 
+
+    def test_already_exited_process_releases_handle_without_false_stop(self):
+        import ast, threading, subprocess
+        from unittest.mock import Mock
+        source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "stop_local_model")
+        for exit_code in (0, 1, -9):
+            with self.subTest(exit_code=exit_code):
+                proc, audit = Mock(), Mock()
+                proc.poll.return_value = exit_code
+                lock = threading.Lock()
+                scope = dict(_model_process=proc, _model_lock=lock, subprocess=subprocess, audit=audit)
+                exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-model-stop>", "exec"), scope)
+                self.assertFalse(scope["stop_local_model"]()["stopped"])
+                self.assertIsNone(scope["_model_process"])
+                proc.terminate.assert_not_called()
+                proc.kill.assert_not_called()
+                proc.wait.assert_not_called()
+                audit.assert_not_called()
+                self.assertFalse(lock.locked())
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
