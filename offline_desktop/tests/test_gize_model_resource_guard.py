@@ -182,13 +182,26 @@ class ModelGuardTests(unittest.TestCase):
                             context.assert_called_once_with(8192, 1*GIB, fresh)
                             args=process.call_args.args[0]
                             self.assertEqual(args[args.index("-c")+1], "2048")
+                            # A failed OS spawn must close its log without reporting launch.
+                            process.reset_mock()
+                            process.side_effect = OSError("synthetic spawn failure")
+                            scope["set_setting"].reset_mock()
+                            scope["audit"].reset_mock()
+                            with self.assertRaisesRegex(OSError, "synthetic spawn failure"):
+                                scope["start_local_model"](model.name)
+                            self.assertIsNone(scope["_model_process"])
+                            self.assertTrue(process.call_args.kwargs["stdout"].closed)
+                            scope["set_setting"].assert_not_called()
+                            scope["audit"].assert_not_called()
+                            self.assertFalse(lock.locked())
+
                         else:
                             with self.assertRaisesRegex(RuntimeError, "fresh RAM check"):
                                 scope["start_local_model"](model.name)
                             process.assert_not_called()
                             scope["set_setting"].assert_not_called()
                             scope["audit"].assert_not_called()
-                    ram.assert_called_once_with()
+                    self.assertEqual(ram.call_count, 2 if fresh == 2*GIB else 1)
 
     def test_shutdown_timeout_escalates_and_failed_kill_retains_handle(self):
         import ast, threading, subprocess
