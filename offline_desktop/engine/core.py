@@ -540,7 +540,10 @@ def import_model_stream(filename, incoming, length):
         # Atomic no-clobber publication: a concurrent import must retain its file.
         try: os.link(tmp, target)
         except FileExistsError: raise EngineError('A model with this name already exists. Rename the source model explicitly.')
-        audit('model.import', {'name':filename,'bytes':received})
+        try:
+            audit('model.import', {'name':filename,'bytes':received})
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise EngineError('Model file installed, but import completion failed. Inspect Models before retrying.') from exc
         return {'name':filename,'bytes':received,'note':'Copied into portable model folder. Press Start to load it.'}
     finally:
         if tmp.exists(): tmp.unlink()
