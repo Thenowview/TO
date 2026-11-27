@@ -388,6 +388,29 @@ class ModelGuardTests(unittest.TestCase):
             self.assertEqual(list(models.iterdir()), [target])
             audit.assert_not_called()
 
+
+    def test_publication_failure_cleans_direct_and_zip_imports(self):
+        import ast, tempfile, shutil, secrets, os, re, io, zipfile
+        from unittest.mock import Mock, patch
+        tree = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        model = b"GGUF" + b"x"*4092
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("synthetic.gguf", model)
+        for kind, data in (("stream", model), ("zip_stream", archive.getvalue())):
+            for failure in (PermissionError, OSError):
+                with self.subTest(kind=kind, failure=failure), tempfile.TemporaryDirectory() as folder:
+                    models, audit = Path(folder), Mock()
+                    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "import_model_" + kind)
+                    scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
+                                 shutil=shutil, secrets=secrets, os=os, re=re, audit=audit)
+                    exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-import>", "exec"), scope)
+                    with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()), patch.object(os, "link", side_effect=failure("synthetic publication failure")):
+                        with self.assertRaises((RuntimeError, OSError)):
+                            scope[fn.name]("synthetic.zip" if kind == "zip_stream" else "synthetic.gguf", io.BytesIO(data), len(data))
+                    self.assertEqual(list(models.iterdir()), [])
+                    audit.assert_not_called()
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
