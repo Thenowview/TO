@@ -421,6 +421,31 @@ class ModelGuardTests(unittest.TestCase):
                     audit.assert_called_once()
                     self.assertEqual(audit.call_args.args[0], "model.import_zip" if kind == "zip_stream" else "model.import")
 
+
+    def test_zip_audit_failure_reports_installed_file_truthfully(self):
+        import ast, tempfile, shutil, secrets, os, re, io, zipfile
+        from unittest.mock import Mock, patch
+        tree = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "import_model_zip_stream")
+        model = b"GGUF" + b"x"*4092
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("synthetic.gguf", model)
+        data = archive.getvalue()
+        with tempfile.TemporaryDirectory() as folder:
+            models = Path(folder)
+            audit = Mock(side_effect=OSError("synthetic audit failure"))
+            scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
+                         shutil=shutil, secrets=secrets, os=os, re=re, audit=audit)
+            exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-zip-import>", "exec"), scope)
+            with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                with self.assertRaisesRegex(RuntimeError, "Model file installed"):
+                    scope[fn.name]("synthetic.zip", io.BytesIO(data), len(data))
+            target = models / "synthetic.gguf"
+            self.assertEqual(target.read_bytes(), model)
+            self.assertEqual(list(models.iterdir()), [target])
+            audit.assert_called_once()
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
