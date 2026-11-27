@@ -633,7 +633,7 @@ def import_model_zip_stream(filename, incoming, length):
                 # Only one GGUF is committed to disk. The staging archive is discarded.
                 if target.exists() or target.is_symlink():
                     raise EngineError('A model with this name appeared during import.')
-                os.replace(extracted,target)
+                os.link(extracted,target)
                 audit('model.import_zip',{'name':extracted_name,'bytes':received,'sha256':hasher.hexdigest()})
                 return {'name':extracted_name,'bytes':received,'sha256':hasher.hexdigest(),
                         'source_archive':filename,'note':'GGUF extracted locally; temporary ZIP removed. Start it from Models.'}
