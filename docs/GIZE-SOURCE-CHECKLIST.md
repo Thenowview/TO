@@ -728,3 +728,6 @@ Extends actual ZIP import fault test with a same-name retry using a real archive
 
 ### PC-07 / direct model audit recovery — 27 November 2026
 Runtime 430dea25f4f9812409604e3e8d709018c0b650a7 reports installed model on post-publication audit OSError/ValueError/RuntimeError. Test 5e22e258e108d0f26268b0a98d4bd91be29b261e injects audit OSError and requires truthful error, preserved exact file/no staging and same-name retry denial before source read/no success audit. CI pending. NO_GO hardware/Chrome/provider/inference, sandbox/recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. No acceptance promotion; next exact-head CI and eligible merge.
+
+### PC-07 / direct audit failure matrix — 27 November 2026
+Extends actual direct-import recovery regression to OSError, ValueError and RuntimeError: truthful installed-file error, exact model preservation/staging cleanup, retry denial before reading source, no retry audit. Runtime unchanged; CI pending. Base17d41553b9ef237c51e769a1fcc4beace6aa35a5 actual checks green. No acceptance promotion. NO_GO physical hardware/Chrome/provider/inference, sandbox/persistent recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. Next exact-head CI and eligible merge.

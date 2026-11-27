@@ -463,25 +463,27 @@ class ModelGuardTests(unittest.TestCase):
         tree = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
         fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "import_model_stream")
         model = b"GGUF" + b"x"*4092
-        with tempfile.TemporaryDirectory() as folder:
-            models, audit = Path(folder), Mock(side_effect=OSError("synthetic audit failure"))
-            scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
-                         shutil=shutil, secrets=secrets, os=os, audit=audit)
-            exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-direct-import>", "exec"), scope)
-            with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
-                with self.assertRaisesRegex(RuntimeError, "Model file installed"):
-                    scope[fn.name]("synthetic.gguf", io.BytesIO(model), len(model))
-            target = models / "synthetic.gguf"
-            self.assertEqual(target.read_bytes(), model)
-            self.assertEqual(list(models.iterdir()), [target])
-            audit.assert_called_once()
-            audit.reset_mock()
-            incoming = Mock()
-            with self.assertRaisesRegex(RuntimeError, "already exists"):
-                scope[fn.name](target.name, incoming, len(model))
-            incoming.read.assert_not_called()
-            audit.assert_not_called()
-            self.assertEqual(target.read_bytes(), model)
+        for failure in (OSError, ValueError, RuntimeError):
+            with self.subTest(failure=failure):
+                with tempfile.TemporaryDirectory() as folder:
+                    models, audit = Path(folder), Mock(side_effect=failure("synthetic audit failure"))
+                    scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
+                                 shutil=shutil, secrets=secrets, os=os, audit=audit)
+                    exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-direct-import>", "exec"), scope)
+                    with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                        with self.assertRaisesRegex(RuntimeError, "Model file installed"):
+                            scope[fn.name]("synthetic.gguf", io.BytesIO(model), len(model))
+                    target = models / "synthetic.gguf"
+                    self.assertEqual(target.read_bytes(), model)
+                    self.assertEqual(list(models.iterdir()), [target])
+                    audit.assert_called_once()
+                    audit.reset_mock()
+                    incoming = Mock()
+                    with self.assertRaisesRegex(RuntimeError, "already exists"):
+                        scope[fn.name](target.name, incoming, len(model))
+                    incoming.read.assert_not_called()
+                    audit.assert_not_called()
+                    self.assertEqual(target.read_bytes(), model)
 
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
