@@ -410,6 +410,16 @@ class ModelGuardTests(unittest.TestCase):
                             scope[fn.name]("synthetic.zip" if kind == "zip_stream" else "synthetic.gguf", io.BytesIO(data), len(data))
                     self.assertEqual(list(models.iterdir()), [])
                     audit.assert_not_called()
+                    # Publication failure must not poison a fresh import of the same name.
+                    with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                        receipt = scope[fn.name]("synthetic.zip" if kind == "zip_stream" else "synthetic.gguf", io.BytesIO(data), len(data))
+                    target = models / "synthetic.gguf"
+                    self.assertEqual(target.read_bytes(), model)
+                    self.assertEqual(list(models.iterdir()), [target])
+                    self.assertEqual(receipt["name"], target.name)
+                    self.assertEqual(receipt["bytes"], len(model))
+                    audit.assert_called_once()
+                    self.assertEqual(audit.call_args.args[0], "model.import_zip" if kind == "zip_stream" else "model.import")
 
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
