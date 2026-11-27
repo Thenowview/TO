@@ -194,6 +194,17 @@ class ModelGuardTests(unittest.TestCase):
                             scope["set_setting"].assert_not_called()
                             scope["audit"].assert_not_called()
                             self.assertFalse(lock.locked())
+                            # A later independent retry may recover after the failed spawn.
+                            process.side_effect = None
+                            process.reset_mock()
+                            recovered = scope["start_local_model"](model.name)
+                            self.assertTrue(recovered["started"])
+                            self.assertEqual(recovered["pid"], 123)
+                            process.assert_called_once()
+                            scope["set_setting"].assert_called_once_with("backend", "llamacpp")
+                            scope["audit"].assert_called_once_with("model.start", {"name": model.name, "pid": 123})
+                            self.assertTrue(process.call_args.kwargs["stdout"].closed)
+                            self.assertFalse(lock.locked())
 
                         else:
                             with self.assertRaisesRegex(RuntimeError, "fresh RAM check"):
@@ -201,7 +212,7 @@ class ModelGuardTests(unittest.TestCase):
                             process.assert_not_called()
                             scope["set_setting"].assert_not_called()
                             scope["audit"].assert_not_called()
-                    self.assertEqual(ram.call_count, 2 if fresh == 2*GIB else 1)
+                    self.assertEqual(ram.call_count, 3 if fresh == 2*GIB else 1)
 
     def test_shutdown_timeout_escalates_and_failed_kill_retains_handle(self):
         import ast, threading, subprocess
