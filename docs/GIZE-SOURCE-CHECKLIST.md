@@ -722,3 +722,6 @@ Test 4760beccb255bfba63daea080d727c2f045c45f5 extends all four direct/ZIP Permis
 
 ### PC-07 / truthful ZIP post-publication recovery — 27 November 2026
 Runtime ced5a7001149620eaf6eac6d5df82c37f3b803a2 tracks completed publication and reports an installed model when subsequent audit/completion fails, instead of falsely saying nothing installed. Test 8cd2c071eba839917e646e3a121918fc1ce0afe6 injects audit OSError, requires truthful error, exact preserved GGUF and no staging files. CI pending; no acceptance promotion. NO_GO physical Windows/Chrome/provider/inference, sandbox/persistent recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. Next exact-head CI and eligible merge.
+
+### PC-07 / ZIP retry preservation after audit failure — 27 November 2026
+Extends actual ZIP import fault test with a same-name retry using a real archive stream. Requires rejection, no success audit, exact preserved installed bytes and no staging leftovers. Runtime unchanged; CI pending. Base ed9e5fc7202015a710fcc295e0fddd0dae6bdf97 actual checks green. NO_GO physical Windows/Chrome/provider/inference, sandbox/recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. No acceptance promotion; next exact-head CI and eligible merge.
