@@ -731,3 +731,6 @@ Runtime 430dea25f4f9812409604e3e8d709018c0b650a7 reports installed model on post
 
 ### PC-07 / direct audit failure matrix — 27 November 2026
 Extends actual direct-import recovery regression to OSError, ValueError and RuntimeError: truthful installed-file error, exact model preservation/staging cleanup, retry denial before reading source, no retry audit. Runtime unchanged; CI pending. Base17d41553b9ef237c51e769a1fcc4beace6aa35a5 actual checks green. No acceptance promotion. NO_GO physical hardware/Chrome/provider/inference, sandbox/persistent recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. Next exact-head CI and eligible merge.
+
+### PC-07 / ZIP audit failure matrix — 27 November 2026
+Extends actual ZIP post-publication audit regression across OSError/ValueError/RuntimeError. Each case requires truthful installed-file error, exact preserved model/no staging and same-name retry denial/no retry audit. Runtime unchanged; CI pending. Base83e262f194d8e9bf46ec7b5325aacf08f5636c87 actual checks green. No acceptance promotion. NO_GO hardware/Chrome/provider/inference, sandbox/persistent recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. Next exact-head CI and eligible merge.

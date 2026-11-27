@@ -432,30 +432,31 @@ class ModelGuardTests(unittest.TestCase):
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
             zf.writestr("synthetic.gguf", model)
         data = archive.getvalue()
-        with tempfile.TemporaryDirectory() as folder:
-            models = Path(folder)
-            audit = Mock(side_effect=OSError("synthetic audit failure"))
-            scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
-                         shutil=shutil, secrets=secrets, os=os, re=re, audit=audit)
-            exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-zip-import>", "exec"), scope)
-            with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
-                with self.assertRaisesRegex(RuntimeError, "Model file installed"):
-                    scope[fn.name]("synthetic.zip", io.BytesIO(data), len(data))
-            target = models / "synthetic.gguf"
-            self.assertEqual(target.read_bytes(), model)
-            self.assertEqual(list(models.iterdir()), [target])
-            audit.assert_called_once()
-            # A retry must refuse the installed name without overwriting it.
-            incoming = io.BytesIO(data)
-            audit.reset_mock()
-            audit.side_effect = None
-            with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
-                with self.assertRaisesRegex(RuntimeError, "already exists"):
-                    scope[fn.name]("synthetic.zip", incoming, len(data))
-            audit.assert_not_called()
-            self.assertEqual(target.read_bytes(), model)
-            self.assertEqual(list(models.iterdir()), [target])
-
+        for failure in (OSError, ValueError, RuntimeError):
+            with self.subTest(failure=failure):
+                with tempfile.TemporaryDirectory() as folder:
+                    models = Path(folder)
+                    audit = Mock(side_effect=failure("synthetic audit failure"))
+                    scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
+                                 shutil=shutil, secrets=secrets, os=os, re=re, audit=audit)
+                    exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-zip-import>", "exec"), scope)
+                    with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                        with self.assertRaisesRegex(RuntimeError, "Model file installed"):
+                            scope[fn.name]("synthetic.zip", io.BytesIO(data), len(data))
+                    target = models / "synthetic.gguf"
+                    self.assertEqual(target.read_bytes(), model)
+                    self.assertEqual(list(models.iterdir()), [target])
+                    audit.assert_called_once()
+                    # A retry must refuse the installed name without overwriting it.
+                    incoming = io.BytesIO(data)
+                    audit.reset_mock()
+                    audit.side_effect = None
+                    with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                        with self.assertRaisesRegex(RuntimeError, "already exists"):
+                            scope[fn.name]("synthetic.zip", incoming, len(data))
+                    audit.assert_not_called()
+                    self.assertEqual(target.read_bytes(), model)
+                    self.assertEqual(list(models.iterdir()), [target])
 
     def test_direct_import_audit_failure_preserves_model_and_denies_retry(self):
         import ast, tempfile, shutil, secrets, os, io
