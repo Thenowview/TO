@@ -563,6 +563,7 @@ def import_model_zip_stream(filename, incoming, length):
     MODELS.mkdir(parents=True, exist_ok=True)
     if shutil.disk_usage(MODELS).free < length + 512 * 1024**2:
         raise EngineError('Not enough free space for temporary ZIP staging (plus 512 MiB headroom).')
+    published = False
     archive = MODELS / ('.import-' + secrets.token_hex(12) + '.zip.partial')
     extracted = MODELS / ('.import-' + secrets.token_hex(12) + '.gguf.partial')
     target = None
@@ -634,10 +635,13 @@ def import_model_zip_stream(filename, incoming, length):
                 if target.exists() or target.is_symlink():
                     raise EngineError('A model with this name appeared during import.')
                 os.link(extracted,target)
+                published = True
                 audit('model.import_zip',{'name':extracted_name,'bytes':received,'sha256':hasher.hexdigest()})
                 return {'name':extracted_name,'bytes':received,'sha256':hasher.hexdigest(),
                         'source_archive':filename,'note':'GGUF extracted locally; temporary ZIP removed. Start it from Models.'}
         except (zipfile.BadZipFile, EOFError, OSError, ValueError, RuntimeError) as exc:
+            if published:
+                raise EngineError('Model file installed, but import completion failed. Inspect Models before retrying.') from exc
             raise EngineError('Invalid or damaged ZIP archive; nothing installed: '+str(exc)[:150]) from exc
     finally:
         archive.unlink(missing_ok=True)
