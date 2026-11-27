@@ -725,3 +725,6 @@ Runtime ced5a7001149620eaf6eac6d5df82c37f3b803a2 tracks completed publication an
 
 ### PC-07 / ZIP retry preservation after audit failure — 27 November 2026
 Extends actual ZIP import fault test with a same-name retry using a real archive stream. Requires rejection, no success audit, exact preserved installed bytes and no staging leftovers. Runtime unchanged; CI pending. Base ed9e5fc7202015a710fcc295e0fddd0dae6bdf97 actual checks green. NO_GO physical Windows/Chrome/provider/inference, sandbox/recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. No acceptance promotion; next exact-head CI and eligible merge.
+
+### PC-07 / direct model audit recovery — 27 November 2026
+Runtime 430dea25f4f9812409604e3e8d709018c0b650a7 reports installed model on post-publication audit OSError/ValueError/RuntimeError. Test 5e22e258e108d0f26268b0a98d4bd91be29b261e injects audit OSError and requires truthful error, preserved exact file/no staging and same-name retry denial before source read/no success audit. CI pending. NO_GO hardware/Chrome/provider/inference, sandbox/recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. No acceptance promotion; next exact-head CI and eligible merge.
