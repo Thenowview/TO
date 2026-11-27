@@ -734,3 +734,6 @@ Extends actual direct-import recovery regression to OSError, ValueError and Runt
 
 ### PC-07 / ZIP audit failure matrix — 27 November 2026
 Extends actual ZIP post-publication audit regression across OSError/ValueError/RuntimeError. Each case requires truthful installed-file error, exact preserved model/no staging and same-name retry denial/no retry audit. Runtime unchanged; CI pending. Base83e262f194d8e9bf46ec7b5325aacf08f5636c87 actual checks green. No acceptance promotion. NO_GO hardware/Chrome/provider/inference, sandbox/persistent recovery, independent security/legal/key custody/customer, signing/deployment/rollback/readback. Next exact-head CI and eligible merge.
+
+### PC-07 / SQLite audit recovery — 28 November 2026
+Direct and ZIP import completion handling now includes sqlite3.Error. Existing preservation/retry regressions add sqlite3.OperationalError and sqlite3.DatabaseError to both paths (four new fault subcases). Injected real exception classes; not an actual locked/corrupt database acceptance test. CI pending; no acceptance promotion. NO_GO physical Windows/Chrome/provider/inference, hardened sandbox/persistent recovery, independent security/legal/key custody/customer, trusted signing/deployment/rollback/readback. Next exact-head CI and eligible merge.

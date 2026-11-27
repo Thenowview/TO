@@ -508,6 +508,7 @@ def import_model_stream(filename, incoming, length):
     No remote download, no decompression, no untrusted paths or whole-file RAM load.
     """
     import re as _re
+    import sqlite3
     if not isinstance(filename, str) or not _re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._ -]{0,150}\.gguf', filename, flags=_re.I):
         raise EngineError('Choose a .gguf file with a safe filename.')
     if filename in {'.gguf', '..gguf'} or '..' in filename:
@@ -542,7 +543,7 @@ def import_model_stream(filename, incoming, length):
         except FileExistsError: raise EngineError('A model with this name already exists. Rename the source model explicitly.')
         try:
             audit('model.import', {'name':filename,'bytes':received})
-        except (OSError, ValueError, RuntimeError) as exc:
+        except (OSError, ValueError, RuntimeError, sqlite3.Error) as exc:
             raise EngineError('Model file installed, but import completion failed. Inspect Models before retrying.') from exc
         return {'name':filename,'bytes':received,'note':'Copied into portable model folder. Press Start to load it.'}
     finally:
@@ -555,6 +556,7 @@ def import_model_zip_stream(filename, incoming, length):
     leaves neither an installed model nor a partial archive. Not a model loader.
     """
     import hashlib
+    import sqlite3
     import zipfile
     import stat
     from pathlib import PurePosixPath
@@ -642,7 +644,7 @@ def import_model_zip_stream(filename, incoming, length):
                 audit('model.import_zip',{'name':extracted_name,'bytes':received,'sha256':hasher.hexdigest()})
                 return {'name':extracted_name,'bytes':received,'sha256':hasher.hexdigest(),
                         'source_archive':filename,'note':'GGUF extracted locally; temporary ZIP removed. Start it from Models.'}
-        except (zipfile.BadZipFile, EOFError, OSError, ValueError, RuntimeError) as exc:
+        except (zipfile.BadZipFile, EOFError, OSError, ValueError, RuntimeError, sqlite3.Error) as exc:
             if published:
                 raise EngineError('Model file installed, but import completion failed. Inspect Models before retrying.') from exc
             raise EngineError('Invalid or damaged ZIP archive; nothing installed: '+str(exc)[:150]) from exc
