@@ -537,7 +537,9 @@ def import_model_stream(filename, incoming, length):
         with open(tmp,'rb') as check:
             if check.read(4) != b'GGUF':
                 raise EngineError('Selected file is not GGUF. No model installed.')
-        os.replace(tmp, target)
+        # Atomic no-clobber publication: a concurrent import must retain its file.
+        try: os.link(tmp, target)
+        except FileExistsError: raise EngineError('A model with this name already exists. Rename the source model explicitly.')
         audit('model.import', {'name':filename,'bytes':received})
         return {'name':filename,'bytes':received,'note':'Copied into portable model folder. Press Start to load it.'}
     finally:

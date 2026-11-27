@@ -337,6 +337,30 @@ class ModelGuardTests(unittest.TestCase):
         audit.assert_not_called()
         self.assertFalse(lock.locked())
 
+
+    def test_model_import_does_not_overwrite_concurrent_destination(self):
+        import ast, tempfile, shutil, secrets, os
+        from unittest.mock import Mock, patch
+        source = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
+        fn = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "import_model_stream")
+        with tempfile.TemporaryDirectory() as folder:
+            models = Path(folder)
+            target = models / "synthetic.gguf"
+            audit = Mock()
+            scope = dict(MODELS=models, MAX_MODEL_BYTES=32*GIB, EngineError=RuntimeError,
+                         shutil=shutil, secrets=secrets, os=os, audit=audit)
+            exec(compile(ast.Module(body=[fn], type_ignores=[]), "<actual-import-function>", "exec"), scope)
+            class Concurrent:
+                def read(self, count):
+                    target.write_bytes(b"preserve-concurrent-model")
+                    return b"GGUF" + b"x"*4092
+            with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                with self.assertRaisesRegex(RuntimeError, "already exists"):
+                    scope["import_model_stream"](target.name, Concurrent(), 4096)
+            self.assertEqual(target.read_bytes(), b"preserve-concurrent-model")
+            self.assertEqual(list(models.iterdir()), [target])
+            audit.assert_not_called()
+
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
         self.assertIn("You are GIZE", prompt)
