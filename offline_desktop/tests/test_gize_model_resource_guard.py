@@ -445,6 +445,16 @@ class ModelGuardTests(unittest.TestCase):
             self.assertEqual(target.read_bytes(), model)
             self.assertEqual(list(models.iterdir()), [target])
             audit.assert_called_once()
+            # A retry must refuse the installed name without overwriting it.
+            incoming = io.BytesIO(data)
+            audit.reset_mock()
+            audit.side_effect = None
+            with patch.object(shutil, "disk_usage", return_value=type("Disk", (), {"free":10*GIB})()):
+                with self.assertRaisesRegex(RuntimeError, "already exists"):
+                    scope[fn.name]("synthetic.zip", incoming, len(data))
+            audit.assert_not_called()
+            self.assertEqual(target.read_bytes(), model)
+            self.assertEqual(list(models.iterdir()), [target])
 
     def test_offline_model_reports_gize_identity(self):
         prompt = model_behavior.system_prompt("developer")
