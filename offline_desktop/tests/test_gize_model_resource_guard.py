@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import sqlite3
 import unittest
 from pathlib import Path
 
@@ -432,7 +433,7 @@ class ModelGuardTests(unittest.TestCase):
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
             zf.writestr("synthetic.gguf", model)
         data = archive.getvalue()
-        for failure in (OSError, ValueError, RuntimeError):
+        for failure in (OSError, ValueError, RuntimeError, sqlite3.OperationalError, sqlite3.DatabaseError):
             with self.subTest(failure=failure):
                 with tempfile.TemporaryDirectory() as folder:
                     models = Path(folder)
@@ -464,7 +465,7 @@ class ModelGuardTests(unittest.TestCase):
         tree = ast.parse((ROOT / "engine" / "core.py").read_text(encoding="utf-8"))
         fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "import_model_stream")
         model = b"GGUF" + b"x"*4092
-        for failure in (OSError, ValueError, RuntimeError):
+        for failure in (OSError, ValueError, RuntimeError, sqlite3.OperationalError, sqlite3.DatabaseError):
             with self.subTest(failure=failure):
                 with tempfile.TemporaryDirectory() as folder:
                     models, audit = Path(folder), Mock(side_effect=failure("synthetic audit failure"))
